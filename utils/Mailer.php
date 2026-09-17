@@ -7,14 +7,37 @@ class Mailer
 {
     public static function send(string $to, string $subject, string $htmlBody): bool
     {
+        $host = $_ENV['MAIL_HOST'] ?? '127.0.0.1';
+        $port = (int) ($_ENV['MAIL_PORT'] ?? 1025);
         $from = $_ENV['MAIL_FROM'] ?? 'noreply@booking.local';
+        $to = str_replace(["\r", "\n"], '', $to);
+        $from = str_replace(["\r", "\n"], '', $from);
 
-        $headers  = "From: $from\r\n";
-        $headers .= "Reply-To: $from\r\n";
-        $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
-        $headers .= "MIME-Version: 1.0\r\n";
+        $connection = @fsockopen($host, $port, $errorNumber, $errorMessage, 10);
+        $ok = false;
 
-        $ok = @mail($to, $subject, $htmlBody, $headers);
+        if ($connection) {
+            stream_set_timeout($connection, 10);
+            self::readResponse($connection);
+            self::sendCommand($connection, 'EHLO localhost');
+            self::sendCommand($connection, "MAIL FROM:<$from>");
+            self::sendCommand($connection, "RCPT TO:<$to>");
+            self::sendCommand($connection, 'DATA');
+
+            $message = "From: $from\r\n"
+                . "Reply-To: $from\r\n"
+                . "To: $to\r\n"
+                . "Subject: $subject\r\n"
+                . "MIME-Version: 1.0\r\n"
+                . "Content-Type: text/html; charset=UTF-8\r\n\r\n"
+                . str_replace("\n.", "\n..", str_replace("\r\n", "\n", $htmlBody))
+                . "\r\n.\r\n";
+
+            fwrite($connection, $message);
+            $ok = self::responseCode($connection) < 400;
+            self::sendCommand($connection, 'QUIT');
+            fclose($connection);
+        }
 
         $logline = sprintf(
             "[%s] TO: %s | SUBJ: %s\n%s\n\n",
@@ -23,9 +46,37 @@ class Mailer
             $subject,
             strip_tags($htmlBody)
         );
-        @file_put_contents(__DIR__ . '/../storage/mail.log', $logline, FILE_APPEND);
+        $logDirectory = __DIR__ . '/../storage';
+        if (!is_dir($logDirectory)) {
+            @mkdir($logDirectory, 0775, true);
+        }
+        @file_put_contents($logDirectory . '/mail.log', $logline, FILE_APPEND);
 
         return $ok;
+    }
+
+    private static function sendCommand($connection, string $command): int
+    {
+        fwrite($connection, $command . "\r\n");
+        return self::responseCode($connection);
+    }
+
+    private static function responseCode($connection): int
+    {
+        $response = self::readResponse($connection);
+        return (int) substr($response, 0, 3);
+    }
+
+    private static function readResponse($connection): string
+    {
+        $response = '';
+        while (($line = fgets($connection)) !== false) {
+            $response .= $line;
+            if (isset($line[3]) && $line[3] === ' ') {
+                break;
+            }
+        }
+        return $response;
     }
 
     public static function sendVerification(string $email, string $name, string $token): void

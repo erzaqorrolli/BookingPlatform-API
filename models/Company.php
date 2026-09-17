@@ -131,6 +131,7 @@ public static function userBelongsTo(int $userId, int $companyId):bool{
     $c->logo_url = $row['logo_url'] ?? null;
     $c->timezone = $row['timezone'] ?? 'Europe/Berlin';
     $c->created_at = $row['created_at'] ?? null;    
+    return $c;
 
     }
 }

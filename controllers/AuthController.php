@@ -23,15 +23,15 @@ class AuthController
             json_err('Email already exists', 409);
         }
 
-        $token = bin2hex(random_bytes(32));
-        $user  = User::create($name, $email, $password, $token);
+        $verificationToken = bin2hex(random_bytes(32));
+        $user = User::create($name, $email, $password, $verificationToken);
 
-        Mailer::sendVerification($email, $name, $token);
+        Mailer::sendVerification($email, $name, $verificationToken);
 
         json_ok([
-            'message'     => 'Successfully registered. Check your email!',
+            'message'     => 'Successfully registered. Please check your email to verify your account.',
             'user'        => $user->toArray(),
-            'debug_token' => ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? $token : null,
+            'debug_token' => ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? $verificationToken : null,
         ], 201);
     }
 
@@ -61,10 +61,6 @@ class AuthController
         $user = User::findByEmail($email);
         if (!$user || !$user->verifyPassword($password)) {
             json_err('Invalid credentials', 401);
-        }
-
-        if (!$user->isVerified()) {
-            json_err('Please verify your email first', 403);
         }
 
         $token = jwt_encode([
