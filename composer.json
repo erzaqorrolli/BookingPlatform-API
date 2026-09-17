@@ -1,0 +1,26 @@
+{
+    "name": "booking/api",
+    "type": "project",
+    "require": {
+        "php": ">=8.1",
+        "vlucas/phpdotenv": "^5.6",
+        "firebase/php-jwt": "^7.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\Controllers\\": "controllers/",
+            "App\\Models\\": "models/",
+            "App\\Services\\": "services/",
+            "App\\Middleware\\": "middleware/",
+            "App\\Config\\": "config/",
+            "App\\Utils\\": "utils/",
+            "App\\Routes\\": "routes/"
+        },
+        "files": [
+            "utils/helpers.php"
+        ]
+    },
+    "config": {
+        "optimize-autoloader": true
+    }
+}

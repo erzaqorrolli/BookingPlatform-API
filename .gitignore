@@ -1,0 +1,34 @@
+# Vendor
+/vendor/
+/composer.phar
+composer.lock
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Storage
+/storage/*.log
+/storage/cache/
+/storage/uploads/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Test files
+test-all.php
+test.http
+debug-input.php
+
+# Node
+node_modules/
+npm-debug.log*

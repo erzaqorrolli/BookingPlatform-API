@@ -1,0 +1,12 @@
+RewriteEngine On
+
+# Kaloj header-in Authorization te PHP
+RewriteCond %{HTTP:Authorization} .
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+# Nëse file ekziston fizikisht, shërbeje direkt
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Përndryshe, ridrejto te index.php
+RewriteRule ^ index.php [QSA,L]
