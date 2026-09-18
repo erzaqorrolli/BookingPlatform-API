@@ -57,9 +57,7 @@ class Booking
         return $stmt->fetchAll();
     }
 
-    /**
-     * Gjej ose krijo customer (per-company)
-     */
+    
     public static function findOrCreateCustomer(
         int $companyId,
         string $name,
@@ -83,9 +81,6 @@ class Booking
         return (int) $db->lastInsertId();
     }
 
-    /**
-     * Krijon booking
-     */
     public static function create(int $companyId, int $customerId, int $serviceId, array $data): self
     {
         $db = Database::pdo();
