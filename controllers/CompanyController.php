@@ -27,7 +27,7 @@ public static function store(): void{
     if($name === '') json_err('Company name is required', 422);
     if(strlen($name)<2) json_err('Company name must be at least 2 charachters',422);
 
-    $company = Company::createdWithOwner(
+    $company = Company::createWithOwner(
         $name,
         $uid,
         $input['email'] ?? null,
