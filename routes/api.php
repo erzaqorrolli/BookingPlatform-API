@@ -6,6 +6,10 @@ use App\Controllers\AuthController;
 use App\Controllers\CompanyController;
 use App\Controllers\ServiceController;
 use App\Controllers\BookingController;
+use App\Controllers\WorkingHoursController;
+use App\Controllers\DiscountController;
+use App\Controllers\HolidayController;
+
 
 Router::post('/api/auth/register',        [AuthController::class, 'register']);
 Router::post('/api/auth/login',           [AuthController::class, 'login']);
@@ -16,6 +20,14 @@ Router::get('/api/auth/me',               [AuthController::class, 'me']);
 Router::post('/api/auth/change-password', [AuthController::class, 'changePassword']);
 Router::post('/api/auth/logout',          [AuthController::class, 'logout']);
 
+Router::get('/api/companies/{id}/members', [CompanyController::class, 'members']);
+Router::post('/api/companies/{id}/invite', [CompanyController::class, 'invite']);
+
+
+Router::get('/api/companies/{companyId}/holidays',         [HolidayController::class, 'index']);
+Router::post('/api/companies/{companyId}/holidays',        [HolidayController::class, 'store']);
+Router::delete('/api/companies/{companyId}/holidays/{id}', [HolidayController::class, 'destroy']);
+
 Router::get('/api/companies',                    [CompanyController::class, 'index']);
 Router::post('/api/companies',                   [CompanyController::class, 'store']);
 Router::get('/api/companies/{id}',               [CompanyController::class, 'show']);
@@ -23,6 +35,10 @@ Router::put('/api/companies/{id}',               [CompanyController::class, 'upd
 Router::post('/api/companies/{id}/invite',       [CompanyController::class, 'invite']);
 Router::get('/api/companies/{id}/members',       [CompanyController::class, 'members']);
 Router::post('/api/invitations/accept',          [CompanyController::class, 'acceptInvite']);
+
+Router::get('/api/companies/{companyId}/discounts',         [DiscountController::class, 'index']);
+Router::post('/api/companies/{companyId}/discounts',        [DiscountController::class, 'store']);
+Router::delete('/api/companies/{companyId}/discounts/{id}', [DiscountController::class, 'destroy']);
 
 Router::get('/api/companies/{companyId}/services',        [ServiceController::class, 'index']);
 Router::post('/api/companies/{companyId}/services',       [ServiceController::class, 'store']);
@@ -32,6 +48,9 @@ Router::delete('/api/companies/{companyId}/services/{id}',[ServiceController::cl
 
 Router::get('/api/companies/{companyId}/bookings',                [BookingController::class, 'index']);
 Router::put('/api/companies/{companyId}/bookings/{id}/status',    [BookingController::class, 'updateStatus']);
+
+Router::get('/api/companies/{companyId}/working-hours',       [WorkingHoursController::class, 'index']);
+Router::put('/api/companies/{companyId}/working-hours/{day}',  [WorkingHoursController::class, 'update']);
 
 Router::get('/api/public/companies',       [BookingController::class, 'publicCompanies']);
 Router::get('/api/public/availability',    [BookingController::class, 'availability']);
