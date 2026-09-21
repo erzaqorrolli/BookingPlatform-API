@@ -10,6 +10,7 @@ use App\Controllers\WorkingHoursController;
 use App\Controllers\DiscountController;
 use App\Controllers\HolidayController;
 use App\Controllers\CustomerPortalController;
+use App\Controllers\CustomerController;
 use App\Controllers\HappyHourController;
 
 Router::post('/api/auth/register',        [AuthController::class, 'register']);
