@@ -231,11 +231,48 @@ class BookingController
             json_err('Invalid status', 422);
         }
 
-        // TODO: Dërgo email customer për ndryshim statusi
 
         json_ok([
             'message' => 'Status updated',
             'booking' => Booking::findById($bookingId)->toArray(),
         ]);
+    }
+
+
+    public function publicCompanyBySlug (array $params): void{
+        $slug = $params ['slug'] ?? ''  ;
+
+        if(!$slug) json_err('Slud required',422);
+        $db=Database::pdo();
+         $stmt = $db->prepare("SELECT id , name, slug, email, phone,address, logo_url,timezone FROM companies WHERE slug= ?");
+         $stmt->execute([$slug]);
+         $company = $stmt->fetch();
+
+         if(!$company) json_err('Company not found', 404);
+
+         $stmt=$db->prepare("SELECT id,name,description,duration_minutes,price,capacity FROM services WHERE company_id =? AND active= 1 ORDER BY name");
+
+         $stmt->execute([$company['id']]);
+         $services = $stmt->fetchAll();
+
+         json_ok([
+            'id' => (int) $company ['id'],
+            'name' => $company['name'],
+            'slug' => $company ['slug'],
+            'phone' => $company['phone'],
+            'address' => $company['address'],
+            'logo_url'=> $company['logo_url'],
+            'timezone'=> $company['timezone'],
+            'services' => array_map(function ($s) {
+                return [
+                    'id' => (int) $s['id'],
+                    'name' => $s['name'],
+                    'description' => $s['description'],
+                    'duration_minutes'=> (int) $s['duration_minutes'],
+                    'price' => (float) $s['price'],
+                    'capacity' =>(int) $s['capacity'],
+                ];
+            }, $services),
+         ]);
     }
 }

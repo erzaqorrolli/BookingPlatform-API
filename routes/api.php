@@ -37,7 +37,12 @@ Router::get('/api/public/companies',       [BookingController::class, 'publicCom
 Router::get('/api/public/availability',    [BookingController::class, 'availability']);
 Router::post('/api/public/bookings',       [BookingController::class, 'createPublic']);
 
+Router::get('/api/public/companies/{slug}', [BookingController::class, 'publicCompanyBySlug']);
 
+Router::get('/api/companies/{companyId}/customers',         [CustomerController::class, 'index']);
+Router::post('/api/companies/{companyId}/customers',        [CustomerController::class, 'store']);
+Router::put('/api/companies/{companyId}/customers/{id}',    [CustomerController::class, 'update']);
+Router::delete('/api/companies/{companyId}/customers/{id}', [CustomerController::class, 'destroy']);
 Router::post('/api/debug', function () {
     return [
         'input_result'   => input(),
