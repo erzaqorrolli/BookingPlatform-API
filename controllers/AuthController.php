@@ -115,17 +115,30 @@ class AuthController
 
         json_ok(['message' => 'Password reset successfully']);
     }
+public function me(): void
+{
+    $uid = auth_user_id();
+    if (!$uid) json_err('Unauthorized', 401);
 
-    public function me(): void
-    {
-        $uid = auth_user_id();
-        if (!$uid) json_err('Unauthorized', 401);
+    $user = User::findById($uid);
+    if (!$user) json_err('User not found', 404);
 
-        $user = User::findById($uid);
-        if (!$user) json_err('User not found', 404);
+    $db = \App\Config\Database::pdo();
+    $stmt = $db->prepare("
+        SELECT c.id AS company_id, r.name AS role
+        FROM company_user cu
+        JOIN companies c ON c.id = cu.company_id
+        JOIN roles r ON r.id = cu.role_id
+        WHERE cu.user_id = ?
+    ");
+    $stmt->execute([$uid]);
+    $companies = $stmt->fetchAll();
 
-        json_ok($user->toArray());
-    }
+    $data = $user->toArray();
+    $data['companies'] = $companies;
+
+    json_ok($data);
+}
 
     public function changePassword(): void
     {

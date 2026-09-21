@@ -9,7 +9,8 @@ use App\Controllers\BookingController;
 use App\Controllers\WorkingHoursController;
 use App\Controllers\DiscountController;
 use App\Controllers\HolidayController;
-
+use App\Controllers\CustomerPortalController;
+use App\Controllers\HappyHourController;
 
 Router::post('/api/auth/register',        [AuthController::class, 'register']);
 Router::post('/api/auth/login',           [AuthController::class, 'login']);
@@ -57,6 +58,12 @@ Router::get('/api/public/availability',    [BookingController::class, 'availabil
 Router::post('/api/public/bookings',       [BookingController::class, 'createPublic']);
 
 Router::get('/api/public/companies/{slug}', [BookingController::class, 'publicCompanyBySlug']);
+Router::get('/api/me/bookings', [CustomerPortalController::class, 'myBookings']);
+
+Router::get('/api/companies/{companyId}/happy-hours',         [HappyHourController::class, 'index']);
+Router::post('/api/companies/{companyId}/happy-hours',        [HappyHourController::class, 'store']);
+Router::put('/api/companies/{companyId}/happy-hours/{id}',    [HappyHourController::class, 'update']);
+Router::delete('/api/companies/{companyId}/happy-hours/{id}', [HappyHourController::class, 'destroy']);
 
 Router::get('/api/companies/{companyId}/customers',         [CustomerController::class, 'index']);
 Router::post('/api/companies/{companyId}/customers',        [CustomerController::class, 'store']);
