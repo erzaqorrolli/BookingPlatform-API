@@ -13,6 +13,7 @@ use App\Controllers\CustomerPortalController;
 use App\Controllers\CustomerController;
 use App\Controllers\HappyHourController;
 use App\Controllers\ShiftController;
+use App\Controllers\UserShiftController;
 
 Router::post('/api/auth/register',        [AuthController::class, 'register']);
 Router::post('/api/auth/login',           [AuthController::class, 'login']);
@@ -86,3 +87,9 @@ Router::get('/api/companies/{companyId}/shifts',         [ShiftController::class
 Router::post('/api/companies/{companyId}/shifts',        [ShiftController::class, 'store']);
 Router::put('/api/companies/{companyId}/shifts/{id}',    [ShiftController::class, 'update']);
 Router::delete('/api/companies/{companyId}/shifts/{id}', [ShiftController::class, 'destroy']);
+
+Router::get('/api/companies/{companyId}/schedule',         [UserShiftController::class, 'index']);
+Router::get('/api/companies/{companyId}/schedule/me',      [UserShiftController::class, 'mySchedule']);
+Router::post('/api/companies/{companyId}/schedule',        [UserShiftController::class, 'store']);
+Router::put('/api/companies/{companyId}/schedule/{id}',    [UserShiftController::class, 'update']);
+Router::delete('/api/companies/{companyId}/schedule/{id}', [UserShiftController::class, 'destroy']);

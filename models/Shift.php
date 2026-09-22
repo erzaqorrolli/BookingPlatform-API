@@ -27,7 +27,7 @@ return $row ? self::fromRow($row) : null;
 
 public static function forCompany(int $companyId): array{
     $db=Database::pdo();
-    $stmt=$db->prepare("SELECT * FROM shifts WHERE company_id=? ORDERE BY start_time");
+    $stmt=$db->prepare("SELECT * FROM shifts WHERE company_id=? ORDER BY start_time");
     $stmt->execute([$companyId]);
     return array_map(fn($r) => self::fromRow($r), $stmt->fetchAll());
 
@@ -61,7 +61,7 @@ public function update (array $data): bool{
     if(empty($fields)) return false;
 
     $values[]=$this->id;
-    $sql="UPDATE shifts SET " . implode (', ', $fields) . "WHERE id=?";
+    $sql="UPDATE shifts SET " . implode (', ', $fields) . " WHERE id=?";
     return $db->prepare($sql)->execute($values);
 
 }
