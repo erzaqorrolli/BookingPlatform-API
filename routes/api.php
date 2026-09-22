@@ -14,6 +14,7 @@ use App\Controllers\CustomerController;
 use App\Controllers\HappyHourController;
 use App\Controllers\ShiftController;
 use App\Controllers\UserShiftController;
+use App\Controllers\ProductController;
 
 Router::post('/api/auth/register',        [AuthController::class, 'register']);
 Router::post('/api/auth/login',           [AuthController::class, 'login']);
@@ -93,3 +94,9 @@ Router::get('/api/companies/{companyId}/schedule/me',      [UserShiftController:
 Router::post('/api/companies/{companyId}/schedule',        [UserShiftController::class, 'store']);
 Router::put('/api/companies/{companyId}/schedule/{id}',    [UserShiftController::class, 'update']);
 Router::delete('/api/companies/{companyId}/schedule/{id}', [UserShiftController::class, 'destroy']);
+
+Router::get('/api/companies/{companyId}/products',         [ProductController::class, 'index']);
+Router::post('/api/companies/{companyId}/products',        [ProductController::class, 'store']);
+Router::get('/api/companies/{companyId}/products/{id}',    [ProductController::class, 'show']);
+Router::put('/api/companies/{companyId}/products/{id}',    [ProductController::class, 'update']);
+Router::delete('/api/companies/{companyId}/products/{id}', [ProductController::class, 'destroy']);
