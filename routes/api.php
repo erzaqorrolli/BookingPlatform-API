@@ -12,6 +12,7 @@ use App\Controllers\HolidayController;
 use App\Controllers\CustomerPortalController;
 use App\Controllers\CustomerController;
 use App\Controllers\HappyHourController;
+use App\Controllers\ShiftController;
 
 Router::post('/api/auth/register',        [AuthController::class, 'register']);
 Router::post('/api/auth/login',           [AuthController::class, 'login']);
@@ -79,3 +80,9 @@ Router::post('/api/debug', function () {
         'content_length' => $_SERVER['CONTENT_LENGTH'] ?? null,
     ];
 });
+
+// SHIFTS
+Router::get('/api/companies/{companyId}/shifts',         [ShiftController::class, 'index']);
+Router::post('/api/companies/{companyId}/shifts',        [ShiftController::class, 'store']);
+Router::put('/api/companies/{companyId}/shifts/{id}',    [ShiftController::class, 'update']);
+Router::delete('/api/companies/{companyId}/shifts/{id}', [ShiftController::class, 'destroy']);
