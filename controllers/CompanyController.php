@@ -50,7 +50,7 @@ public function show (array $params): void{
     $company =Company::findById($id);
     if(!$company) json_err('Company not found', 404);
 
-    $role = Company::userRoles($uid,$id);
+    $role = Company::userRole($uid,$id);
 
     json_ok(
         [
