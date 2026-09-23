@@ -34,7 +34,7 @@ public static function findById(int $id): ?self{
 public static function forCompanyWeek(int $companyId, string $startDate, string $endDate): array{
 
 $db=Database::pdo();
-$stmt=$db->prepare("SELECT us.*, u.name AAS user_name, u.email AS user_email, s.name AS shift_name, s.start_time AS shift_start, s.end_time AS shift_end, s.color AS shift_color
+$stmt=$db->prepare("SELECT us.*, u.name AS user_name, u.email AS user_email, s.name AS shift_name, s.start_time AS shift_start, s.end_time AS shift_end, s.color AS shift_color
  FROM user_shifts us
             JOIN users u ON u.id = us.user_id
             JOIN shifts s ON s.id = us.shift_id
