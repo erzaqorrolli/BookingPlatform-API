@@ -8,6 +8,18 @@ require __DIR__ . '/../vendor/autoload.php';
 $dotenv = Dotenv::createImmutable(__DIR__ . '/..');
 $dotenv->load();
 
+$uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+if (preg_match('#^/booking-api/public/storage/uploads/(.+)$#', $uri, $m)) {
+    $file = __DIR__ . '/../storage/uploads/' . basename($m[1]);
+    if (file_exists($file)) {
+        $mime = mime_content_type($file);
+        header('Content-Type: ' . $mime);
+        header('Cache-Control: public, max-age=86400');
+        readfile($file);
+        exit;
+    }
+}
+
 if (($_ENV['APP_DEBUG'] ?? 'false') === 'true') {
     error_reporting(E_ALL);
     ini_set('display_errors', '1');

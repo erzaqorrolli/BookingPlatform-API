@@ -15,6 +15,7 @@ use App\Controllers\HappyHourController;
 use App\Controllers\ShiftController;
 use App\Controllers\UserShiftController;
 use App\Controllers\ProductController;
+use App\Controllers\PhotoController;
 
 Router::post('/api/auth/register',        [AuthController::class, 'register']);
 Router::post('/api/auth/login',           [AuthController::class, 'login']);
@@ -100,3 +101,10 @@ Router::post('/api/companies/{companyId}/products',        [ProductController::c
 Router::get('/api/companies/{companyId}/products/{id}',    [ProductController::class, 'show']);
 Router::put('/api/companies/{companyId}/products/{id}',    [ProductController::class, 'update']);
 Router::delete('/api/companies/{companyId}/products/{id}', [ProductController::class, 'destroy']);
+
+
+// PHOTOS
+Router::get('/api/companies/{companyId}/photos',          [PhotoController::class, 'index']);
+Router::post('/api/companies/{companyId}/photos',         [PhotoController::class, 'upload']);
+Router::put('/api/companies/{companyId}/photos/{id}/cover', [PhotoController::class, 'setCover']);
+Router::delete('/api/companies/{companyId}/photos/{id}',  [PhotoController::class, 'destroy']);
