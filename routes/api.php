@@ -108,3 +108,16 @@ Router::get('/api/companies/{companyId}/photos',          [PhotoController::clas
 Router::post('/api/companies/{companyId}/photos',         [PhotoController::class, 'upload']);
 Router::put('/api/companies/{companyId}/photos/{id}/cover', [PhotoController::class, 'setCover']);
 Router::delete('/api/companies/{companyId}/photos/{id}',  [PhotoController::class, 'destroy']);
+
+
+Router::post('/api/auth/register-business', [AuthController::class, 'registerBusiness']);
+Router::post('/api/auth/register-customer', [AuthController::class, 'registerCustomer']);
+Router::post('/api/auth/register-invited',  [AuthController::class, 'registerInvited']);
+
+Router::get('/api/invitations/{token}', [CompanyController::class, 'getInvitation']);
+
+
+Router::post('/api/auth/register-business', [AuthController::class, 'registerBusiness']);
+Router::post('/api/auth/register-customer', [AuthController::class, 'registerCustomer']);
+Router::post('/api/auth/register-invited',  [AuthController::class, 'registerInvited']);
+Router::get('/api/invitations/{token}',     [CompanyController::class, 'getInvitation']);

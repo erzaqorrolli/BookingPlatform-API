@@ -189,4 +189,25 @@ VALUES (?,?,?,?, DATE_ADD(NOW(), INTERVAL 7 DAY))");
 
         json_ok($stmt->fetchAll());
     }
+
+    public function getInvitation(array $params): void
+{
+    $token = $params['token'] ?? '';
+    if (!$token) json_err('Token required', 422);
+
+    $db = Database::pdo();
+    $stmt = $db->prepare("
+        SELECT ci.email, c.name AS company_name, r.name AS role_name
+        FROM company_invitations ci
+        JOIN companies c ON c.id = ci.company_id
+        JOIN roles r ON r.id = ci.role_id
+        WHERE ci.token = ? AND ci.accepted_at IS NULL AND ci.expires_at > NOW()
+    ");
+    $stmt->execute([$token]);
+    $invite = $stmt->fetch();
+
+    if (!$invite) json_err('Invalid or expired invitation', 400);
+
+    json_ok($invite);
+}
 }
