@@ -67,7 +67,6 @@ public function login(): void
         'exp' => time() + (int) $_ENV['JWT_EXPIRES'],
     ]);
 
-    // Merr rolet në kompanitë ku user-i është anëtar
     $db = \App\Config\Database::pdo();
     $stmt = $db->prepare("
         SELECT c.id AS company_id, c.name AS company_name, r.name AS role
