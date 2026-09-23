@@ -15,7 +15,7 @@ public static function index(array $params):void{
     if(!$uid) json_err('Unauthorized',401);
     $companyId = (int) $params['companyId'];
 
-    if(!Company::userBelondsTo($uid,$companyId)){
+    if(!Company::userBelongsTo($uid,$companyId)){
         json_err('Forbidden',403);
     }
 

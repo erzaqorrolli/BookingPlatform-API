@@ -16,6 +16,7 @@ use App\Controllers\ShiftController;
 use App\Controllers\UserShiftController;
 use App\Controllers\ProductController;
 use App\Controllers\PhotoController;
+use App\Controllers\ReviewController;
 
 Router::post('/api/auth/register',        [AuthController::class, 'register']);
 Router::post('/api/auth/login',           [AuthController::class, 'login']);
@@ -121,3 +122,9 @@ Router::post('/api/auth/register-business', [AuthController::class, 'registerBus
 Router::post('/api/auth/register-customer', [AuthController::class, 'registerCustomer']);
 Router::post('/api/auth/register-invited',  [AuthController::class, 'registerInvited']);
 Router::get('/api/invitations/{token}',     [CompanyController::class, 'getInvitation']);
+
+Router::get('/api/companies/{companyId}/reviews',    [ReviewController::class, 'index']);
+Router::get('/api/me/reviews',                        [ReviewController::class, 'myReviews']);
+Router::get('/api/me/bookings-to-review',             [ReviewController::class, 'bookingsToReview']);
+Router::post('/api/me/reviews',                       [ReviewController::class, 'store']);
+Router::delete('/api/me/reviews/{id}',                [ReviewController::class, 'destroy']);
