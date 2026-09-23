@@ -32,26 +32,39 @@ class BookingController
         json_ok($bookings);
     }
 
-    /**
-     * GET /api/public/companies
-     * Lista publike e kompanive
-     */
-    public function publicCompanies(): void
-    {
-        $db = Database::pdo();
-        $rows = $db->query("
-            SELECT id, name, slug, logo_url, address
-            FROM companies
-            ORDER BY name
-        ")->fetchAll();
+    
+   public function publicCompanies(): void
+{
+    $db = Database::pdo();
 
-        json_ok($rows);
+    $companies = $db->query("
+        SELECT id, name, slug, logo_url, address
+        FROM companies
+        ORDER BY name
+    ")->fetchAll();
+
+    foreach ($companies as &$company) {
+        $stmt = $db->prepare("
+            SELECT filename
+            FROM photos
+            WHERE company_id = ? AND is_cover = 1
+            LIMIT 1
+        ");
+        $stmt->execute([$company['id']]);
+        $cover = $stmt->fetchColumn();
+
+        if ($cover) {
+            $company['cover_url'] = ($_ENV['APP_URL'] ?? 'http://localhost/booking-api')
+                . '/public/storage/uploads/' . $cover;
+        } else {
+            $company['cover_url'] = null;
+        }
     }
 
-    /**
-     * GET /api/public/availability
-     * Query: ?company_id=1&service_id=2&date=2026-09-20
-     */
+    json_ok($companies);
+}
+
+    
     public function availability(): void
     {
         $companyId = (int) ($_GET['company_id'] ?? 0);
@@ -239,40 +252,74 @@ class BookingController
     }
 
 
-    public function publicCompanyBySlug (array $params): void{
-        $slug = $params ['slug'] ?? ''  ;
+   public function publicCompanyBySlug(array $params): void
+{
+    $slug = $params['slug'] ?? '';
 
-        if(!$slug) json_err('Slud required',422);
-        $db=Database::pdo();
-         $stmt = $db->prepare("SELECT id , name, slug, email, phone,address, logo_url,timezone FROM companies WHERE slug= ?");
-         $stmt->execute([$slug]);
-         $company = $stmt->fetch();
+    if (!$slug) json_err('Slug required', 422);
 
-         if(!$company) json_err('Company not found', 404);
+    $db = Database::pdo();
 
-         $stmt=$db->prepare("SELECT id,name,description,duration_minutes,price,capacity FROM services WHERE company_id =? AND active= 1 ORDER BY name");
+    $stmt = $db->prepare("
+        SELECT id, name, slug, email, phone, address, logo_url, timezone
+        FROM companies
+        WHERE slug = ?
+    ");
+    $stmt->execute([$slug]);
+    $company = $stmt->fetch();
 
-         $stmt->execute([$company['id']]);
-         $services = $stmt->fetchAll();
+    if (!$company) json_err('Company not found', 404);
 
-         json_ok([
-            'id' => (int) $company ['id'],
-            'name' => $company['name'],
-            'slug' => $company ['slug'],
-            'phone' => $company['phone'],
-            'address' => $company['address'],
-            'logo_url'=> $company['logo_url'],
-            'timezone'=> $company['timezone'],
-            'services' => array_map(function ($s) {
-                return [
-                    'id' => (int) $s['id'],
-                    'name' => $s['name'],
-                    'description' => $s['description'],
-                    'duration_minutes'=> (int) $s['duration_minutes'],
-                    'price' => (float) $s['price'],
-                    'capacity' =>(int) $s['capacity'],
-                ];
-            }, $services),
-         ]);
-    }
+    // Merr shërbimet
+    $stmt = $db->prepare("
+        SELECT id, name, description, duration_minutes, price, capacity
+        FROM services
+        WHERE company_id = ? AND active = 1
+        ORDER BY name
+    ");
+    $stmt->execute([$company['id']]);
+    $services = $stmt->fetchAll();
+
+    // Merr fotot ← E RE
+    $stmt = $db->prepare("
+        SELECT id, filename, is_cover
+        FROM photos
+        WHERE company_id = ?
+        ORDER BY is_cover DESC, created_at DESC
+        LIMIT 20
+    ");
+    $stmt->execute([$company['id']]);
+    $photosRaw = $stmt->fetchAll();
+
+    $appUrl = $_ENV['APP_URL'] ?? 'http://localhost/booking-api';
+    $photos = array_map(function ($p) use ($appUrl) {
+        return [
+            'id'       => (int) $p['id'],
+            'url'      => $appUrl . '/public/storage/uploads/' . $p['filename'],
+            'is_cover' => (int) $p['is_cover'],
+        ];
+    }, $photosRaw);
+
+    json_ok([
+        'id'       => (int) $company['id'],
+        'name'     => $company['name'],
+        'slug'     => $company['slug'],
+        'email'    => $company['email'],
+        'phone'    => $company['phone'],
+        'address'  => $company['address'],
+        'logo_url' => $company['logo_url'],
+        'timezone' => $company['timezone'],
+        'services' => array_map(function ($s) {
+            return [
+                'id'               => (int) $s['id'],
+                'name'             => $s['name'],
+                'description'      => $s['description'],
+                'duration_minutes' => (int) $s['duration_minutes'],
+                'price'            => (float) $s['price'],
+                'capacity'         => (int) $s['capacity'],
+            ];
+        }, $services),
+        'photos' => $photos,
+    ]);
+}
 }
