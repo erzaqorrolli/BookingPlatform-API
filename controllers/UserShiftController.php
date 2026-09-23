@@ -9,9 +9,7 @@ use App\Config\Database;
 
 class UserShiftController
 {
-    /**
-     * GET /api/companies/{companyId}/schedule?start=YYYY-MM-DD&end=YYYY-MM-DD
-     */
+   
     public function index(array $params): void
     {
         $uid = auth_user_id();
@@ -30,10 +28,7 @@ class UserShiftController
         json_ok($schedule);
     }
 
-    /**
-     * GET /api/companies/{companyId}/schedule/me
-     * Orari i user-it aktual
-     */
+   
     public function mySchedule(array $params): void
     {
         $uid = auth_user_id();
@@ -70,9 +65,8 @@ class UserShiftController
         if (empty($input['shift_id'])) json_err('Shift required', 422);
         if (empty($input['date'])) json_err('Date required', 422);
 
-        // Kontrollo që user-i është anëtar i kompanisë
         if (!Company::userBelongsTo((int) $input['user_id'], $companyId)) {
-            json_err('User nuk është anëtar i kompanisë', 422);
+            json_err('User is not team member', 422);
         }
 
         $id = UserShift::upsert(
@@ -87,7 +81,7 @@ class UserShiftController
         );
 
         json_ok([
-            'message' => 'Turni u caktua',
+            'message' => 'Shift assigned',
             'id'      => $id,
         ], 201);
     }
@@ -125,11 +119,9 @@ class UserShiftController
             $id,
         ]);
 
-        json_ok(['message' => 'Turni u ndryshua']);
+        json_ok(['message' => 'Shift changed']);
     }
 
-    /**
-     */
     public function destroy(array $params): void
     {
         $uid = auth_user_id();
@@ -149,6 +141,6 @@ class UserShiftController
         }
 
         $userShift->delete();
-        json_ok(['message' => 'Turni u fshi']);
+        json_ok(['message' => 'Shift deleted']);
     }
 }
