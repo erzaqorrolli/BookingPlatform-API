@@ -18,7 +18,7 @@
             "App\\Routes\\": "routes/"
         },
         "files": [
-            "utils/helpers.php"
+            "helpers.php"
         ]
     },
     "config": {

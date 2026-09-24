@@ -6,6 +6,7 @@ namespace App\Controllers;
 use App\Models\Booking;
 use App\Models\Company;
 use App\Models\Service;
+use App\Models\HappyHour;
 use App\Config\Database;
 use App\Utils\Mailer;
 
@@ -78,7 +79,7 @@ class BookingController
             json_err('company_id, service_id and date are required', 422);
         }
 
-        // Validim i fortë i datës (kontrollon datë reale, jo vetëm format)
+        // Validim i fortë i datës
         $dt = \DateTime::createFromFormat('Y-m-d', $date);
         if (!$dt || $dt->format('Y-m-d') !== $date) {
             json_err('Invalid date format (YYYY-MM-DD)', 422);
@@ -95,7 +96,7 @@ class BookingController
         }
 
         $db  = Database::pdo();
-        $dow = (int) $dt->format('w'); // 0=Sun..6=Sat
+        $dow = (int) $dt->format('w');
 
         $stmt = $db->prepare("
             SELECT * FROM working_hours
@@ -113,7 +114,7 @@ class BookingController
             json_ok(['slots' => [], 'reason' => 'no_hours_configured']);
         }
 
-        // 2. Holiday
+        // Holiday
         $stmt = $db->prepare("
             SELECT 1 FROM holidays
             WHERE company_id = ?
@@ -128,16 +129,20 @@ class BookingController
             json_ok(['slots' => [], 'reason' => 'holiday']);
         }
 
-        // 3. Service
+        // Service
         $service = Service::findById($serviceId);
         if (!$service || $service->company_id !== $companyId || !$service->active) {
             json_err('Service not found or inactive', 404);
         }
 
         $dur = max(1, (int) $service->duration_minutes);
-        $cap = max(1, (int) $service->capacity); 
+        $cap = max(1, (int) $service->capacity);
 
-        // 4. Slots
+        // ✅ HAPPY HOURS PËR KËTË DITË
+        $happyHours = HappyHour::activeForDay($companyId, $dow);
+        $happyHoursArray = array_map(fn($h) => $h->toArray(), $happyHours);
+
+        // Slots
         $openTs  = strtotime("$date {$hours['open_time']}");
         $closeTs = strtotime("$date {$hours['close_time']}");
 
@@ -145,7 +150,7 @@ class BookingController
             json_ok(['slots' => [], 'reason' => 'invalid_hours']);
         }
 
-        $step = 15 * 60; // 15 min
+        $step = 15 * 60;
 
         $stmt = $db->prepare("
             SELECT start_time, end_time
@@ -180,18 +185,36 @@ class BookingController
             }
 
             if ($overlap < $cap) {
-                $slots[] = ['start' => $startStr, 'end' => $endStr];
+                // ✅ Kontrollo a ka happy hour në këtë slot
+                $slotHappyHour = null;
+                foreach ($happyHours as $hh) {
+                    if ($hh->start_time <= $startStr && $hh->end_time > $startStr) {
+                        $slotHappyHour = $hh->toArray();
+                        break;
+                    }
+                }
+
+                $slot = [
+                    'start' => $startStr,
+                    'end'   => $endStr,
+                ];
+
+                if ($slotHappyHour) {
+                    $slot['happy_hour'] = $slotHappyHour;
+                }
+
+                $slots[] = $slot;
             }
         }
 
         json_ok([
-            'slots'   => $slots,
-            'reason'  => empty($slots) ? 'fully_booked' : null,
-            'service' => $service->toArray(),
+            'slots'       => $slots,
+            'reason'      => empty($slots) ? 'fully_booked' : null,
+            'service'     => $service->toArray(),
+            'happy_hours' => $happyHoursArray,
         ]);
     }
 
-    
     public function createPublic(): void
     {
         $input = input();
@@ -218,7 +241,7 @@ class BookingController
             json_err('Invalid date format (YYYY-MM-DD)', 422);
         }
 
-        // Validim orë (HH:MM ose HH:MM:SS)
+        // Validim orë
         if (!preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $startTime)) {
             json_err('Invalid start_time format (HH:MM)', 422);
         }
@@ -248,12 +271,12 @@ class BookingController
             json_err('Company is closed on this date', 422);
         }
 
-                $holidayStmt = $db->prepare("
+        $holidayStmt = $db->prepare("
             SELECT 1 FROM holidays
             WHERE company_id = ?
               AND (date = ? OR (is_recurring = 1 AND DATE_FORMAT(date, '%m-%d') = DATE_FORMAT(?, '%m-%d')))
             LIMIT 1
-                ");
+        ");
         $holidayStmt->execute([$companyId, $date, $date]);
         if ($holidayStmt->fetchColumn()) {
             json_err('Company is closed on this date', 422);
@@ -268,6 +291,18 @@ class BookingController
         }
         if (($startTs - $openTs) % (15 * 60) !== 0) {
             json_err('Selected time is not an available slot', 422);
+        }
+
+        // ✅ KONTROLLO HAPPY HOUR
+        $happyHour = HappyHour::getActiveAt($companyId, $date, $startTime);
+
+        $originalPrice = (float) $service->price;
+        $finalPrice    = $originalPrice;
+        $discountPct   = 0;
+
+        if ($happyHour) {
+            $discountPct = (int) $happyHour->discount_percent;
+            $finalPrice  = round($originalPrice * (1 - $discountPct / 100), 2);
         }
 
         $lockName = "booking:$companyId:$serviceId:$date";
@@ -286,6 +321,7 @@ class BookingController
               AND status IN ('pending', 'confirmed')
               AND start_time < ? AND end_time > ?
         ");
+
         try {
             $db->beginTransaction();
             $stmt->execute([$companyId, $serviceId, $date, $endTime, $startTime]);
@@ -298,12 +334,14 @@ class BookingController
             }
 
             $customerId = Booking::findOrCreateCustomer($companyId, $name, $email, $phone);
+
             $booking = Booking::create($companyId, $customerId, $serviceId, [
                 'booking_date' => $date,
                 'start_time'   => $startTime,
-                'total_price'  => $service->price,
+                'total_price'  => $finalPrice,
                 'notes'        => $input['notes'] ?? null,
             ]);
+
             $db->commit();
         } catch (\Throwable $e) {
             if ($db->inTransaction()) {
@@ -351,8 +389,12 @@ class BookingController
         }
 
         json_ok([
-            'message' => 'Booking received',
-            'booking' => $booking->toArray(),
+            'message'          => 'Booking received',
+            'booking'          => $booking->toArray(),
+            'original_price'   => $originalPrice,
+            'final_price'      => $finalPrice,
+            'discount_percent' => $discountPct,
+            'happy_hour'       => $happyHour?->toArray(),
         ], 201);
     }
 
@@ -424,6 +466,25 @@ class BookingController
         $stmt->execute([$company['id']]);
         $photosRaw = $stmt->fetchAll();
 
+        // ✅ HAPPY HOURS
+        $hhStmt = $db->prepare("
+            SELECT id, name, day_of_week, start_time, end_time, discount_percent
+            FROM happy_hours
+            WHERE company_id = ? AND active = 1
+            ORDER BY day_of_week, start_time
+        ");
+        $hhStmt->execute([$company['id']]);
+        $happyHours = array_map(function ($r) {
+            return [
+                'id'               => (int) $r['id'],
+                'name'             => $r['name'],
+                'day_of_week'      => (int) $r['day_of_week'],
+                'start_time'       => $r['start_time'],
+                'end_time'         => $r['end_time'],
+                'discount_percent' => (int) $r['discount_percent'],
+            ];
+        }, $hhStmt->fetchAll());
+
         $appUrl = $_ENV['APP_URL'] ?? 'http://localhost/booking-api';
 
         $photos = array_map(function ($p) use ($appUrl) {
@@ -435,14 +496,14 @@ class BookingController
         }, $photosRaw);
 
         json_ok([
-            'id'       => (int) $company['id'],
-            'name'     => $company['name'],
-            'slug'     => $company['slug'],
-            'email'    => $company['email'],
-            'phone'    => $company['phone'],
-            'address'  => $company['address'],
-            'logo_url' => $company['logo_url'],
-            'services' => array_map(function ($s) {
+            'id'          => (int) $company['id'],
+            'name'        => $company['name'],
+            'slug'        => $company['slug'],
+            'email'       => $company['email'],
+            'phone'       => $company['phone'],
+            'address'     => $company['address'],
+            'logo_url'    => $company['logo_url'],
+            'services'    => array_map(function ($s) {
                 return [
                     'id'               => (int) $s['id'],
                     'name'             => $s['name'],
@@ -452,12 +513,11 @@ class BookingController
                     'capacity'         => (int) $s['capacity'],
                 ];
             }, $services),
-            'photos' => $photos,
+            'photos'      => $photos,
+            'happy_hours' => $happyHours,
         ]);
     }
 
-    /**
-     */
     private static function timeToMinutes(string $time): int
     {
         $parts = explode(':', $time);

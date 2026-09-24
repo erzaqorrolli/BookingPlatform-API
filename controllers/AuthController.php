@@ -66,10 +66,17 @@ public function login(): void
         json_err('Please verify your email before logging in', 403);
     }
 
+    $expiresIn = (int) ($_ENV['JWT_EXPIRES'] ?? 3600);
+
     $token = jwt_encode([
         'uid' => $user->id,
-        'exp' => time() + (int) $_ENV['JWT_EXPIRES'],
+        'exp' => time() + $expiresIn,
     ]);
+
+    cookie_set_auth($token, $expiresIn);
+
+    $csrf = generate_token();
+    cookie_set_csrf($csrf);
 
     $db = \App\Config\Database::pdo();
     $stmt = $db->prepare("
@@ -82,10 +89,11 @@ public function login(): void
     $stmt->execute([$user->id]);
     $companies = $stmt->fetchAll();
 
+    // ❌ NUK kthejmë token në JSON
     json_ok([
-        'token'     => $token,
-        'user'      => $user->toArray(),
-        'companies' => $companies,
+        'user'       => $user->toArray(),
+        'companies'  => $companies,
+        'csrf_token' => $csrf,
     ]);
 }
 
