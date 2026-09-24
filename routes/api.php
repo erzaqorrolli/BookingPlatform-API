@@ -41,6 +41,7 @@ Router::get('/api/companies/{id}',               [CompanyController::class, 'sho
 Router::put('/api/companies/{id}',               [CompanyController::class, 'update']);
 Router::post('/api/companies/{id}/invite',       [CompanyController::class, 'invite']);
 Router::get('/api/companies/{id}/members',       [CompanyController::class, 'members']);
+Router::get('/api/companies/{companyId}/payroll/me', [CompanyController::class, 'myPayroll']);
 Router::post('/api/invitations/accept',          [CompanyController::class, 'acceptInvite']);
 
 Router::get('/api/companies/{companyId}/discounts',         [DiscountController::class, 'index']);
@@ -75,16 +76,6 @@ Router::get('/api/companies/{companyId}/customers',         [CustomerController:
 Router::post('/api/companies/{companyId}/customers',        [CustomerController::class, 'store']);
 Router::put('/api/companies/{companyId}/customers/{id}',    [CustomerController::class, 'update']);
 Router::delete('/api/companies/{companyId}/customers/{id}', [CustomerController::class, 'destroy']);
-Router::post('/api/debug', function () {
-    return [
-        'input_result'   => input(),
-        'raw_input'      => file_get_contents('php://input'),
-        'post_array'     => $_POST,
-        'content_type'   => $_SERVER['CONTENT_TYPE'] ?? null,
-        'content_length' => $_SERVER['CONTENT_LENGTH'] ?? null,
-    ];
-});
-
 // SHIFTS
 Router::get('/api/companies/{companyId}/shifts',         [ShiftController::class, 'index']);
 Router::post('/api/companies/{companyId}/shifts',        [ShiftController::class, 'store']);

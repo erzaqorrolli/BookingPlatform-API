@@ -10,13 +10,17 @@ use App\Config\Database;
 
 class ReviewController
 {
-    /**
-     * GET /api/companies/{companyId}/reviews
-     * (publik)
-     */
     public function index(array $params): void
     {
+        $uid = auth_user_id();
+        if (!$uid) json_err('Unauthorized', 401);
+
         $companyId = (int) $params['companyId'];
+        $role = Company::userRole($uid, $companyId);
+        if (!in_array($role, ['owner', 'admin', 'manager'], true)) {
+            json_err('Forbidden', 403);
+        }
+
         $reviews = Review::forCompany($companyId, 50);
         $stats = Review::averageForCompany($companyId);
 

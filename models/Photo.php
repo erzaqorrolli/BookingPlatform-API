@@ -38,6 +38,23 @@ class Photo
         return array_map(fn($r) => self::fromRow($r), $stmt->fetchAll());
     }
 
+    public static function findDuplicateByContent(int $companyId, string $path): ?self
+    {
+        if (!is_file($path)) return null;
+
+        $hash = hash_file('sha256', $path);
+        if ($hash === false) return null;
+
+        foreach (self::forCompany($companyId) as $photo) {
+            $existingPath = __DIR__ . '/../storage/uploads/' . $photo->filename;
+            if (is_file($existingPath) && hash_file('sha256', $existingPath) === $hash) {
+                return $photo;
+            }
+        }
+
+        return null;
+    }
+
     public static function create(int $companyId, array $data): self
     {
         $db = Database::pdo();
@@ -81,7 +98,7 @@ class Photo
         if ($this->id === null) return false;
 
         // Fshij file-in fizik
-        $path = __DIR__ . '/../../storage/uploads/' . $this->filename;
+        $path = __DIR__ . '/../storage/uploads/' . $this->filename;
         if (file_exists($path)) {
             @unlink($path);
         }
@@ -93,8 +110,8 @@ class Photo
 
     public function toArray(): array
     {
-        $url = ($_ENV['APP_URL'] ?? 'http://localhost/booking-api') 
-             . '/storage/uploads/' . $this->filename;
+           $url = ($_ENV['APP_URL'] ?? 'http://localhost/booking-api')
+               . '/public/storage/uploads/' . $this->filename;
 
         return [
             'id'            => $this->id,

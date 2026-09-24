@@ -65,18 +65,26 @@ class Booking
         ?string $phone = null
     ): int {
         $db = Database::pdo();
+        $userId = auth_user_id();
 
-        $stmt = $db->prepare("SELECT id FROM customers WHERE company_id = ? AND email = ?");
+        $stmt = $db->prepare("SELECT id, user_id FROM customers WHERE company_id = ? AND email = ?");
         $stmt->execute([$companyId, strtolower(trim($email))]);
-        $id = $stmt->fetchColumn();
+        $customer = $stmt->fetch();
 
-        if ($id) return (int) $id;
+        if ($customer) {
+            if ($userId && empty($customer['user_id'])) {
+                $stmt = $db->prepare("UPDATE customers SET user_id = ? WHERE id = ?");
+                $stmt->execute([$userId, $customer['id']]);
+            }
+
+            return (int) $customer['id'];
+        }
 
         $stmt = $db->prepare("
-            INSERT INTO customers (company_id, name, email, phone)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO customers (company_id, user_id, name, email, phone)
+            VALUES (?, ?, ?, ?, ?)
         ");
-        $stmt->execute([$companyId, trim($name), strtolower(trim($email)), $phone]);
+        $stmt->execute([$companyId, $userId, trim($name), strtolower(trim($email)), $phone]);
 
         return (int) $db->lastInsertId();
     }

@@ -62,6 +62,10 @@ public function login(): void
         json_err('Invalid credentials', 401);
     }
 
+    if (!$user->isVerified()) {
+        json_err('Please verify your email before logging in', 403);
+    }
+
     $token = jwt_encode([
         'uid' => $user->id,
         'exp' => time() + (int) $_ENV['JWT_EXPIRES'],
@@ -273,6 +277,7 @@ public function registerInvited(): void
 
 
     try {
+        $db->beginTransaction();
         $verToken = bin2hex(random_bytes(32));
         $user = User::create($name, $invite['email'], $password, $verToken);
 

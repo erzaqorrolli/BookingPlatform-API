@@ -30,7 +30,7 @@ public static function findById(int $id): ?self{
 
 public static function findByEmail(int $companyId, string $email): ?self{
 $db=Database::pdo();
-$stmt=$db->prepare("SELECT * FROM customer WHERE company_id=? AND email=?");
+$stmt=$db->prepare("SELECT * FROM customers WHERE company_id=? AND email=?");
 $stmt->execute([$companyId, strtolower(trim($email))]);
 $row=$stmt->fetch();
 
@@ -95,8 +95,9 @@ public function delete():bool{
 public function toArray(): array{
     return [
         'id' => $this->id,
-        'company_id' => $this->companyId,
+        'company_id' => $this->company_id,
         'name' => $this->name,
+        'email' => $this->email,
         'phone'=> $this->phone,
         'created_at'=> $this->created_at,
     ];

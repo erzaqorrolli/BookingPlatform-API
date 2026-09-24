@@ -64,6 +64,14 @@ class PhotoController
             json_err('Invalid file type. Allowed: JPG, PNG, WEBP, GIF', 422);
         }
 
+        $duplicate = Photo::findDuplicateByContent($companyId, $file['tmp_name']);
+        if ($duplicate) {
+            json_ok([
+                'message' => 'Fotoja ekziston tashmë',
+                'photo'   => $duplicate->toArray(),
+            ]);
+        }
+
         // Gjenero emër unik
         $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
         $filename = uniqid('img_', true) . '.' . $ext;

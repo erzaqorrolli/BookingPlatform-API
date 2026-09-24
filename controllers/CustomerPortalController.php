@@ -14,6 +14,15 @@ class CustomerPortalController
         if (!$uid) json_err('Unauthorized', 401);
 
         $db = Database::pdo();
+
+        $stmt = $db->prepare("
+            UPDATE customers cu
+            JOIN users u ON u.email = cu.email
+            SET cu.user_id = ?
+            WHERE cu.user_id IS NULL AND u.id = ?
+        ");
+        $stmt->execute([$uid, $uid]);
+
         $stmt = $db->prepare("
             SELECT 
                 b.id,

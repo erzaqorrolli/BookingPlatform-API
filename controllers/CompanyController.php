@@ -6,6 +6,7 @@ namespace App\Controllers;
 
 use App\Models\Company; 
 use App\Config\Database;
+use App\Utils\Mailer;
 
 class CompanyController {
 
@@ -64,9 +65,8 @@ public function update(array $params): void{
     if(!$uid) json_err('Unauthorized',401);
     $id=(int) $params['id'];
 
-    if(!Company::userBelongsTo($uid,$id)){ json_err('Forbidden',403);
-
-    }
+    $role = Company::userRole($uid, $id);
+    if (!in_array($role, ['owner', 'admin'], true)) json_err('Forbidden', 403);
     $input = input();
     $db=Database::pdo();
 
@@ -111,6 +111,10 @@ public function invite(array $params): void
     $email=trim(strtolower($input['email'] ?? ''));
     $roleName= $input['role'] ?? 'staff';
 
+    if ($roleName === 'owner' || ($roleName === 'admin' && $role !== 'owner')) {
+        json_err('This role cannot be assigned', 403);
+    }
+
     if(!filter_var($email, FILTER_VALIDATE_EMAIL)){
         json_err('Invalid email address', 422);
     }
@@ -128,6 +132,7 @@ VALUES (?,?,?,?, DATE_ADD(NOW(), INTERVAL 7 DAY))");
     $stmt->execute([$companyId, $email, $roleId, $token ]);
 
   $link = ($_ENV['FRONTEND_URL'] ?? 'http://localhost:5173') . "/accept-invite?token=$token";
+        Mailer::sendInvitation($email, $link, $roleName);
 
         json_ok([
             'message' => 'Invitation sent',
@@ -188,6 +193,29 @@ VALUES (?,?,?,?, DATE_ADD(NOW(), INTERVAL 7 DAY))");
         $stmt->execute([$companyId]);
 
         json_ok($stmt->fetchAll());
+    }
+
+    public function myPayroll(array $params): void
+    {
+        $uid = auth_user_id();
+        if (!$uid) json_err('Unauthorized', 401);
+
+        $companyId = (int) $params['companyId'];
+        if (!Company::userBelongsTo($uid, $companyId)) {
+            json_err('Forbidden', 403);
+        }
+
+        $db = Database::pdo();
+        $stmt = $db->prepare("
+            SELECT id, month, base_salary, commission, bonus, deductions, total, status, paid_at
+            FROM payroll
+            WHERE user_id = ? AND company_id = ?
+            ORDER BY month DESC, id DESC
+            LIMIT 1
+        ");
+        $stmt->execute([$uid, $companyId]);
+
+        json_ok($stmt->fetch() ?: null);
     }
 
     public function getInvitation(array $params): void

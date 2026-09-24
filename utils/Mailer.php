@@ -73,6 +73,19 @@ class Mailer
         self::send($email, 'Verifiko Email-in', $body);
     }
 
+        public static function sendInvitation(string $email, string $link, string $role): void
+        {
+            $body = self::template('Ftesë për ekipin', "
+                <p>Hello,</p>
+                <p>Je ftuar t'i bashkohesh ekipit si <strong>$role</strong>.</p>
+                <p style='text-align: center; margin: 30px 0;'>
+                    <a href='$link' style='background: #4f46e5; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;'>Prano ftesën</a>
+                </p>
+                <p style='color: #64748b; font-size: 14px;'>Linku skadon pas 7 ditësh.</p>
+            ");
+            self::send($email, 'Ftesë për ekipin e BookWise', $body);
+        }
+
     public static function sendPasswordReset(string $email, string $name, string $token): void
     {
         $link = ($_ENV['FRONTEND_URL'] ?? 'http://localhost:5173') . "/reset?token=$token";

@@ -7,6 +7,7 @@ use App\Models\Booking;
 use App\Models\Company;
 use App\Models\Service;
 use App\Config\Database;
+use App\Utils\Mailer;
 
 class BookingController
 {
@@ -185,6 +186,7 @@ class BookingController
 
         json_ok([
             'slots'   => $slots,
+            'reason'  => empty($slots) ? 'fully_booked' : null,
             'service' => $service->toArray(),
         ]);
     }
@@ -225,7 +227,7 @@ class BookingController
         }
 
         $service = Service::findById($serviceId);
-        if (!$service || $service->company_id !== $companyId) {
+        if (!$service || $service->company_id !== $companyId || !$service->active) {
             json_err('Service not found', 404);
         }
 
@@ -233,6 +235,47 @@ class BookingController
         $cap = max(1, (int) $service->capacity);
 
         $db = Database::pdo();
+
+        if ($dt < new \DateTime('today')) {
+            json_err('Booking date cannot be in the past', 422);
+        }
+
+        $dow = (int) $dt->format('w');
+        $hoursStmt = $db->prepare("SELECT open_time, close_time, is_closed FROM working_hours WHERE company_id = ? AND day_of_week = ? LIMIT 1");
+        $hoursStmt->execute([$companyId, $dow]);
+        $hours = $hoursStmt->fetch();
+        if (!$hours || (int) $hours['is_closed'] === 1 || empty($hours['open_time']) || empty($hours['close_time'])) {
+            json_err('Company is closed on this date', 422);
+        }
+
+                $holidayStmt = $db->prepare("
+            SELECT 1 FROM holidays
+            WHERE company_id = ?
+              AND (date = ? OR (is_recurring = 1 AND DATE_FORMAT(date, '%m-%d') = DATE_FORMAT(?, '%m-%d')))
+            LIMIT 1
+                ");
+        $holidayStmt->execute([$companyId, $date, $date]);
+        if ($holidayStmt->fetchColumn()) {
+            json_err('Company is closed on this date', 422);
+        }
+
+        $startTs = strtotime("$date $startTime");
+        $endTs = $startTs + $dur * 60;
+        $openTs = strtotime("$date {$hours['open_time']}");
+        $closeTs = strtotime("$date {$hours['close_time']}");
+        if ($startTs === false || $openTs === false || $closeTs === false || $startTs < $openTs || $endTs > $closeTs) {
+            json_err('Selected time is outside working hours', 422);
+        }
+        if (($startTs - $openTs) % (15 * 60) !== 0) {
+            json_err('Selected time is not an available slot', 422);
+        }
+
+        $lockName = "booking:$companyId:$serviceId:$date";
+        $lockStmt = $db->prepare('SELECT GET_LOCK(?, 5)');
+        $lockStmt->execute([$lockName]);
+        if ((int) $lockStmt->fetchColumn() !== 1) {
+            json_err('Could not reserve the selected slot', 409);
+        }
 
         // Double-check overlap
         $endTime = date('H:i:s', strtotime($startTime) + $dur * 60);
@@ -243,22 +286,69 @@ class BookingController
               AND status IN ('pending', 'confirmed')
               AND start_time < ? AND end_time > ?
         ");
-        $stmt->execute([$companyId, $serviceId, $date, $endTime, $startTime]);
-        $overlap = (int) $stmt->fetchColumn();
+        try {
+            $db->beginTransaction();
+            $stmt->execute([$companyId, $serviceId, $date, $endTime, $startTime]);
+            $overlap = (int) $stmt->fetchColumn();
 
-        if ($overlap >= $cap) {
-            json_err('Slot no longer available', 409);
+            if ($overlap >= $cap) {
+                $db->rollBack();
+                $db->prepare('SELECT RELEASE_LOCK(?)')->execute([$lockName]);
+                json_err('Slot no longer available', 409);
+            }
+
+            $customerId = Booking::findOrCreateCustomer($companyId, $name, $email, $phone);
+            $booking = Booking::create($companyId, $customerId, $serviceId, [
+                'booking_date' => $date,
+                'start_time'   => $startTime,
+                'total_price'  => $service->price,
+                'notes'        => $input['notes'] ?? null,
+            ]);
+            $db->commit();
+        } catch (\Throwable $e) {
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
+            throw $e;
+        } finally {
+            $db->prepare('SELECT RELEASE_LOCK(?)')->execute([$lockName]);
         }
 
-        $customerId = Booking::findOrCreateCustomer($companyId, $name, $email, $phone);
+        $notificationStmt = $db->prepare("
+            SELECT
+                b.id,
+                b.booking_date,
+                b.start_time,
+                b.total_price,
+                cu.name AS customer_name,
+                cu.email AS customer_email,
+                s.name AS service_name,
+                u.name AS owner_name,
+                u.email AS owner_email
+            FROM bookings b
+            JOIN customers cu ON cu.id = b.customer_id
+            JOIN services s ON s.id = b.service_id
+            JOIN company_user companyOwner ON companyOwner.company_id = b.company_id
+            JOIN roles ownerRole ON ownerRole.id = companyOwner.role_id AND ownerRole.name = 'owner'
+            JOIN users u ON u.id = companyOwner.user_id
+            WHERE b.id = ?
+            LIMIT 1
+        ");
+        $notificationStmt->execute([$booking->id]);
+        $notification = $notificationStmt->fetch();
 
-        $booking = Booking::create($companyId, $customerId, $serviceId, [
-            'booking_date' => $date,
-            'start_time'   => $startTime,
-            'total_price'  => $service->price,
-            'notes'        => $input['notes'] ?? null,
-        ]);
-
+        if ($notification) {
+            Mailer::sendBookingConfirmation(
+                $notification['customer_email'],
+                $notification['customer_name'],
+                $notification
+            );
+            Mailer::sendNewBookingToOwner(
+                $notification['owner_email'],
+                $notification['owner_name'],
+                $notification
+            );
+        }
 
         json_ok([
             'message' => 'Booking received',
