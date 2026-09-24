@@ -419,8 +419,27 @@ class BookingController
             json_err('Booking not found', 404);
         }
 
+        $previousStatus = $booking->status;
+
         if (!$booking->updateStatus($status)) {
             json_err('Invalid status', 422);
+        }
+
+        if ($previousStatus !== $status) {
+            $customerStmt = Database::pdo()->prepare(
+                'SELECT name, email FROM customers WHERE id = ? LIMIT 1'
+            );
+            $customerStmt->execute([$booking->customer_id]);
+            $customer = $customerStmt->fetch();
+
+            if ($customer && filter_var($customer['email'], FILTER_VALIDATE_EMAIL)) {
+                Mailer::sendStatusUpdate(
+                    $customer['email'],
+                    $customer['name'],
+                    $bookingId,
+                    $status
+                );
+            }
         }
 
         json_ok([

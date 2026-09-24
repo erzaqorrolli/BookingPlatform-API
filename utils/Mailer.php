@@ -143,6 +143,8 @@ class Mailer
     public static function sendStatusUpdate(string $email, string $name, int $bookingId, string $status): void
     {
         $labels = [
+            'pending'   => 'Waiting',
+            'waiting'   => 'Waiting',
             'confirmed' => 'Confirmed',
             'cancelled' => 'Cancelled',
             'completed' => 'Done',
