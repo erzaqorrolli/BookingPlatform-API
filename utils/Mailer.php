@@ -62,7 +62,7 @@ class Mailer
     public static function sendVerification(string $email, string $name, string $token): void
     {
         $link = ($_ENV['FRONTEND_URL'] ?? 'http://localhost:5173') . "/verify?token=$token";
-        $body = self::template('Verifiko Email-in', "
+        $body = self::template('Verify Email', "
             <p>Hello <strong>$name</strong>,</p>
             <p>Thank you for registering in BookWise - Booking Platform</p>
             <p style='text-align: center; margin: 30px 0;'>
@@ -70,20 +70,20 @@ class Mailer
             </p>
             <p style='color: #64748b; font-size: 14px;'>Linku: $link</p>
         ");
-        self::send($email, 'Verifiko Email-in', $body);
+        self::send($email, 'Verify Email', $body);
     }
 
         public static function sendInvitation(string $email, string $link, string $role): void
         {
-            $body = self::template('Ftesë për ekipin', "
+            $body = self::template('Staff invitation', "
                 <p>Hello,</p>
-                <p>Je ftuar t'i bashkohesh ekipit si <strong>$role</strong>.</p>
+                <p>You are invited to join our team as staff <strong>$role</strong>.</p>
                 <p style='text-align: center; margin: 30px 0;'>
                     <a href='$link' style='background: #4f46e5; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;'>Prano ftesën</a>
                 </p>
-                <p style='color: #64748b; font-size: 14px;'>Linku skadon pas 7 ditësh.</p>
+                <p style='color: #64748b; font-size: 14px;'>Link expires after 7 days</p>
             ");
-            self::send($email, 'Ftesë për ekipin e BookWise', $body);
+            self::send($email, 'Invitation for BookWise Booking Platform', $body);
         }
 
     public static function sendPasswordReset(string $email, string $name, string $token): void
@@ -95,7 +95,7 @@ class Mailer
             <p style='text-align: center; margin: 30px 0;'>
                 <a href='$link' style='background: #4f46e5; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;'>Reset Password</a>
             </p>
-            <p style='color: #64748b; font-size: 14px;'>Linku skadon pas 1 ore.</p>
+            <p style='color: #64748b; font-size: 14px;'>Link expires after 1 hour.</p>
         ");
         self::send($email, 'Reset Password', $body);
     }
@@ -104,7 +104,7 @@ class Mailer
     {
         $date = date('d.m.Y', strtotime($booking['booking_date']));
         $time = substr($booking['start_time'], 0, 5);
-        $body = self::template('Rezervimi u pranua', "
+        $body = self::template('Booking Accepted', "
             <p>Hello <strong>$name</strong>,</p>
             <p>Your booking has been processed successfully! </p>
             <div style='background: #f8fafc; padding: 20px; border-radius: 12px; margin: 20px 0;'>
@@ -124,7 +124,7 @@ class Mailer
     {
         $date = date('d.m.Y', strtotime($booking['booking_date']));
         $time = substr($booking['start_time'], 0, 5);
-        $body = self::template('Rezervim i re', "
+        $body = self::template('New Booking', "
             <p>Hello <strong>$ownerName</strong>,</p>
             <p>You have revieved a new booking!</p>
             <div style='background: #f8fafc; padding: 20px; border-radius: 12px; margin: 20px 0;'>
@@ -137,16 +137,16 @@ class Mailer
                 </table>
             </div>
         ");
-        self::send($email, "Rezervim i re #{$booking['id']}", $body);
+        self::send($email, "New Booking #{$booking['id']}", $body);
     }
 
     public static function sendStatusUpdate(string $email, string $name, int $bookingId, string $status): void
     {
         $labels = [
-            'confirmed' => 'Konfirmuar',
-            'cancelled' => 'Anuluar',
-            'completed' => 'Përfunduar',
-            'no_show'   => 'Nuk u paraqit',
+            'confirmed' => 'Confirmed',
+            'cancelled' => 'Cancelled',
+            'completed' => 'Done',
+            'no_show'   => 'Absent',
         ];
         $label = $labels[$status] ?? $status;
 
