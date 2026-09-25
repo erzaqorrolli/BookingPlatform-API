@@ -362,7 +362,7 @@ class BookingController
         $notificationStmt = $db->prepare("
             SELECT
                 b.id,
-                b.reference
+                b.reference,
                 b.booking_date,
                 b.start_time,
                 b.total_price,
