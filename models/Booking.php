@@ -8,6 +8,7 @@ use App\Config\Database;
 class Booking
 {
     public ?int $id = null;
+    public ?string $reference = null;
     public int $company_id = 0;
     public int $customer_id = 0;
     public int $service_id = 0;
@@ -57,7 +58,6 @@ class Booking
         return $stmt->fetchAll();
     }
 
-    
     public static function findOrCreateCustomer(
         int $companyId,
         string $name,
@@ -89,6 +89,19 @@ class Booking
         return (int) $db->lastInsertId();
     }
 
+    public static function generateReference(): string
+    {
+        $db = Database::pdo();
+
+        do {
+            $reference = 'BO-' . str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+            $stmt = $db->prepare("SELECT 1 FROM bookings WHERE reference = ? LIMIT 1");
+            $stmt->execute([$reference]);
+        } while ($stmt->fetchColumn());
+
+        return $reference;
+    }
+
     public static function create(int $companyId, int $customerId, int $serviceId, array $data): self
     {
         $db = Database::pdo();
@@ -96,17 +109,20 @@ class Booking
         $service = Service::findById($serviceId);
         if (!$service) throw new \RuntimeException('Service not found');
 
-        $endTime = date(
+        $endTime = $data['end_time'] ?? date(
             'H:i:s',
             strtotime($data['start_time']) + $service->duration_minutes * 60
         );
 
+        $reference = self::generateReference();
+
         $stmt = $db->prepare("
             INSERT INTO bookings
-            (company_id, customer_id, service_id, booking_date, start_time, end_time, total_price, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                (reference, company_id, customer_id, service_id, booking_date, start_time, end_time, total_price, notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
+            $reference,
             $companyId,
             $customerId,
             $serviceId,
@@ -136,6 +152,7 @@ class Booking
     {
         return [
             'id'           => $this->id,
+            'reference'    => $this->reference,
             'company_id'   => $this->company_id,
             'customer_id'  => $this->customer_id,
             'service_id'   => $this->service_id,
@@ -153,6 +170,7 @@ class Booking
     {
         $b = new self();
         $b->id           = (int) $row['id'];
+        $b->reference    = $row['reference'] ?? null;
         $b->company_id   = (int) $row['company_id'];
         $b->customer_id  = (int) $row['customer_id'];
         $b->service_id   = (int) $row['service_id'];
