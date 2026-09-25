@@ -19,6 +19,10 @@ public string $email= '';
 public ?string $phone= null;
 public ?string $created_at=null;
 
+public int $is_vip = 0;
+
+public int $total_bookings=0;
+
 
 public static function findById(int $id): ?self{
     $db=Database::pdo();
@@ -100,6 +104,8 @@ public function toArray(): array{
         'email' => $this->email,
         'phone'=> $this->phone,
         'created_at'=> $this->created_at,
+        'is_vip' => $this->is_vip,
+        'total_bookings'=>$this->total_bookings,
     ];
 }
 
@@ -112,7 +118,24 @@ public function toArray(): array{
         $c->email      = $row['email'];
         $c->phone      = $row['phone'] ?? null;
         $c->created_at = $row['created_at'] ?? null;
+        $c->is_vip=  (int) ($row['is_vip'] ?? 0);
+        $c-> total_bookings =(int)($row['total_bookings'] ?? 0); 
         return $c;
+    }
+
+    public static function updateVipStatus(int $customerId): void{
+        $db=Database::pdo();
+
+        $stmt=$db->prepare("SELECT COUNT (*) FROM bookings WHERE customer_id ? AND status IN ('confirmed', 'completed') ");
+        $stmt->execute([$customerId]);
+        $count = (int) $stmt->fetchColumn();
+
+
+        $isVip = $count >= 30 ? 1:0;
+
+        $db->prepare("UPDATE customers SET total_bookings = ?, is_vip = ? WHERE id=?")->execute([$count,$isVip,$customerId]);
+
+
     }
 
 }

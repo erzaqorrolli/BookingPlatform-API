@@ -89,7 +89,6 @@ public function login(): void
     $stmt->execute([$user->id]);
     $companies = $stmt->fetchAll();
 
-    // ❌ NUK kthejmë token në JSON
     json_ok([
         'user'       => $user->toArray(),
         'companies'  => $companies,

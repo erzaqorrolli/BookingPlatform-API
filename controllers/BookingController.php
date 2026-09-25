@@ -13,9 +13,7 @@ use App\Utils\Mailer;
 
 class BookingController
 {
-    /**
-     * GET /api/companies/{companyId}/bookings
-     */
+    
     public function index(array $params): void
     {
         $uid = auth_user_id();
@@ -35,9 +33,6 @@ class BookingController
         json_ok($bookings);
     }
 
-    /**
-     * GET /api/public/companies
-     */
     public function publicCompanies(): void
     {
         $db = Database::pdo();
@@ -80,7 +75,6 @@ class BookingController
             json_err('company_id, service_id and date are required', 422);
         }
 
-        // Validim i fortë i datës
         $dt = \DateTime::createFromFormat('Y-m-d', $date);
         if (!$dt || $dt->format('Y-m-d') !== $date) {
             json_err('Invalid date format (YYYY-MM-DD)', 422);
@@ -115,7 +109,6 @@ class BookingController
             json_ok(['slots' => [], 'reason' => 'no_hours_configured']);
         }
 
-        // Holiday
         $stmt = $db->prepare("
             SELECT 1 FROM holidays
             WHERE company_id = ?
@@ -130,7 +123,6 @@ class BookingController
             json_ok(['slots' => [], 'reason' => 'holiday']);
         }
 
-        // Service
         $service = Service::findById($serviceId);
         if (!$service || $service->company_id !== $companyId || !$service->active) {
             json_err('Service not found or inactive', 404);
@@ -139,11 +131,9 @@ class BookingController
         $dur = max(1, (int) $service->duration_minutes);
         $cap = max(1, (int) $service->capacity);
 
-        // ✅ HAPPY HOURS PËR KËTË DITË
         $happyHours = HappyHour::activeForDay($companyId, $dow);
         $happyHoursArray = array_map(fn($h) => $h->toArray(), $happyHours);
 
-        // Slots
         $openTs  = strtotime("$date {$hours['open_time']}");
         $closeTs = strtotime("$date {$hours['close_time']}");
 
@@ -186,7 +176,6 @@ class BookingController
             }
 
             if ($overlap < $cap) {
-                // ✅ Kontrollo a ka happy hour në këtë slot
                 $slotHappyHour = null;
                 foreach ($happyHours as $hh) {
                     if ($hh->start_time <= $startStr && $hh->end_time > $startStr) {
@@ -236,13 +225,11 @@ class BookingController
             json_err('Valid name and email required', 422);
         }
 
-        // Validim datë
         $dt = \DateTime::createFromFormat('Y-m-d', $date);
         if (!$dt || $dt->format('Y-m-d') !== $date) {
             json_err('Invalid date format (YYYY-MM-DD)', 422);
         }
 
-        // Validim orë
         if (!preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $startTime)) {
             json_err('Invalid start_time format (HH:MM)', 422);
         }
@@ -294,7 +281,6 @@ class BookingController
             json_err('Selected time is not an available slot', 422);
         }
 
-        // ✅ KONTROLLO HAPPY HOUR
         $happyHour = HappyHour::getActiveAt($companyId, $date, $startTime);
         $discountCode = strtoupper(trim((string) ($input['discount_code'] ?? '')));
         $discount = null;
