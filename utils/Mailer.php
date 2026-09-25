@@ -101,44 +101,49 @@ class Mailer
     }
 
     public static function sendBookingConfirmation(string $email, string $name, array $booking): void
-    {
-        $date = date('d.m.Y', strtotime($booking['booking_date']));
-        $time = substr($booking['start_time'], 0, 5);
-        $body = self::template('Booking Accepted', "
-            <p>Hello <strong>$name</strong>,</p>
-            <p>Your booking has been processed successfully! </p>
-            <div style='background: #f8fafc; padding: 20px; border-radius: 12px; margin: 20px 0;'>
-                <table style='width: 100%; font-size: 14px;'>
-                    <tr><td style='color: #64748b; padding: 6px 0;'>Number:</td><td style='font-weight: 600;'>#{$booking['id']}</td></tr>
-                    <tr><td style='color: #64748b; padding: 6px 0;'>Service:</td><td style='font-weight: 600;'>{$booking['service_name']}</td></tr>
-                    <tr><td style='color: #64748b; padding: 6px 0;'>Date:</td><td style='font-weight: 600;'>$date</td></tr>
-                    <tr><td style='color: #64748b; padding: 6px 0;'>Time:</td><td style='font-weight: 600;'>$time</td></tr>
-                    <tr><td style='color: #64748b; padding: 6px 0;'>Total:</td><td style='font-weight: 600;'>€{$booking['total_price']}</td></tr>
-                </table>
-            </div>
-        ");
-        self::send($email, "Reservation #{$booking['id']} has been accepted", $body);
-    }
+{
+    $date      = date('d.m.Y', strtotime($booking['booking_date']));
+    $time      = substr($booking['start_time'], 0, 5);
+    $reference = $booking['reference'] ?? ('#' . $booking['id']);
 
-    public static function sendNewBookingToOwner(string $email, string $ownerName, array $booking): void
-    {
-        $date = date('d.m.Y', strtotime($booking['booking_date']));
-        $time = substr($booking['start_time'], 0, 5);
-        $body = self::template('New Booking', "
-            <p>Hello <strong>$ownerName</strong>,</p>
-            <p>You have revieved a new booking!</p>
-            <div style='background: #f8fafc; padding: 20px; border-radius: 12px; margin: 20px 0;'>
-                <table style='width: 100%; font-size: 14px;'>
-                    <tr><td style='color: #64748b; padding: 6px 0;'>Klienti:</td><td style='font-weight: 600;'>{$booking['customer_name']}</td></tr>
-                    <tr><td style='color: #64748b; padding: 6px 0;'>Email:</td><td style='font-weight: 600;'>{$booking['customer_email']}</td></tr>
-                    <tr><td style='color: #64748b; padding: 6px 0;'>Shërbimi:</td><td style='font-weight: 600;'>{$booking['service_name']}</td></tr>
-                    <tr><td style='color: #64748b; padding: 6px 0;'>Data:</td><td style='font-weight: 600;'>$date</td></tr>
-                    <tr><td style='color: #64748b; padding: 6px 0;'>Ora:</td><td style='font-weight: 600;'>$time</td></tr>
-                </table>
-            </div>
-        ");
-        self::send($email, "New Booking #{$booking['id']}", $body);
-    }
+    $body = self::template('Booking Accepted', "
+        <p>Hello <strong>$name</strong>,</p>
+        <p>Your booking has been processed successfully!</p>
+        <div style='background: #f8fafc; padding: 20px; border-radius: 12px; margin: 20px 0;'>
+            <table style='width: 100%; font-size: 14px;'>
+                <tr><td style='color: #64748b; padding: 6px 0;'>Reference:</td><td style='font-weight: 600;'>$reference</td></tr>
+                <tr><td style='color: #64748b; padding: 6px 0;'>Service:</td><td style='font-weight: 600;'>{$booking['service_name']}</td></tr>
+                <tr><td style='color: #64748b; padding: 6px 0;'>Date:</td><td style='font-weight: 600;'>$date</td></tr>
+                <tr><td style='color: #64748b; padding: 6px 0;'>Time:</td><td style='font-weight: 600;'>$time</td></tr>
+                <tr><td style='color: #64748b; padding: 6px 0;'>Total:</td><td style='font-weight: 600;'>€{$booking['total_price']}</td></tr>
+            </table>
+        </div>
+    ");
+    self::send($email, "Booking $reference has been accepted", $body);
+}
+
+  public static function sendNewBookingToOwner(string $email, string $ownerName, array $booking): void
+{
+    $date      = date('d.m.Y', strtotime($booking['booking_date']));
+    $time      = substr($booking['start_time'], 0, 5);
+    $reference = $booking['reference'] ?? ('#' . $booking['id']);
+
+    $body = self::template('New Booking', "
+        <p>Hello <strong>$ownerName</strong>,</p>
+        <p>You have received a new booking!</p>
+        <div style='background: #f8fafc; padding: 20px; border-radius: 12px; margin: 20px 0;'>
+            <table style='width: 100%; font-size: 14px;'>
+                <tr><td style='color: #64748b; padding: 6px 0;'>Reference:</td><td style='font-weight: 600;'>$reference</td></tr>
+                <tr><td style='color: #64748b; padding: 6px 0;'>Klienti:</td><td style='font-weight: 600;'>{$booking['customer_name']}</td></tr>
+                <tr><td style='color: #64748b; padding: 6px 0;'>Email:</td><td style='font-weight: 600;'>{$booking['customer_email']}</td></tr>
+                <tr><td style='color: #64748b; padding: 6px 0;'>Shërbimi:</td><td style='font-weight: 600;'>{$booking['service_name']}</td></tr>
+                <tr><td style='color: #64748b; padding: 6px 0;'>Data:</td><td style='font-weight: 600;'>$date</td></tr>
+                <tr><td style='color: #64748b; padding: 6px 0;'>Ora:</td><td style='font-weight: 600;'>$time</td></tr>
+            </table>
+        </div>
+    ");
+    self::send($email, "New Booking $reference", $body);
+}
 
     public static function sendStatusUpdate(string $email, string $name, int $bookingId, string $status): void
     {
