@@ -28,17 +28,18 @@ class Discount
         return $row ? self::fromRow($row) : null;
     }
 
-    public static function findByCode(int $companyId, string $code): ?self
+    public static function findByCode(int $companyId, string $code, ?string $date = null): ?self
     {
         $db = Database::pdo();
+        $date = $date ?: date('Y-m-d');
         $stmt = $db->prepare("
             SELECT * FROM discounts
             WHERE company_id = ? AND code = ? AND active = 1
-            AND (valid_from IS NULL OR valid_from <= CURDATE())
-            AND (valid_to IS NULL OR valid_to >= CURDATE())
+            AND (valid_from IS NULL OR valid_from <= ?)
+            AND (valid_to IS NULL OR valid_to >= ?)
             AND (usage_limit IS NULL OR used_count < usage_limit)
         ");
-        $stmt->execute([$companyId, strtoupper(trim($code))]);
+        $stmt->execute([$companyId, strtoupper(trim($code)), $date, $date]);
         $row = $stmt->fetch();
         return $row ? self::fromRow($row) : null;
     }

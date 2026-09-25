@@ -7,6 +7,7 @@ use App\Models\Booking;
 use App\Models\Company;
 use App\Models\Service;
 use App\Models\HappyHour;
+use App\Models\Discount;
 use App\Config\Database;
 use App\Utils\Mailer;
 
@@ -295,6 +296,14 @@ class BookingController
 
         // ✅ KONTROLLO HAPPY HOUR
         $happyHour = HappyHour::getActiveAt($companyId, $date, $startTime);
+        $discountCode = strtoupper(trim((string) ($input['discount_code'] ?? '')));
+        $discount = null;
+        if ($discountCode !== '') {
+            $discount = Discount::findByCode($companyId, $discountCode, $date);
+            if (!$discount) {
+                json_err('Invalid or expired discount code', 422);
+            }
+        }
 
         $originalPrice = (float) $service->price;
         $finalPrice    = $originalPrice;
@@ -303,6 +312,13 @@ class BookingController
         if ($happyHour) {
             $discountPct = (int) $happyHour->discount_percent;
             $finalPrice  = round($originalPrice * (1 - $discountPct / 100), 2);
+        }
+
+        $discountAmount = 0;
+        if ($discount) {
+            $priceBeforeCode = $finalPrice;
+            $finalPrice = round($discount->applyTo($finalPrice), 2);
+            $discountAmount = round($priceBeforeCode - $finalPrice, 2);
         }
 
         $lockName = "booking:$companyId:$serviceId:$date";
@@ -341,6 +357,10 @@ class BookingController
                 'total_price'  => $finalPrice,
                 'notes'        => $input['notes'] ?? null,
             ]);
+
+            if ($discount) {
+                $discount->incrementUsage();
+            }
 
             $db->commit();
         } catch (\Throwable $e) {
@@ -395,6 +415,8 @@ class BookingController
             'final_price'      => $finalPrice,
             'discount_percent' => $discountPct,
             'happy_hour'       => $happyHour?->toArray(),
+            'discount_code'    => $discount?->code,
+            'discount_amount'  => $discountAmount,
         ], 201);
     }
 
@@ -504,6 +526,19 @@ class BookingController
             ];
         }, $hhStmt->fetchAll());
 
+                $discountStmt = $db->prepare("
+                        SELECT 1
+                        FROM discounts
+                        WHERE company_id = ?
+                            AND active = 1
+                            AND (valid_from IS NULL OR valid_from <= CURDATE())
+                            AND (valid_to IS NULL OR valid_to >= CURDATE())
+                            AND (usage_limit IS NULL OR used_count < usage_limit)
+                        LIMIT 1
+                ");
+                $discountStmt->execute([$company['id']]);
+                $hasActiveDiscountCodes = (bool) $discountStmt->fetchColumn();
+
         $appUrl = $_ENV['APP_URL'] ?? 'http://localhost/booking-api';
 
         $photos = array_map(function ($p) use ($appUrl) {
@@ -534,6 +569,7 @@ class BookingController
             }, $services),
             'photos'      => $photos,
             'happy_hours' => $happyHours,
+            'has_active_discount_codes' => $hasActiveDiscountCodes,
         ]);
     }
 
