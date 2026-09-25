@@ -343,6 +343,7 @@ class BookingController
                 'total_price'  => $finalPrice,
                 'notes'        => $input['notes'] ?? null,
             ]);
+            \App\Models\Customer::updateVipStatus($customerId);
 
             if ($discount) {
                 $discount->incrementUsage();

@@ -123,19 +123,18 @@ public function toArray(): array{
         return $c;
     }
 
-    public static function updateVipStatus(int $customerId): void{
-        $db=Database::pdo();
+    public static function updateVipStatus(int $customerId): void
+{
+    $db = Database::pdo();
 
-        $stmt=$db->prepare("SELECT COUNT (*) FROM bookings WHERE customer_id ? AND status IN ('confirmed', 'completed') ");
-        $stmt->execute([$customerId]);
-        $count = (int) $stmt->fetchColumn();
+    $stmt = $db->prepare("SELECT COUNT(*) FROM bookings WHERE customer_id = ? AND status IN ('confirmed', 'completed')");
+    $stmt->execute([$customerId]);
+    $count = (int) $stmt->fetchColumn();
 
+    $isVip = $count >= 30 ? 1 : 0;
 
-        $isVip = $count >= 30 ? 1:0;
-
-        $db->prepare("UPDATE customers SET total_bookings = ?, is_vip = ? WHERE id=?")->execute([$count,$isVip,$customerId]);
-
-
-    }
+    $db->prepare("UPDATE customers SET total_bookings = ?, is_vip = ? WHERE id = ?")
+        ->execute([$count, $isVip, $customerId]);
+}
 
 }
