@@ -123,97 +123,94 @@ class CustomerController
     ")->execute([$count, $isVip, $customerId]);
 }
 
-public function show (array $params): void{
+public function show(array $params): void
+{
+    $uid = auth_user_id();
+    if (!$uid) json_err('Unauthorized', 401);
 
-$uid= auth_user_id();
-if(!uid) json_err('Unauthorized', 401);
+    $companyId  = (int) $params['companyId'];
+    $customerId = (int) $params['id'];
 
-$companyId = (int) $params['companyId'];
-$customerId =(int) $params['id'];
+    if (!Company::userBelongsTo($uid, $companyId)) {
+        json_err('Forbidden', 403);
+    }
 
-if(!Company::userBelongsTo($uid, $companyId)){
-    json_err('Forbidden', 403);
-}
+    $db = \App\Config\Database::pdo();
 
-$db = \App\Config\Database::pdo();
+    // Merr klientin
+    $stmt = $db->prepare("SELECT * FROM customers WHERE id = ? AND company_id = ? LIMIT 1");
+    $stmt->execute([$customerId, $companyId]);
+    $customer = $stmt->fetch();
 
-$stmt = $db->prepare("SELECT * FROM customers WHERE id = ? AND company_id = ? LIMIT 1");
-$stmt->execute([$customerId, $companyId]);
-$customer = $stmt->fetch();
+    if (!$customer) {
+        json_err('Customer not found', 404);
+    }
 
-if(!$customer){
-    json_err ('Customer not found', 404);
-
+    // Bookings
     $bookingStmt = $db->prepare("
-    SELECT 
-    b.id,
-    b.reference,
-    b.booking_date,
-    b.start_time,
-    b.end_time,
-    b.total_price,
-    b.status,
-    b.created_at,
-    s.name AS service_name
-    FROM bookings b 
-    JOIN services s ON s.id = b.serivice_id
-    WHERE b.customer_id= ?
-    ORDER BY b.booking_date DESC
-    LIMIT 100
+        SELECT 
+            b.id,
+            b.reference,
+            b.booking_date,
+            b.start_time,
+            b.end_time,
+            b.total_price,
+            b.status,
+            b.created_at,
+            s.name AS service_name
+        FROM bookings b
+        JOIN services s ON s.id = b.service_id
+        WHERE b.customer_id = ?
+        ORDER BY b.booking_date DESC
+        LIMIT 100
     ");
-
     $bookingStmt->execute([$customerId]);
     $bookings = $bookingStmt->fetchAll();
-    
+
+    // Invoices
     $invoiceStmt = $db->prepare("
-    
-    SELECT 
-    i.id,
-    i.reference,
-    i.issued_date,
-    i.due_date,
-    i.total,
-    i.status,
-    i.paid_at
-    FROM invoices i
-    WHERE i.customer_id = ? AND i.company_id = ?
-    ORDEER BY i.issue_date DESC
-
+        SELECT 
+            i.id,
+            i.reference,
+            i.issue_date,
+            i.due_date,
+            i.total,
+            i.status,
+            i.paid_at
+        FROM invoices i
+        WHERE i.customer_id = ? AND i.company_id = ?
+        ORDER BY i.issue_date DESC
     ");
-
     $invoiceStmt->execute([$customerId, $companyId]);
     $invoices = $invoiceStmt->fetchAll();
 
+    // Stats
     $totalSpent = 0;
-    foreach($bookings as $b){
-        if(in_array($b['status'], ['confirmed','completed'])){
-            $totalSpent +=(float) $b['total_price'];
+    foreach ($bookings as $b) {
+        if (in_array($b['status'], ['confirmed', 'completed'])) {
+            $totalSpent += (float) $b['total_price'];
         }
     }
 
     json_ok([
-
-    'customer' => [
-        'id'       => (int) $customer['id'],
-        'company_id'       => (int) $customer['company_id'],
-        'name'      => $customer['name'],
-        'email'     => $customer['email'],
-        'phone'     => $customer['phone'],
-        'is_vip'    => (int) $customer['phone'] ?? null,
-        'total_bookings'    => (int) ($customer['total_bookings'] ?? 0),
-        'created_at'    => $customer['created_at'] ?? null,
-    ],
-    'bookings'      => $bookings,
-    'invoices'      =>$invoices,
-    'stats'         =>[
-        'total_bookings' => count($bookings),
-        'total_invoices' => count($invoices),
-        'total_spent' => round($totalSpent, 2),
-    ],
-
+        'customer' => [
+            'id'             => (int) $customer['id'],
+            'company_id'     => (int) $customer['company_id'],
+            'name'           => $customer['name'],
+            'email'          => $customer['email'],
+            'phone'          => $customer['phone'] ?? null,
+            'is_vip'         => (int) ($customer['is_vip'] ?? 0),
+            'total_bookings' => (int) ($customer['total_bookings'] ?? 0),
+            'created_at'     => $customer['created_at'] ?? null,
+        ],
+        'bookings' => $bookings,
+        'invoices' => $invoices,
+        'stats'    => [
+            'total_bookings' => count($bookings),
+            'total_invoices' => count($invoices),
+            'total_spent'    => round($totalSpent, 2),
+        ],
     ]);
-    }
-    
 }
 
 

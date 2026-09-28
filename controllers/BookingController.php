@@ -446,7 +446,7 @@ class BookingController
                 Mailer::sendStatusUpdate(
                     $customer['email'],
                     $customer['name'],
-                    $bookingId,
+                    $booking->reference ?? ('#' . $booking->id),
                     $status
                 );
             }
