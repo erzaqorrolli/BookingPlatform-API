@@ -23,7 +23,7 @@ class Mailer
 
         $mail->setFrom(
             $_ENV['MAIL_FROM'] ?? 'noreply@booking.local',
-            $_ENV['MAIL_FROM_NAME'] ?? 'Booking Platform'
+            $_ENV['MAIL_FROM_NAME'] ?? 'BookWise'
         );
 
         return $mail;
@@ -66,7 +66,7 @@ class Mailer
             <p>Hello <strong>$name</strong>,</p>
             <p>Thank you for registering in BookWise - Booking Platform</p>
             <p style='text-align: center; margin: 30px 0;'>
-                <a href='$link' style='background: #4f46e5; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;'>Verifiko Email-in</a>
+                <a href='$link' style='background: #4f46e5; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;'>Verify email</a>
             </p>
             <p style='color: #64748b; font-size: 14px;'>Linku: $link</p>
         ");
@@ -79,7 +79,7 @@ class Mailer
                 <p>Hello,</p>
                 <p>You are invited to join our team as staff <strong>$role</strong>.</p>
                 <p style='text-align: center; margin: 30px 0;'>
-                    <a href='$link' style='background: #4f46e5; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;'>Prano ftesën</a>
+                    <a href='$link' style='background: #4f46e5; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;'>Accept invite</a>
                 </p>
                 <p style='color: #64748b; font-size: 14px;'>Link expires after 7 days</p>
             ");
@@ -145,24 +145,28 @@ class Mailer
     self::send($email, "New Booking $reference", $body);
 }
 
-    public static function sendStatusUpdate(string $email, string $name, int $bookingId, string $status): void
-    {
-        $labels = [
-            'pending'   => 'Waiting',
-            'waiting'   => 'Waiting',
-            'confirmed' => 'Confirmed',
-            'cancelled' => 'Cancelled',
-            'completed' => 'Done',
-            'no_show'   => 'Absent',
-        ];
-        $label = $labels[$status] ?? $status;
+  public static function sendStatusUpdate(string $email, string $name, string $reference, string $status): void
+{
+    $labels = [
+        'pending'   => 'Waiting',
+        'waiting'   => 'Waiting',
+        'confirmed' => 'Confirmed',
+        'cancelled' => 'Cancelled',
+        'completed' => 'Done',
+        'no_show'   => 'Absent',
+    ];
+    $label = $labels[$status] ?? $status;
 
-        $body = self::template('Booking status', "
-            <p>Hello <strong>$name</strong>,</p>
-            <p>Booking status <strong>#$bookingId</strong> changed to: <strong>$label</strong>.</p>
-        ");
-        self::send($email, "Booking #$bookingId: $label", $body);
-    }
+    $body = self::template('Booking Status Updated', "
+        <p>Hello <strong>$name</strong>,</p>
+        <p>The status of your booking has been updated to: <strong>$label</strong>.</p>
+        <div style='background: #f8fafc; padding: 20px; border-radius: 12px; margin: 20px 0; text-align: center;'>
+            <p style='color: #64748b; font-size: 13px; margin: 0 0 6px;'>Booking Reference</p>
+            <p style='font-family: monospace; font-size: 22px; font-weight: 700; color: #4f46e5; margin: 0;'>$reference</p>
+        </div>
+    ");
+    self::send($email, "Booking $reference: $label", $body);
+}
 
     private static function template(string $title, string $content): string
     {
