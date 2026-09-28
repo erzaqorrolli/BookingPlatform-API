@@ -127,3 +127,5 @@ Router::post('/api/companies/{companyId}/invoices', [InvoiceController::class, '
 Router::post('/api/companies/{companyId}/bookings/{bookingId}/invoice', [InvoiceController::class, 'createFromBooking']);
 Router::put('/api/companies/{companyId}/invoices/{id}/status', [InvoiceController::class, 'updateStatus']);
 Router::delete('/api/companies/{companyId}/invoices/{id}', [InvoiceController::class, 'destroy']);
+
+Router::get('/api/companies/{companyId}/customers/{id}', [CustomerController::class, 'show']);
