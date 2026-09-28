@@ -10,6 +10,7 @@ use App\Models\HappyHour;
 use App\Models\Discount;
 use App\Config\Database;
 use App\Utils\Mailer;
+use App\Models\Invoice;
 
 class BookingController
 {
@@ -357,6 +358,11 @@ class BookingController
             throw $e;
         } finally {
             $db->prepare('SELECT RELEASE_LOCK(?)')->execute([$lockName]);
+        }
+         try {
+            \App\Models\Invoice::createFromBooking($booking->id);
+        } catch (\Throwable $e) {
+            error_log('Invoice creation failed for booking ' . $booking->id . ': ' . $e->getMessage());
         }
 
         $notificationStmt = $db->prepare("
