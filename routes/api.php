@@ -17,6 +17,7 @@ use App\Controllers\UserShiftController;
 use App\Controllers\ProductController;
 use App\Controllers\PhotoController;
 use App\Controllers\ReviewController;
+use App\Controllers\InvoiceController;
 
 Router::post('/api/auth/register',        [AuthController::class, 'register']);
 Router::post('/api/auth/login',           [AuthController::class, 'login']);
@@ -119,3 +120,10 @@ Router::get('/api/me/reviews',                        [ReviewController::class, 
 Router::get('/api/me/bookings-to-review',             [ReviewController::class, 'bookingsToReview']);
 Router::post('/api/me/reviews',                       [ReviewController::class, 'store']);
 Router::delete('/api/me/reviews/{id}',                [ReviewController::class, 'destroy']);
+
+Router::get('/api/companies/{companyId}/invoices', [InvoiceController::class, 'index']);
+Router::get('/api/companies/{companyId}/invoices/{id}', [InvoiceController::class, 'show']);
+Router::post('/api/companies/{companyId}/invoices', [InvoiceController::class, 'store']);
+Router::post('/api/companies/{companyId}/bookings/{bookingId}/invoice', [InvoiceController::class, 'createFromBooking']);
+Router::put('/api/companies/{companyId}/invoices/{id}/status', [InvoiceController::class, 'updateStatus']);
+Router::delete('/api/companies/{companyId}/invoices/{id}', [InvoiceController::class, 'destroy']);
