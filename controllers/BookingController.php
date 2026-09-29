@@ -359,10 +359,15 @@ class BookingController
         } finally {
             $db->prepare('SELECT RELEASE_LOCK(?)')->execute([$lockName]);
         }
-         try {
-            \App\Models\Invoice::createFromBooking($booking->id);
+          try {
+            $inv = \App\Models\Invoice::createFromBooking($booking->id);
+            if ($inv) {
+                error_log('DEBUG: Invoice created: ' . $inv->reference);
+            } else {
+                error_log('DEBUG: createFromBooking returns NULL');
+            }
         } catch (\Throwable $e) {
-            error_log('Invoice creation failed for booking ' . $booking->id . ': ' . $e->getMessage());
+            error_log('DEBUG: Exception: ' . $e->getMessage() . ' ne ' . $e->getFile() . ':' . $e->getLine());
         }
 
         $notificationStmt = $db->prepare("
@@ -501,7 +506,6 @@ class BookingController
         $stmt->execute([$company['id']]);
         $photosRaw = $stmt->fetchAll();
 
-        // ✅ HAPPY HOURS
         $hhStmt = $db->prepare("
             SELECT id, name, day_of_week, start_time, end_time, discount_percent
             FROM happy_hours
