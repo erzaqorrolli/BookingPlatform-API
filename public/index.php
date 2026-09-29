@@ -1,4 +1,4 @@
-#<?php
+<?php
 declare(strict_types=1);
 
 use Dotenv\Dotenv;
@@ -10,25 +10,40 @@ $dotenv = Dotenv::createImmutable(__DIR__ . '/..');
 $dotenv->load();
 
 // ============================================================
+// DEBUG - FSHIJE PAS TESTIMIT
+// ============================================================
+header('Content-Type: application/json');
+echo json_encode([
+    'SCRIPT_NAME'   => $_SERVER['SCRIPT_NAME'] ?? 'N/A',
+    'REQUEST_URI'   => $_SERVER['REQUEST_URI'] ?? 'N/A',
+    'PHP_SELF'      => $_SERVER['PHP_SELF'] ?? 'N/A',
+    'DOCUMENT_ROOT' => $_SERVER['DOCUMENT_ROOT'] ?? 'N/A',
+    'HTTP_HOST'     => $_SERVER['HTTP_HOST'] ?? 'N/A',
+], JSON_PRETTY_PRINT);
+exit;
+// ============================================================
+// FUND DEBUG
+// ============================================================
+
+// ============================================================
 // DYNAMIC BASE PATH DETECTION
 // ============================================================
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
-// Zbulojmë base path-in dinamikisht
-// Për Laragon (booking-api.loc): $base = ''
-// Për XAMPP (localhost/booking-api/public): $base = '/booking-api/public'
-$base = rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? ''), '/\\');
+$base = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '')), '/');
 if ($base === '.' || $base === '/') {
     $base = '';
 }
 
-// Hiq base path nga URI për përdorim të brendshëm
 $path = $uri;
 if ($base !== '' && str_starts_with($uri, $base)) {
     $path = substr($uri, strlen($base));
 }
 if ($path === '' || $path === false) {
     $path = '/';
+}
+if (!str_starts_with($path, '/')) {
+    $path = '/' . $path;
 }
 
 // ============================================================
@@ -70,7 +85,6 @@ header('Access-Control-Allow-Headers: Content-Type, Authorization, X-CSRF-Token,
 header('Access-Control-Allow-Credentials: true');
 header('Access-Control-Max-Age: 86400');
 
-// Preflight
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
     http_response_code(204);
     exit;

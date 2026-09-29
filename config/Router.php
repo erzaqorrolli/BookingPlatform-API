@@ -32,17 +32,27 @@ class Router
         $method = $_SERVER['REQUEST_METHOD'];
         $uri    = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
-        // Hiq base path
-        $base = '/booking-api/public';
-        if (str_starts_with($uri, $base)) {
+        // DYNAMIC BASE PATH
+        $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+        $base = rtrim(str_replace('\\', '/', dirname($scriptName)), '/');
+        if ($base === '.' || $base === '/') {
+            $base = '';
+        }
+
+        if ($base !== '' && str_starts_with($uri, $base)) {
             $uri = substr($uri, strlen($base));
         }
-        if ($uri === '') {
+        if ($uri === '' || $uri === false) {
             $uri = '/';
         }
+        if (!str_starts_with($uri, '/')) {
+            $uri = '/' . $uri;
+        }
 
+        // REGISTER ROUTES
         require __DIR__ . '/../routes/api.php';
 
+        // MATCH ROUTES
         foreach (self::$routes as [$routeMethod, $routePath, $handler]) {
             if ($routeMethod !== $method) {
                 continue;
