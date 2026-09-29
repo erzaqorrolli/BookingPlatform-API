@@ -33,13 +33,18 @@ class Router
         $uri    = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
         // Hiq base path
-        $base = '/booking-api/public';
-        if (str_starts_with($uri, $base)) {
-            $uri = substr($uri, strlen($base));
-        }
-        if ($uri === '') {
-            $uri = '/';
-        }
+      // Zbulojmë base path-in dinamikisht (si në index.php)
+$base = rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? ''), '/\\');
+if ($base === '.' || $base === '/') {
+    $base = '';
+}
+
+if ($base !== '' && str_starts_with($uri, $base)) {
+    $uri = substr($uri, strlen($base));
+}
+if ($uri === '' || $uri === false) {
+    $uri = '/';
+}
 
         require __DIR__ . '/../routes/api.php';
 
