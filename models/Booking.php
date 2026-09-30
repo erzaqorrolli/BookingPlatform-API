@@ -19,6 +19,11 @@ class Booking
     public float $total_price = 0.0;
     public ?string $notes = null;
     public ?string $created_at = null;
+    public int $needs_assistance = 0;
+    public ?string $assistance_notes=null;
+
+
+
 
     public static function findById(int $id): ?self
     {
@@ -118,8 +123,8 @@ class Booking
 
         $stmt = $db->prepare("
             INSERT INTO bookings
-                (reference, company_id, customer_id, service_id, booking_date, start_time, end_time, total_price, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (reference, company_id, customer_id, service_id, booking_date, start_time, end_time, total_price, notes, needs_assistance, assistance_notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?,?,?)
         ");
         $stmt->execute([
             $reference,
@@ -131,6 +136,8 @@ class Booking
             $endTime,
             $data['total_price'] ?? $service->price,
             $data['notes'] ?? null,
+            !empty($data['needs_assistance']) ? 1:0,
+            $data['assistance_notes'] ?? null,
         ]);
 
         return self::findById((int) $db->lastInsertId());
@@ -163,6 +170,8 @@ class Booking
             'total_price'  => (float) $this->total_price,
             'notes'        => $this->notes,
             'created_at'   => $this->created_at,
+            'needs_assistance' => $this->needs_assistance,
+            'assistance_notes' => $this->assistance_notes,
         ];
     }
 
@@ -181,6 +190,8 @@ class Booking
         $b->total_price  = (float) $row['total_price'];
         $b->notes        = $row['notes'] ?? null;
         $b->created_at   = $row['created_at'] ?? null;
+        $b->needs_assistance = isset($row['needs_assistance']) ? (int) $row['needs_assistance'] : 0;
+        $b->assistance_notes = $row['assistance_notes'] ?? null;
         return $b;
     }
 }

@@ -343,6 +343,8 @@ class BookingController
                 'start_time'   => $startTime,
                 'total_price'  => $finalPrice,
                 'notes'        => $input['notes'] ?? null,
+                'needs_assistance' => !empty($input['needs_assistance']) ? 1 : 0,
+                'assistance_notes' => $input['assistance_notes'] ?? null,
             ]);
             \App\Models\Customer::updateVipStatus($customerId);
 
@@ -395,17 +397,46 @@ class BookingController
         $notification = $notificationStmt->fetch();
 
         if ($notification) {
-            Mailer::sendBookingConfirmation(
-                $notification['customer_email'],
-                $notification['customer_name'],
-                $notification
-            );
-            Mailer::sendNewBookingToOwner(
+    Mailer::sendBookingConfirmation(
+        $notification['customer_email'],
+        $notification['customer_name'],
+        $notification
+    );
+    Mailer::sendNewBookingToOwner(
+        $notification['owner_email'],
+        $notification['owner_name'],
+        $notification
+    );
+
+    if (!empty($input['needs_assistance'])) {
+        try {
+            $priorityMessage = "<h2 style='color:#d97706;'>Priority booking</h2>
+                <p>A client needs <strong>special assistance</strong> for this booking.</p>
+                <p><strong>Referenca:</strong> {$notification['reference']}</p>
+                <p><strong>Data:</strong> {$notification['booking_date']} në {$notification['start_time']}</p>
+                <p><strong>Klienti:</strong> {$notification['customer_name']}</p>
+                <p><strong>Email:</strong> {$notification['customer_email']}</p>
+                <p><strong>Shërbimi:</strong> {$notification['service_name']}</p>";
+
+            if (!empty($input['assistance_notes'])) {
+                $priorityMessage .= "<p><strong>Notes from client:</strong> " 
+                    . htmlspecialchars($input['assistance_notes']) . "</p>";
+            }
+
+            $priorityMessage .= "<p style='margin-top:20px;padding:10px;background:#fef3c7;border-left:4px solid #d97706;'>
+                <strong>Please treat this booking with high priority.</strong>
+            </p>";
+
+            Mailer::send(
                 $notification['owner_email'],
-                $notification['owner_name'],
-                $notification
+                " Priority: This client needs assistance",
+                $priorityMessage
             );
+        } catch (\Throwable $e) {
+            error_log('Priority email failed: ' . $e->getMessage());
         }
+    }
+}
 
         json_ok([
             'message'          => 'Booking received',
