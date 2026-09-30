@@ -18,6 +18,15 @@ use App\Controllers\ProductController;
 use App\Controllers\PhotoController;
 use App\Controllers\ReviewController;
 use App\Controllers\InvoiceController;
+use App\Controllers\ContactController;
+
+Router::get('/api/health', function() {
+    return [
+        'status' => 'ok',
+        'time'   => date('c'),
+        'php'    => PHP_VERSION,
+    ];
+});
 
 Router::post('/api/auth/register',        [AuthController::class, 'register']);
 Router::post('/api/auth/login',           [AuthController::class, 'login']);
@@ -129,3 +138,10 @@ Router::put('/api/companies/{companyId}/invoices/{id}/status', [InvoiceControlle
 Router::delete('/api/companies/{companyId}/invoices/{id}', [InvoiceController::class, 'destroy']);
 
 Router::get('/api/companies/{companyId}/customers/{id}', [CustomerController::class, 'show']);
+
+Router::post('/api/contact', [ContactController::class, 'store']);
+
+Router::get('/api/admin/contact-messages', [ContactController::class, 'index']);
+Router::get('/api/admin/contact-messages/{id}', [ContactController::class, 'show']);
+Router::put('/api/admin/contact-messages/{id}', [ContactController::class, 'update']);
+Router::delete('/api/admin/contact-messages/{id}', [ContactController::class, 'destroy']);

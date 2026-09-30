@@ -4,16 +4,30 @@ declare(strict_types=1);
 use Dotenv\Dotenv;
 
 require __DIR__ . '/../vendor/autoload.php';
-require __DIR__ . '/../utils/helpers.php';  
+require __DIR__ . '/../utils/helpers.php';
 
 $dotenv = Dotenv::createImmutable(__DIR__ . '/..');
 $dotenv->load();
 
-// ============================================================
-// SERVE STORAGE FILES
-// ============================================================
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-if (preg_match('#^/booking-api/public/storage/uploads/(.+)$#', $uri, $m)) {
+
+$base = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '')), '/');
+if ($base === '.' || $base === '/') {
+    $base = '';
+}
+
+$path = $uri;
+if ($base !== '' && str_starts_with($uri, $base)) {
+    $path = substr($uri, strlen($base));
+}
+if ($path === '' || $path === false) {
+    $path = '/';
+}
+if (!str_starts_with($path, '/')) {
+    $path = '/' . $path;
+}
+
+if (preg_match('#^/storage/uploads/(.+)$#', $path, $m)) {
     $file = __DIR__ . '/../storage/uploads/' . basename($m[1]);
     if (file_exists($file)) {
         $mime = mime_content_type($file) ?: 'application/octet-stream';
@@ -24,9 +38,6 @@ if (preg_match('#^/booking-api/public/storage/uploads/(.+)$#', $uri, $m)) {
     }
 }
 
-// ============================================================
-// ERROR REPORTING
-// ============================================================
 $isDebug = filter_var($_ENV['APP_DEBUG'] ?? 'false', FILTER_VALIDATE_BOOLEAN);
 
 if ($isDebug) {
@@ -39,9 +50,6 @@ if ($isDebug) {
     ini_set('log_errors', '1');
 }
 
-// ============================================================
-// CORS
-// ============================================================
 $origin = $_ENV['FRONTEND_URL'] ?? 'http://localhost:5173';
 header("Access-Control-Allow-Origin: $origin");
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, PATCH, OPTIONS');
@@ -49,35 +57,28 @@ header('Access-Control-Allow-Headers: Content-Type, Authorization, X-CSRF-Token,
 header('Access-Control-Allow-Credentials: true');
 header('Access-Control-Max-Age: 86400');
 
-// Preflight
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
     http_response_code(204);
     exit;
 }
-
-// ============================================================
-// HEALTH CHECK
-// ============================================================
-if ($uri === '/booking-api/public/api/health') {
+if ($path === '/api/health') {
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode([
         'status' => 'ok',
         'time'   => date('c'),
         'php'    => PHP_VERSION,
         'debug'  => $isDebug,
+        'base'   => $base,
+        'path'   => $path,
     ]);
     exit;
 }
 
-// ============================================================
-// ROUTE DISPATCH
-// ============================================================
 try {
     \App\Config\Router::dispatch();
 } catch (\Throwable $e) {
     http_response_code(500);
 
-    // Log gjithmonë
     error_log(sprintf(
         '[%s] %s in %s:%d | Trace: %s',
         date('Y-m-d H:i:s'),

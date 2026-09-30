@@ -55,6 +55,11 @@ class ContactController
         $uid = auth_user_id();
         if (!$uid) json_err('Unauthorized', 401);
 
+        $user = User::findById($uid);
+        if (!$user || !$this->isSuperAdmin($user)) {
+            json_err('Forbidden', 403);
+        }
+
         $messages = ContactMessage::forAdmin([
             'status' => $_GET['status'] ?? null,
             'search' => $_GET['search'] ?? null,
@@ -68,9 +73,15 @@ class ContactController
         $uid = auth_user_id();
         if (!$uid) json_err('Unauthorized', 401);
 
+        $user = User::findById($uid);
+        if (!$user || !$this->isSuperAdmin($user)) {
+            json_err('Forbidden', 403);
+        }
+
         $message = ContactMessage::findById((int) $params['id']);
         if (!$message) json_err('Message not found', 404);
 
+        // Shëno si read
         $message->markAsRead();
 
         json_ok($message->toArray());
@@ -80,6 +91,11 @@ class ContactController
     {
         $uid = auth_user_id();
         if (!$uid) json_err('Unauthorized', 401);
+
+        $user = User::findById($uid);
+        if (!$user || !$this->isSuperAdmin($user)) {
+            json_err('Forbidden', 403);
+        }
 
         $message = ContactMessage::findById((int) $params['id']);
         if (!$message) json_err('Message not found', 404);
@@ -102,11 +118,30 @@ class ContactController
         $uid = auth_user_id();
         if (!$uid) json_err('Unauthorized', 401);
 
+        $user = User::findById($uid);
+        if (!$user || !$this->isSuperAdmin($user)) {
+            json_err('Forbidden', 403);
+        }
+
         $message = ContactMessage::findById((int) $params['id']);
         if (!$message) json_err('Message not found', 404);
 
         $message->delete();
 
         json_ok(['message' => 'Message deleted']);
+    }
+
+    private function isSuperAdmin(User $user): bool
+    {
+        $db = \App\Config\Database::pdo();
+        $stmt = $db->prepare("
+            SELECT r.name FROM company_user cu
+            JOIN roles r ON r.id = cu.role_id
+            WHERE cu.user_id = ?
+        ");
+        $stmt->execute([$user->id]);
+        $roles = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+
+        return in_array('superadmin', $roles, true);
     }
 }
