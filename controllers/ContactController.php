@@ -81,7 +81,6 @@ class ContactController
         $message = ContactMessage::findById((int) $params['id']);
         if (!$message) json_err('Message not found', 404);
 
-        // Shëno si read
         $message->markAsRead();
 
         json_ok($message->toArray());

@@ -50,14 +50,35 @@ class Invoice{
         return $invoice;
     }
 
-    public static function findById(int $id): ?self
-    {
-        $db = Database::pdo();
-        $stmt = $db->prepare("SELECT * FROM invoices WHERE id = ? LIMIT 1");
-        $stmt->execute([$id]);
-        $row = $stmt->fetch();
-        return $row ? self::fromRow($row) : null;
-    }
+   public static function findById(int $id): ?self
+{
+    $db = Database::pdo();
+    $stmt = $db->prepare("
+        SELECT 
+            i.*,
+            c.name AS customer_name,
+            c.email AS customer_email,
+            c.phone AS customer_phone,
+            b.booking_date,
+            b.start_time,
+            b.end_time,
+            s.name AS service_name,
+            co.name AS company_name,
+            co.email AS company_email,
+            co.phone AS company_phone,
+            co.address AS company_address
+        FROM invoices i
+        LEFT JOIN customers c ON c.id = i.customer_id
+        LEFT JOIN bookings b ON b.id = i.booking_id
+        LEFT JOIN services s ON s.id = b.service_id
+        LEFT JOIN companies co ON co.id = i.company_id
+        WHERE i.id = ?
+        LIMIT 1
+    ");
+    $stmt->execute([$id]);
+    $row = $stmt->fetch();
+    return $row ? self::fromRow($row) : null;
+}
 
     public static function findByBooking(int $bookingId): ?self
     {

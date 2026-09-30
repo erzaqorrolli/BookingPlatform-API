@@ -93,6 +93,7 @@ public function login(): void
         'user'       => $user->toArray(),
         'companies'  => $companies,
         'csrf_token' => $csrf,
+	'token'      => $token,
     ]);
 }
 
@@ -300,7 +301,7 @@ public function registerInvited(): void
         $db->commit();
 
         json_ok([
-            'message' => 'U regjistrove me sukses!',
+            'message' => 'Registered successfully!',
             'user'    => $user->toArray(),
             'company' => [
                 'id'   => (int) $invite['company_id'],
