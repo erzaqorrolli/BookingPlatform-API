@@ -22,6 +22,10 @@ class Booking
     public int $needs_assistance = 0;
     public ?string $assistance_notes=null;
 
+    public ?string $cancelled_at = null;
+    public ?string $cancelled_b = null;
+    public ?string $cancellation_reason = null;
+
 
 
 
@@ -155,6 +159,34 @@ class Booking
         return $stmt->execute([$status, $this->id]);
     }
 
+
+    public function cancel(string $reason, string $by = 'customer'): bool{
+
+    if($this->id ===null) return false;
+
+    if(!in_array($this->status,['pending','confirmed'])){
+        return false;
+    }
+
+    $db = Database::pdo();
+    $stmt =$db->prepare("UPDATE bookings SET status = 'cancelled', cancelled_at = NOW(), cancelled_by = ?, cancellation_reason = ? WHERE id = ?");
+    return $stmt->execute([$by,$reason,$this->id]);
+    }
+
+    public function canBeCancelled(): bool{
+        if(!in_array($this->status,['pending', 'confirmed'])){
+            return false;
+        }
+
+        $bookingDateTime = strtotime ($this->booking_date . ' ' . $this->start_time );
+        $now = time();
+        $hoursDiff = ($bookingDateTime - $now) / 3600;
+
+        return $hoursDiff >= 2;
+    }
+
+
+    
     public function toArray(): array
     {
         return [
@@ -172,6 +204,9 @@ class Booking
             'created_at'   => $this->created_at,
             'needs_assistance' => $this->needs_assistance,
             'assistance_notes' => $this->assistance_notes,
+            'cancelled_at' => $this->cancelled_at, 
+            'cancelled_by' => $this->cancelled_by,
+            'cancellation_reason' => $this->cancellation_reason,
         ];
     }
 
@@ -192,6 +227,9 @@ class Booking
         $b->created_at   = $row['created_at'] ?? null;
         $b->needs_assistance = isset($row['needs_assistance']) ? (int) $row['needs_assistance'] : 0;
         $b->assistance_notes = $row['assistance_notes'] ?? null;
+        $b->cancelled_at=$row['cancelled_at'] ?? null;
+        $b->cancelled_by=$row['cancelled_by'] ?? null;
+        $b->cancellation_reason=$row['cancellation_reason'] ?? null;
         return $b;
     }
 }
