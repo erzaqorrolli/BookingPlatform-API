@@ -32,3 +32,23 @@ debug-input.php
 # Node
 node_modules/
 npm-debug.log*
+
+backend/vendor/
+backend/composer.phar
+backend/composer.lock
+backend/.env
+backend/storage/*.log
+backend/storage/logs/
+backend/storage/cache/
+backend/storage/uploads/*
+!backend/storage/uploads/.gitkeep
+backend/test-all.php
+backend/test.http
+backend/debug-input.php
+
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.vite/
+frontend/.env
+frontend/.env.local
