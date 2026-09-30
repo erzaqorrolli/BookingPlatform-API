@@ -145,3 +145,5 @@ Router::get('/api/admin/contact-messages', [ContactController::class, 'index']);
 Router::get('/api/admin/contact-messages/{id}', [ContactController::class, 'show']);
 Router::put('/api/admin/contact-messages/{id}', [ContactController::class, 'update']);
 Router::delete('/api/admin/contact-messages/{id}', [ContactController::class, 'destroy']);
+
+Router::get('/api/companies/{companyId}/calendar-events', [BookingController::class, 'calendarEvents']);

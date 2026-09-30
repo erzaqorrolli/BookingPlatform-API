@@ -450,6 +450,83 @@ class BookingController
         ], 201);
     }
 
+
+
+    public function calendarEvents(array $params): void
+{
+    $uid = auth_user_id();
+    if (!$uid) json_err('Unauthorized', 401);
+
+    $companyId = (int) $params['companyId'];
+    if (!Company::userBelongsTo($uid, $companyId)) {
+        json_err('Forbidden', 403);
+    }
+
+    $start = $_GET['start'] ?? date('Y-m-01');
+    $end   = $_GET['end'] ?? date('Y-m-t');
+
+    $db = Database::pdo();
+    $stmt = $db->prepare("
+        SELECT 
+            b.id,
+            b.reference,
+            b.booking_date,
+            b.start_time,
+            b.end_time,
+            b.status,
+            b.total_price,
+            b.needs_assistance,
+            c.name AS customer_name,
+            c.email AS customer_email,
+            c.phone AS customer_phone,
+            s.name AS service_name
+        FROM bookings b
+        JOIN customers c ON c.id = b.customer_id
+        JOIN services s ON s.id = b.service_id
+        WHERE b.company_id = ?
+          AND b.booking_date BETWEEN ? AND ?
+        ORDER BY b.booking_date, b.start_time
+    ");
+    $stmt->execute([$companyId, $start, $end]);
+    $bookings = $stmt->fetchAll();
+
+    $events = array_map(function ($b) {
+      
+        $color = match ($b['status']) {
+            'pending'   => '#f59e0b', 
+            'confirmed' => '#10b981', 
+            'completed' => '#3b82f6', 
+            'cancelled' => '#ef4444', 
+            'no_show'   => '#94a3b8', 
+            default     => '#6366f1', 
+        };
+
+        if ((int) $b['needs_assistance'] === 1 && $b['status'] !== 'completed') {
+            $color = '#d97706'; 
+        }
+
+        return [
+            'id'    => (int) $b['id'],
+            'title' => ($b['needs_assistance'] ? '⚠️ ' : '') . $b['customer_name'] . ' - ' . $b['service_name'],
+            'start' => $b['booking_date'] . 'T' . $b['start_time'],
+            'end'   => $b['booking_date'] . 'T' . $b['end_time'],
+            'backgroundColor' => $color,
+            'borderColor'     => $color,
+            'extendedProps'   => [
+                'reference'        => $b['reference'],
+                'status'           => $b['status'],
+                'customer_name'    => $b['customer_name'],
+                'customer_email'   => $b['customer_email'],
+                'customer_phone'   => $b['customer_phone'],
+                'service_name'     => $b['service_name'],
+                'total_price'      => (float) $b['total_price'],
+                'needs_assistance' => (int) $b['needs_assistance'],
+            ],
+        ];
+    }, $bookings);
+
+    json_ok($events);
+}
     public function updateStatus(array $params): void
     {
         $uid = auth_user_id();
