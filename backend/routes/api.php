@@ -21,6 +21,7 @@ use App\Controllers\InvoiceController;
 use App\Controllers\ContactController;
 use App\Controllers\SuperAdminController;
 
+
 Router::get('/api/health', function() {
     return [
         'status' => 'ok',
@@ -156,3 +157,7 @@ Router::get('/api/superadmin/recent-bookings',  [SuperAdminController::class, 'r
 Router::get('/api/superadmin/monthly-revenue',  [SuperAdminController::class, 'monthlyRevenue']);
 Router::get('/api/superadmin/top-companies',    [SuperAdminController::class, 'topCompanies']);
 Router::get('/api/superadmin/bookings-chart',   [SuperAdminController::class, 'bookingsChart']);
+
+Router::get('/api/superadmin/companies/{id}',         [SuperAdminController::class, 'companyDetail']);
+Router::put('/api/superadmin/companies/{id}/status',  [SuperAdminController::class, 'toggleCompanyStatus']);
+Router::delete('/api/superadmin/companies/{id}',      [SuperAdminController::class, 'deleteCompany']);

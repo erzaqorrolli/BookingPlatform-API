@@ -270,4 +270,135 @@ class SuperAdminController
 
         json_ok($data);
     }
+
+    public function companyDetail(array $params): void{
+
+    $this->requireSuperAdmin();
+    $db = Database::pdo();
+
+    $id = (int) ($params['id'] ?? 0);
+    if(!$id)json_err ('Company ID is required', 422);
+
+    $stmt = $db->prepare("
+    SELECT 
+    c.*,
+    (SELECT u.id FROM company_user cu
+    JOIN users u ON u.id = cu.user_id
+    JOIN roles r ON r.id = cu.role_id
+    WHERE cu.company_id = c.id AND r.name = 'owner'
+    LIMIT 1) AS owner_id,
+    (SELECT u.name FROM company_user cu
+    JOIN users u ON u.id = cu.user_id
+    JOIN roles r ON r.id = cu.role_id
+    WHERE cu.company_id = c.id AND r.name = 'owner'
+    LIMIT 1) AS owner_name,
+    (SELECT u.email FROM company_user cu
+                 JOIN users u ON u.id = cu.user_id
+                 JOIN roles r ON r.id = cu.role_id
+                 WHERE cu.company_id = c.id AND r.name = 'owner'
+                 LIMIT 1) AS owner_email
+        FROM companies c
+        WHERE c.id =?
+        LIMIT 1
+
+    ");
+
+    $stmt->execute([$id]);
+    $company = $stmt->fetch();
+
+    if(!$company) json_err('Company not found', 404);
+
+    $stats = $db->prepare("SELECT (SELECT COUNT (*) FROM bookings WHERE company_id = ?) AS total_bookings,
+    (SELECT COUNT (*) FROM customers WHERE company_id = ?) AS total_customers,
+        (SELECT COUNT(*) FROM services WHERE company_id = ?) AS total_services,
+         (SELECT COUNT(*) FROM products WHERE company_id = ?) AS total_products,
+        (SELECT COALESCE(SUM(total), 0) FROM invoices WHERE company_id = ? AND status = 'paid') AS total_revenue");
+
+        $stmt->execute([$id,$id,$id,$id,$id,$id]);
+        $companyStats = $stats->fetch();
+
+        $staff = $db->prepare("SELECT
+        u.id, u.name,u.email_verified_at, r.name AS role, cu.created_at AS joined_at FROM company_user cu JOIN users u ON u.id = cu.user_id JOIN roles r ON r.id = cu.role_id WHERE cu.company_id = ? ORDER BY cu.created_at ASC");
+        $staff->execute([$id]);
+        $staffList = $staff->fetchAll();
+
+        $bookings = $db->prepare("SELECT   b.id, b.reference, b.booking_date, b.start_time, b.status,
+                b.total_price, b.needs_assistance,
+                cu.name AS customer_name,
+                s.name AS service_name
+            FROM bookings b
+            JOIN customers cu ON cu.id = b.customer_id
+            JOIN services s ON s.id = b.service_id
+            WHERE b.company_id = ?
+            ORDER BY b.created_at DESC
+            LIMIT 10");
+            $bookings->execute([$id]);
+            $recentBookings = $bookings->fetchAll();
+
+            json_ok(['company' =>$company,
+            'stats' => $companyStats,
+            'staff' => $staffList,
+            'recent_bookings' => $recentBookings,]);
+
+
+      }
+
+    public function toggleCompanyStatus(array $params):void {
+        $this->requireSuperAdmin();
+        $db = Database::pdo();
+
+        $id = (int) ($params['id'] ?? 0);
+        if(!$id) json_err('Company ID is required', 422);
+
+        $input = input();
+        $status = $input['status'] ?? null;
+        $reason = trim($input['reason'] ?? '');
+
+        if(!in_array($status,['active','blocked'])){
+            json_err ('Invalid status.Use "active" or "blocked", 422');
+        }
+        if($status === 'blocked'){
+            $db->prepare("UPDATE companies SET status = ?,blocked_at  =NOW(),blocked_reason = ? WHERE id=?")->execute([$status,$id]);
+        }
+        json_ok([
+            'message' => $status === 'blocked' ? 'Company blocked': 'Company activated', 'status' => $status,
+
+        ]);
+
+    }
+    public function deleteCompany(array $params): void{
+        $this->requireSuperAdmin();
+        $db = Database::pdo();
+
+        $id = (int) ($params['id'] ?? 0);
+        if(!$id) json_err ('Company ID required', 422);
+
+        $stmt = $db->prepare("SELECT slug FROM companies WHERE id=? LIMIT 1");
+        $stmt->execute([$id]);
+        $slug = $stmt->fetchColumn();
+
+        if($slug === 'platform-admin'){
+            json_err ('Cannot delete the platform admin company',403);
+
+        }
+
+        try{
+            $db->beginTransaction();
+
+            $db->prepare("DELETE FROM bookings WHERE company_id = ?")->execute([$id]);
+            $db->prepare("DELETE FROM invoices WHERE company_id = ?")->execute([$id]);
+            $db->prepare("DELETE FROM customers WHERE company_id = ?")->execute([$id]);
+            $db->prepare("DELETE FROM services WHERE company_id = ?")->execute([$id]);
+            $db->prepare("DELETE FROM products WHERE company_id = ?")->execute([$id]);
+            $db->prepare("DELETE FROM photos WHERE company_id = ?")->execute([$id]);
+            $db->prepare("DELETE FROM company_user WHERE company_id = ?")->execute([$id]);
+            $db->prepare("DELETE FROM companies WHERE id = ?")->execute([$id]);
+
+            $db->commit();
+            json_ok(['message' =>'Company deleted']);
+        }catch(\Throwable $e){
+            if($db->inTransaction()) $db->rollBack();
+            json_err('Delete failed:' .$e->getMessage(),500);
+        }
+    }
 }
