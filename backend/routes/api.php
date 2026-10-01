@@ -19,6 +19,7 @@ use App\Controllers\PhotoController;
 use App\Controllers\ReviewController;
 use App\Controllers\InvoiceController;
 use App\Controllers\ContactController;
+use App\Controllers\SuperAdminController;
 
 Router::get('/api/health', function() {
     return [
@@ -147,3 +148,11 @@ Router::put('/api/admin/contact-messages/{id}', [ContactController::class, 'upda
 Router::delete('/api/admin/contact-messages/{id}', [ContactController::class, 'destroy']);
 
 Router::get('/api/companies/{companyId}/calendar-events', [BookingController::class, 'calendarEvents']);
+
+Router::get('/api/superadmin/stats',            [SuperAdminController::class, 'stats']);
+Router::get('/api/superadmin/companies',        [SuperAdminController::class, 'companies']);
+Router::get('/api/superadmin/users',            [SuperAdminController::class, 'users']);
+Router::get('/api/superadmin/recent-bookings',  [SuperAdminController::class, 'recentBookings']);
+Router::get('/api/superadmin/monthly-revenue',  [SuperAdminController::class, 'monthlyRevenue']);
+Router::get('/api/superadmin/top-companies',    [SuperAdminController::class, 'topCompanies']);
+Router::get('/api/superadmin/bookings-chart',   [SuperAdminController::class, 'bookingsChart']);
