@@ -51,7 +51,6 @@ import ProtectedPage from './components/ProtectedPage';
 import ProtectedPortal from './components/ProtectedPortal';
 import StaffLayout from './components/StaffLayout';
 
-import Invoices from './pages/admin/Invoices';
 
 import CustomerDetail from './pages/admin/CustomerDetail';
 import InvoiceView from './pages/admin/InvoiceView';
