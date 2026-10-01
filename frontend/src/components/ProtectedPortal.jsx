@@ -19,12 +19,16 @@ export default function ProtectedPortal({ children }) {
     return <Navigate to="/login" replace />;
   }
 
-  if (['owner', 'admin', 'manager', 'staff'].includes(role)) {
-    if (role === 'staff') {
-      return <Navigate to="/staff" replace />;
-    }
-    return <Navigate to="/admin" replace />;
+  if (role === 'superadmin') {
+  return <Navigate to="/admin/superadmin" replace />;
+}
+
+if (['owner', 'admin', 'manager', 'staff'].includes(role)) {
+  if (role === 'staff') {
+    return <Navigate to="/staff" replace />;
   }
+  return <Navigate to="/admin" replace />;
+}
 
   return <PortalLayout>{children}</PortalLayout>;
 }

@@ -23,13 +23,15 @@ export default function Login() {
     const companies = user?.companies || userData?.companies || [];
     const role = user?.role || userData?.role || companies.find((company) => company?.role && !['customer'].includes(company.role))?.role || companies[0]?.role || 'customer';
 
-    if (role === 'owner' || role === 'admin' || role === 'manager') {
-      navigate('/admin');
-    } else if (role === 'staff') {
-      navigate('/staff');
-    } else {
-      navigate('/portal');
-    }
+   if (role === 'superadmin') {
+  navigate('/admin/superadmin');
+} else if (role === 'owner' || role === 'admin' || role === 'manager') {
+  navigate('/admin');
+} else if (role === 'staff') {
+  navigate('/staff');
+} else {
+  navigate('/portal');
+}
   } catch (err) {
     setError(err.response?.data?.error || 'Login failed');
   } finally {

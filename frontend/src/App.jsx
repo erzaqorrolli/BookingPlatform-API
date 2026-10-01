@@ -56,6 +56,9 @@ import Invoices from './pages/admin/Invoices';
 import CustomerDetail from './pages/admin/CustomerDetail';
 import InvoiceView from './pages/admin/InvoiceView';
 import Calendar from './pages/admin/Calendar';
+import Invoices from './pages/admin/Invoices';
+import SuperAdminDashboard from './pages/admin/superadmin/SuperAdminDashboard';
+
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -149,6 +152,10 @@ export default function App() {
               path="/admin/discounts"
               element={<ProtectedPage allowed={['owner', 'admin', 'manager']}><Discounts /></ProtectedPage>}
             />
+            <Route
+            path="/admin/superadmin"
+            element={<ProtectedPage allowed={['superadmin']}><SuperAdminDashboard /></ProtectedPage>}
+          />
             <Route
               path="/admin/gallery"
               element={<ProtectedPage allowed={['owner', 'admin', 'manager']}><Gallery /></ProtectedPage>}
