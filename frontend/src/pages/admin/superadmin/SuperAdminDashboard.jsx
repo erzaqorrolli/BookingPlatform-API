@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../../../api/client';
+import { Link } from 'react-router-dom';
 
 export default function SuperAdminDashboard() {
   const [stats, setStats] = useState(null);
@@ -39,48 +40,56 @@ export default function SuperAdminDashboard() {
       value: stats?.total_companies || 0,
       icon: '🏢',
       color: 'from-indigo-500 to-purple-600',
+      link: '/admin/superadmin/companies',
     },
     {
       label: 'Total Users',
       value: stats?.total_users || 0,
       icon: '👥',
       color: 'from-blue-500 to-cyan-600',
+      link: '/admin/superadmin/users',
     },
     {
       label: 'Total Bookings',
       value: stats?.total_bookings || 0,
       icon: '📅',
       color: 'from-emerald-500 to-teal-600',
+      link: '/admin/superadmin/bookings',
     },
     {
       label: 'Total Revenue',
       value: `€${(stats?.total_revenue || 0).toFixed(2)}`,
       icon: '💰',
       color: 'from-amber-500 to-orange-600',
+      link: '/admin/superadmin/reports',
     },
     {
       label: 'Bookings Today',
       value: stats?.bookings_today || 0,
       icon: '📊',
       color: 'from-pink-500 to-rose-600',
+      link:'/admin/superadmin/bookings?filters=today',
     },
     {
       label: 'This Month',
       value: stats?.bookings_this_month || 0,
       icon: '📈',
       color: 'from-violet-500 to-purple-600',
+      link: '/admin/superadmin/bookings?filter=month',
     },
     {
       label: 'Priority Bookings',
       value: stats?.priority_bookings || 0,
       icon: '⚠️',
       color: 'from-red-500 to-orange-600',
+      link: '/admin/superadmin/bookings?filter=priority',
     },
     {
       label: 'New Companies',
       value: stats?.new_companies_this_month || 0,
       icon: '✨',
       color: 'from-cyan-500 to-blue-600',
+      link:'/admin/superadmin/companies?filter=new',
     },
   ];
 
@@ -95,27 +104,35 @@ export default function SuperAdminDashboard() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {statCards.map((card) => (
-          <div
-            key={card.label}
-            className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5"
-          >
-            <div
-              className={`w-12 h-12 bg-gradient-to-br ${card.color} rounded-lg flex items-center justify-center text-2xl mb-3`}
-            >
-              {card.icon}
-            </div>
-            <div className="text-2xl font-bold text-slate-900 dark:text-white">
-              {card.value}
-            </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              {card.label}
-            </div>
-          </div>
-        ))}
+     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+  {statCards.map((card) => (
+    <Link
+      key={card.label}
+      to={card.link}
+      className="group bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 hover:border-indigo-400 dark:hover:border-indigo-500 hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer"
+    >
+      <div
+        className={`w-12 h-12 bg-gradient-to-br ${card.color} rounded-lg flex items-center justify-center text-2xl mb-3 group-hover:scale-110 transition-transform`}
+      >
+        {card.icon}
       </div>
-
+      <div className="text-2xl font-bold text-slate-900 dark:text-white">
+        {card.value}
+      </div>
+      <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center justify-between">
+        <span>{card.label}</span>
+        <svg
+          className="w-3 h-3 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        </svg>
+      </div>
+    </Link>
+  ))}
+</div>
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800">
           <h2 className="font-semibold text-slate-900 dark:text-white">
@@ -254,4 +271,6 @@ export default function SuperAdminDashboard() {
       </div>
     </div>
   );
+
+  
 }

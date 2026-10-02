@@ -57,6 +57,7 @@ import InvoiceView from './pages/admin/InvoiceView';
 import Calendar from './pages/admin/Calendar';
 import Invoices from './pages/admin/Invoices';
 import SuperAdminDashboard from './pages/admin/superadmin/SuperAdminDashboard';
+import SuperAdminCompanies from './pages/admin/superadmin/Companies';
 
 
 function ProtectedRoute({ children }) {
@@ -180,6 +181,10 @@ export default function App() {
               element={<ProtectedPage allowed={['owner', 'admin']}><Settings /></ProtectedPage>}
             />
 
+                      <Route
+                path="/admin/superadmin/companies"
+                element={<ProtectedPage allowed={['superadmin']}><SuperAdminCompanies /></ProtectedPage>}
+          />
             <Route
               path="/admin/invoices"
               element={<ProtectedPage allowed={['owner', 'admin', 'manager']}><Invoices /></ProtectedPage>}
