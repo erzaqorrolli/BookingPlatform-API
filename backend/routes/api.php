@@ -161,3 +161,16 @@ Router::get('/api/superadmin/bookings-chart',   [SuperAdminController::class, 'b
 Router::get('/api/superadmin/companies/{id}',         [SuperAdminController::class, 'companyDetail']);
 Router::put('/api/superadmin/companies/{id}/status',  [SuperAdminController::class, 'toggleCompanyStatus']);
 Router::delete('/api/superadmin/companies/{id}',      [SuperAdminController::class, 'deleteCompany']);
+
+Router::get('/api/superadmin/users',                [SuperAdminController::class, 'allUsers']);
+Router::get('/api/superadmin/users/{id}',           [SuperAdminController::class, 'userDetail']);
+Router::put('/api/superadmin/users/{id}/status',    [SuperAdminController::class, 'toggleUserStatus']);
+Router::delete('/api/superadmin/users/{id}',        [SuperAdminController::class, 'deleteUser']);
+
+Router::get('/api/superadmin/bookings',             [SuperAdminController::class, 'allBookings']);
+
+Router::get('/api/superadmin/reports',              [SuperAdminController::class, 'monthlyReport']);
+
+Router::get('/api/superadmin/contact-messages',     [SuperAdminController::class, 'contactMessages']);
+Router::put('/api/superadmin/contact-messages/{id}/read', [SuperAdminController::class, 'markMessageRead']);
+Router::delete('/api/superadmin/contact-messages/{id}',   [SuperAdminController::class, 'deleteMessage']);
