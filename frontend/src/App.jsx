@@ -58,8 +58,11 @@ import Calendar from './pages/admin/Calendar';
 import Invoices from './pages/admin/Invoices';
 import SuperAdminDashboard from './pages/admin/superadmin/SuperAdminDashboard';
 import SuperAdminCompanies from './pages/admin/superadmin/Companies';
-
-
+import SuperAdminUsers from './pages/admin/superadmin/Users';
+import SuperAdminUserDetail from './pages/admin/superadmin/UserDetail';
+import SuperAdminBookings from './pages/admin/superadmin/Bookings';
+import SuperAdminReports from './pages/admin/superadmin/Reports';
+import SuperAdminContactMessages from './pages/admin/superadmin/ContactMessages';
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
 
@@ -136,6 +139,9 @@ export default function App() {
               path="/admin/customers"
               element={<ProtectedPage allowed={['owner', 'admin', 'manager']}><Customers /></ProtectedPage>}
             />
+            <Route 
+            path="/admin/superadmin/reports"
+            element={<ProtectedPage allowed={['superadmin']}><SuperAdminReports/></ProtectedPage>}/>
             <Route
               path="/admin/team"
               element={<ProtectedPage allowed={['owner', 'admin']}><Team /></ProtectedPage>}
@@ -189,7 +195,22 @@ export default function App() {
               path="/admin/invoices"
               element={<ProtectedPage allowed={['owner', 'admin', 'manager']}><Invoices /></ProtectedPage>}
             />
-
+                      <Route
+            path="/admin/superadmin/users"
+            element={<ProtectedPage allowed={['superadmin']}><SuperAdminUsers /></ProtectedPage>}
+          />
+          <Route
+            path="/admin/superadmin/users/:id"
+            element={<ProtectedPage allowed={['superadmin']}><SuperAdminUserDetail /></ProtectedPage>}
+          />
+          <Route
+            path="/admin/superadmin/bookings"
+            element={<ProtectedPage allowed={['superadmin']}><SuperAdminBookings /></ProtectedPage>}
+          />
+          <Route
+        path="/admin/superadmin/contact-messages"
+        element={<ProtectedPage allowed={['superadmin']}><SuperAdminContactMessages /></ProtectedPage>}
+      />
       <Route path="/admin/customers/:id" element={<CustomerDetail />} />
 
     <Route path="/admin/invoices/:id" element={<InvoiceView />} />

@@ -4,7 +4,6 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Config\Database;
-use App\Models\User;
 
 class SuperAdminController
 {
@@ -107,7 +106,6 @@ class SuperAdminController
         ]);
     }
 
-   
     public function companies(): void
     {
         $this->requireSuperAdmin();
@@ -121,6 +119,7 @@ class SuperAdminController
                 c.email,
                 c.phone,
                 c.address,
+                c.status,
                 c.created_at,
                 (SELECT COUNT(*) FROM bookings b WHERE b.company_id = c.id) AS bookings_count,
                 (SELECT COUNT(*) FROM services s WHERE s.company_id = c.id) AS services_count,
@@ -140,12 +139,9 @@ class SuperAdminController
             FROM companies c
             ORDER BY c.created_at DESC
         ");
-        $companies = $stmt->fetchAll();
-
-        json_ok($companies);
+        json_ok($stmt->fetchAll());
     }
 
-    
     public function users(): void
     {
         $this->requireSuperAdmin();
@@ -168,12 +164,9 @@ class SuperAdminController
             ORDER BY u.created_at DESC
             LIMIT 500
         ");
-        $users = $stmt->fetchAll();
-
-        json_ok($users);
+        json_ok($stmt->fetchAll());
     }
 
-   
     public function recentBookings(): void
     {
         $this->requireSuperAdmin();
@@ -200,12 +193,9 @@ class SuperAdminController
             ORDER BY b.created_at DESC
             LIMIT 20
         ");
-        $bookings = $stmt->fetchAll();
-
-        json_ok($bookings);
+        json_ok($stmt->fetchAll());
     }
 
-   
     public function monthlyRevenue(): void
     {
         $this->requireSuperAdmin();
@@ -222,12 +212,9 @@ class SuperAdminController
             GROUP BY DATE_FORMAT(created_at, '%Y-%m')
             ORDER BY month ASC
         ");
-        $data = $stmt->fetchAll();
-
-        json_ok($data);
+        json_ok($stmt->fetchAll());
     }
 
-   
     public function topCompanies(): void
     {
         $this->requireSuperAdmin();
@@ -247,9 +234,7 @@ class SuperAdminController
             ORDER BY revenue DESC, bookings_count DESC
             LIMIT 10
         ");
-        $data = $stmt->fetchAll();
-
-        json_ok($data);
+        json_ok($stmt->fetchAll());
     }
 
     public function bookingsChart(): void
@@ -266,63 +251,73 @@ class SuperAdminController
             GROUP BY booking_date
             ORDER BY booking_date ASC
         ");
-        $data = $stmt->fetchAll();
-
-        json_ok($data);
+        json_ok($stmt->fetchAll());
     }
 
-    public function companyDetail(array $params): void{
+    public function companyDetail(array $params): void
+    {
+        $this->requireSuperAdmin();
+        $db = Database::pdo();
 
-    $this->requireSuperAdmin();
-    $db = Database::pdo();
+        $id = (int) ($params['id'] ?? 0);
+        if (!$id) json_err('Company ID is required', 422);
 
-    $id = (int) ($params['id'] ?? 0);
-    if(!$id)json_err ('Company ID is required', 422);
-
-    $stmt = $db->prepare("
-    SELECT 
-    c.*,
-    (SELECT u.id FROM company_user cu
-    JOIN users u ON u.id = cu.user_id
-    JOIN roles r ON r.id = cu.role_id
-    WHERE cu.company_id = c.id AND r.name = 'owner'
-    LIMIT 1) AS owner_id,
-    (SELECT u.name FROM company_user cu
-    JOIN users u ON u.id = cu.user_id
-    JOIN roles r ON r.id = cu.role_id
-    WHERE cu.company_id = c.id AND r.name = 'owner'
-    LIMIT 1) AS owner_name,
-    (SELECT u.email FROM company_user cu
+        $stmt = $db->prepare("
+            SELECT 
+                c.*,
+                (SELECT u.id FROM company_user cu
+                 JOIN users u ON u.id = cu.user_id
+                 JOIN roles r ON r.id = cu.role_id
+                 WHERE cu.company_id = c.id AND r.name = 'owner'
+                 LIMIT 1) AS owner_id,
+                (SELECT u.name FROM company_user cu
+                 JOIN users u ON u.id = cu.user_id
+                 JOIN roles r ON r.id = cu.role_id
+                 WHERE cu.company_id = c.id AND r.name = 'owner'
+                 LIMIT 1) AS owner_name,
+                (SELECT u.email FROM company_user cu
                  JOIN users u ON u.id = cu.user_id
                  JOIN roles r ON r.id = cu.role_id
                  WHERE cu.company_id = c.id AND r.name = 'owner'
                  LIMIT 1) AS owner_email
-        FROM companies c
-        WHERE c.id =?
-        LIMIT 1
+            FROM companies c
+            WHERE c.id = ?
+            LIMIT 1
+        ");
+        $stmt->execute([$id]);
+        $company = $stmt->fetch();
 
-    ");
+        if (!$company) json_err('Company not found', 404);
 
-    $stmt->execute([$id]);
-    $company = $stmt->fetch();
-
-    if(!$company) json_err('Company not found', 404);
-
-    $stats = $db->prepare("SELECT (SELECT COUNT (*) FROM bookings WHERE company_id = ?) AS total_bookings,
-    (SELECT COUNT (*) FROM customers WHERE company_id = ?) AS total_customers,
-        (SELECT COUNT(*) FROM services WHERE company_id = ?) AS total_services,
-         (SELECT COUNT(*) FROM products WHERE company_id = ?) AS total_products,
-        (SELECT COALESCE(SUM(total), 0) FROM invoices WHERE company_id = ? AND status = 'paid') AS total_revenue");
-
-        $stats->execute([$id,$id,$id,$id,$id,$id]);
+        $stats = $db->prepare("
+            SELECT 
+                (SELECT COUNT(*) FROM bookings WHERE company_id = ?) AS total_bookings,
+                (SELECT COUNT(*) FROM customers WHERE company_id = ?) AS total_customers,
+                (SELECT COUNT(*) FROM services WHERE company_id = ?) AS total_services,
+                (SELECT COUNT(*) FROM products WHERE company_id = ?) AS total_products,
+                (SELECT COALESCE(SUM(total), 0) FROM invoices WHERE company_id = ? AND status = 'paid') AS total_revenue,
+                (SELECT COUNT(*) FROM company_user WHERE company_id = ?) AS total_staff
+        ");
+        $stats->execute([$id, $id, $id, $id, $id, $id]);
         $companyStats = $stats->fetch();
 
-        $staff = $db->prepare("SELECT
-        u.id, u.name,u.email_verified_at, r.name AS role, cu.created_at AS joined_at FROM company_user cu JOIN users u ON u.id = cu.user_id JOIN roles r ON r.id = cu.role_id WHERE cu.company_id = ? ORDER BY cu.created_at ASC");
+        $staff = $db->prepare("
+            SELECT 
+                u.id, u.name, u.email, u.email_verified_at,
+                r.name AS role,
+                cu.created_at AS joined_at
+            FROM company_user cu
+            JOIN users u ON u.id = cu.user_id
+            JOIN roles r ON r.id = cu.role_id
+            WHERE cu.company_id = ?
+            ORDER BY cu.created_at ASC
+        ");
         $staff->execute([$id]);
         $staffList = $staff->fetchAll();
 
-        $bookings = $db->prepare("SELECT   b.id, b.reference, b.booking_date, b.start_time, b.status,
+        $bookings = $db->prepare("
+            SELECT 
+                b.id, b.reference, b.booking_date, b.start_time, b.status,
                 b.total_price, b.needs_assistance,
                 cu.name AS customer_name,
                 s.name AS service_name
@@ -331,89 +326,115 @@ class SuperAdminController
             JOIN services s ON s.id = b.service_id
             WHERE b.company_id = ?
             ORDER BY b.created_at DESC
-            LIMIT 10");
-            $bookings->execute([$id]);
-            $recentBookings = $bookings->fetchAll();
+            LIMIT 10
+        ");
+        $bookings->execute([$id]);
+        $recentBookings = $bookings->fetchAll();
 
-            json_ok(['company' =>$company,
-            'stats' => $companyStats,
-            'staff' => $staffList,
-            'recent_bookings' => $recentBookings,]);
+        json_ok([
+            'company'         => $company,
+            'stats'           => $companyStats,
+            'staff'           => $staffList,
+            'recent_bookings' => $recentBookings,
+        ]);
+    }
 
-
-      }
-      public function userDetail (array $params): void{
+    public function userDetail(array $params): void
+    {
         $this->requireSuperAdmin();
         $db = Database::pdo();
 
         $id = (int) ($params['id'] ?? 0);
-        if(!$id) json_err('User ID required', 422);
+        if (!$id) json_err('User ID required', 422);
 
         $stmt = $db->prepare("
-        SELECT id,name,email,email_verified_at,created_at, updated_at 
-        FROM users
-        WHERE id = ? LIMIT 1
+            SELECT id, name, email, email_verified_at, status, created_at, updated_at
+            FROM users
+            WHERE id = ?
+            LIMIT 1
         ");
         $stmt->execute([$id]);
         $user = $stmt->fetch();
 
-        if(!$user) json_err ('User not found',404);
+        if (!$user) json_err('User not found', 404);
 
-        $companies = $db->prepare("SELECT c.id AS company_id, c.name AS company_name, c.slug AS company_slug, c.status AS company_status, r.name AS role, cu.created_at AS joined_at 
-        FROM company_user cu JOIN companies c ON c.id = cu.company_id JOIN roles r ON r.id = cu.role_id
-        WHERE cu.user_id = ?
-        ORDER BY cu.created_at ASC
+        $companies = $db->prepare("
+            SELECT 
+                c.id AS company_id,
+                c.name AS company_name,
+                c.slug AS company_slug,
+                c.status AS company_status,
+                r.name AS role,
+                cu.created_at AS joined_at
+            FROM company_user cu
+            JOIN companies c ON c.id = cu.company_id
+            JOIN roles r ON r.id = cu.role_id
+            WHERE cu.user_id = ?
+            ORDER BY cu.created_at ASC
         ");
-
-
         $companies->execute([$id]);
         $companiesList = $companies->fetchAll();
 
-        $customer = $db->prepare("SELECT id, company_id,name, email,phone,created_at FROM customers WHERE user_id=? LIMIT 1");
+        $customer = $db->prepare("
+            SELECT id, company_id, name, email, phone, created_at
+            FROM customers
+            WHERE user_id = ?
+            LIMIT 1
+        ");
         $customer->execute([$id]);
         $customerData = $customer->fetch();
 
-        $stats=[ 'total_bookings'=>0,
-        'total_spent'=>0,
+        $stats = [
+            'total_bookings' => 0,
+            'total_spent'    => 0,
         ];
 
-
-        if($customerData){
-            $stmt=$db->prepare("SELECT COUNT (*) AS total_bookings, COALESCE (SUM(total_price), 0) AS total_spent FROM bookings WHERE customer_id=?");
-
+        if ($customerData) {
+            $stmt = $db->prepare("
+                SELECT 
+                    COUNT(*) AS total_bookings,
+                    COALESCE(SUM(total_price), 0) AS total_spent
+                FROM bookings
+                WHERE customer_id = ?
+            ");
             $stmt->execute([$customerData['id']]);
             $stats = $stmt->fetch();
         }
 
         json_ok([
-            'user'=>  $user,
-            'companies'=>$companiesList,
-            'customer'=>$customerData,
-             'stats' => $stats,
+            'user'      => $user,
+            'companies' => $companiesList,
+            'customer'  => $customerData,
+            'stats'     => $stats,
         ]);
-      }
+    }
 
-      public function toggleUserStatus(array $params): void{
+    public function toggleUserStatus(array $params): void
+    {
         $this->requireSuperAdmin();
         $db = Database::pdo();
 
-        $id = (int) ($params['id'] ?? 0 );
-        if(!$id) json_err ('User ID required',422);
+        $id = (int) ($params['id'] ?? 0);
+        if (!$id) json_err('User ID required', 422);
+
         $input = input();
-        $status = $input ['status'] ?? '';
+        $status = $input['status'] ?? '';
         $reason = trim($input['reason'] ?? '');
 
-        if(!in_array($status,['active','blocked'], true)){
-            json_err('Invalid status. Use "active" or "blocked"',422);
+        if (!in_array($status, ['active', 'blocked'], true)) {
+            json_err('Invalid status. Use "active" or "blocked"', 422);
         }
 
         $currentUid = auth_user_id();
-        if($currentUid === $id && $status === 'blocked'){
+        if ($currentUid === $id && $status === 'blocked') {
             json_err('You cannot block yourself', 403);
         }
 
         $db->prepare("
-        UPDATE users SET status = ?, blocked_at = ?, blocked_reason = ? WHERE id=?")->execute([
+            UPDATE users 
+            SET status = ?, blocked_at = ?, blocked_reason = ?
+            WHERE id = ?
+        ")->execute([
             $status,
             $status === 'blocked' ? date('Y-m-d H:i:s') : null,
             $status === 'blocked' ? $reason : null,
@@ -421,39 +442,38 @@ class SuperAdminController
         ]);
 
         json_ok([
-            'message' => $status === 'blocked' ? 'User blocked': 'User activated',
-            'status' => $status,
+            'message' => $status === 'blocked' ? 'User blocked' : 'User activated',
+            'status'  => $status,
         ]);
+    }
 
-
-      }
-
-      public function deleteUser(array $params): void{
+    public function deleteUser(array $params): void
+    {
         $this->requireSuperAdmin();
-        $db =Database::pdo();
+        $db = Database::pdo();
 
         $id = (int) ($params['id'] ?? 0);
-        if(!$id) json_err('User ID required',422);
+        if (!$id) json_err('User ID required', 422);
 
         $currentUid = auth_user_id();
-        if($currentUid === $id){
-            json_err ('You cannot delete yourself',403);
+        if ($currentUid === $id) {
+            json_err('You cannot delete yourself', 403);
         }
 
-        try{
+        try {
             $db->beginTransaction();
 
-            $db->prepare("DELETE FROM company_user WHERE user_id = ?")->execute ([$id]);
-            $db->prepare("UPDATE customers SET user_id = NULL WHERE user_id = NULL WHERE user_id = ?")->execute([$id]);
-            $db->prepare("DELETE FROM users WHERE id =?")->execute([$id]);
+            $db->prepare("DELETE FROM company_user WHERE user_id = ?")->execute([$id]);
+            $db->prepare("UPDATE customers SET user_id = NULL WHERE user_id = ?")->execute([$id]);
+            $db->prepare("DELETE FROM users WHERE id = ?")->execute([$id]);
 
             $db->commit();
-            json_ok(['message'=> 'user deleted']);
-        }catch(\Throwable $e){
-            if($db->inTransaction()) $db->rollBack();
-            json_err('Delete failed: ' . $e->getMessage(),500);
+            json_ok(['message' => 'User deleted']);
+        } catch (\Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            json_err('Delete failed: ' . $e->getMessage(), 500);
         }
-      }
+    }
 
     public function allUsers(): void
     {
@@ -469,6 +489,7 @@ class SuperAdminController
             u.name,
             u.email,
             u.email_verified_at,
+            u.status,
             u.created_at,
             GROUP_CONCAT(DISTINCT r.name SEPARATOR ', ') AS roles,
             GROUP_CONCAT(DISTINCT c.name SEPARATOR ', ') AS companies
@@ -488,8 +509,7 @@ class SuperAdminController
 
         if ($role) {
             $where[] = "EXISTS(
-                SELECT 1
-                FROM company_user cu2
+                SELECT 1 FROM company_user cu2
                 JOIN roles r2 ON r2.id = cu2.role_id
                 WHERE cu2.user_id = u.id AND r2.name = ?
             )";
@@ -507,245 +527,281 @@ class SuperAdminController
         json_ok($stmt->fetchAll());
     }
 
-
-public function allBookings(): void{
-    $this->requireSuperAdmin();
-    $db = Database::pdo();
-    $search = $_GET ['search'] ?? '';
-    $status = $_GET['status'] ?? '';
-    $companyId = (int) ($_GET['company_id'] ?? 0);
-    $filter = $_GET ['filter'] ?? '';
-    $limit = min((int) ($_GET['limit'] ?? 100),500);
-    $offset = max((int) ($_GET['offset'] ?? 0),0);
-
-    $sql = "SELECT
-    b.id,
-    b.reference,
-    b.booking_date,
-    b.start_time,
-    b.end_time,
-    b.status,
-    b.total_price,
-    b.needs_assistance,
-    b.created_at,
-    c.id AS company_id,
-    c.name AS company_name,
-    cu.email AS customer_name,
-    cu.phone AS customer_phone,
-    s.name AS service_name
-    FROM bookings b
-    JOIN companies c ON c.id = b.company_id
-    JOIN customers cu ON cu.id= b.customer_id
-    JOIN services s ON s.id = b.service_id
-    ";
-    $params =[];
-    $where = [];
-    if($search){
-        $where[] = "(b.reference LIKE ? OR cu.name LIKE ? OR cu.email LIKE ? OR c.name LIKE ?)";
-        $params[] = "%$search%";
-        $params[] = "%$search%";
-        $params[] = "%$search%";
-        $params[] = "%$search%";
-    }
-
-    if($status){
-        $where[] = "b.status = ?";
-        $params[] = $status;
-    }
-    if($companyId){
-        $where[] = "b.company_id = ?";
-        $params[] = $companyId;
-    }
-
-    if($filter === 'today'){
-        $where[] = "b.booking_date = CURDATE()";
-    }
-    elseif($filter === 'month'){
-        $where[] = "MONTH(b.booking_date) = MONTH(CURDATE()) AND YEAR(b.booking_date) = YEAR(CURDATE())";
-    }
-    elseif($filter === 'priority'){
-        $where[] = "b.needs_assistance = 1 AND b.status != 'completed'";
-    }
-    if($where){
-        $sql .= " WHERE " . implode(' AND ', $where);
-    }
-
-    $sql .= " ORDER BY b.created_at DESC LIMIT $limit OFFSET $offset";
-    $stmt = $db->prepare($sql);
-    $stmt->execute($params);
-    $bookings = $stmt->fetchAll();
-
-    $countSql = "SELECT COUNT(*) FROM bookings b
-    JOIN companies c ON c.id = b.company_id
-    JOIN customers cu ON cu.id = b.customer_id";
-
-    if($where){
-        $countSql .= " WHERE " . implode(' AND ', $where);
-    }
-    $countStmt = $db->prepare($countSql);
-    $countStmt->execute($params);
-    $total = (int) $countStmt->fetchColumn();
-
-    json_ok(['bookings' => $bookings,
-    'total' => $total,
-    'limit' =>$limit,
-    'offset' =>$offset,
-    ]);
-}
-
-
-    public function monthlyReport(): void{
-    $this->requireSuperAdmin();
-    $db =Database::pdo();
-    $revenue = $db->query("SELECT DATE_FORMAT(created_at, '%Y-%m') AS month,
-    COUNT(*) AS invoices_count,
-    SUM(total) AS revenue FROM invoices WHERE status = 'paid'
-    AND created_at >=DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
-    GROUP BY DATE_FORMAT (created_at, '%Y-%m')
-    ORDER BY month ASC
-    ")->fetchAll();
-
-    $bookings=$db->query("SELECT DATE_FORMAT(booking_date, '%Y-%m') AS month,
-    COUNT(*) AS bookings_count FROM bookings WHERE booking_date >= DATE_SUB(CURDATE(),INTERVAL 12 MONTH GROUP BY DATE_FORMAT (booking_date,'%Y-%m')
-    ORDER BY month ASC
-    ")->fetchAll();
-    
-
-    $topServices = $db->query("SELECT s.name AS service_name, c.name AS company_name, COUNT(b.id) AS bookings_count, COALESCE(SUM(b.total_price),0) AS revenue FROM services s JOIN companies c ON c.id = s.company_id
-    LEFT JOIN bookings b ON b.service_id = s.id
-    GROUP BY s.id
-    ORDER BY bookings_count DESC, revenue DESC LIMIT 10")->fetchAll();
-
-
-    $byCompany = $db->query("
-    SELECT c.id,
-    c.name,
-    COUNT(DISTINCT b.id) AS bookings_count,
-    COALESCE (SUM(i.total),0) AS revenue
-    FROM companies c
-    LEFT JOIN bookings b ON b.company_id = c.id
-    LEFT JOIN invoices i ON i.company_id = c.id AND i.status = 'paid'
-    GROUP BY c.id
-    ORDER BY revenue DESC
-
-    ")->fetchAll();
-
-
-    $statusBreakdown = $db->query(
-        "SELECT status, COUNT(*) AS count
-        FROM bookings
-        GROUP BY status"
-    )->fetchAll(\PDO::FETCH_KEY_PAIR);
-
-    json_ok([
-        'revenue' => $revenue,
-        'bookings' => $bookings,
-        'top_services' => $topServices,
-        'revenue_by_company' =>$byCompany,
-        'status_breakdown'=> $statusBreakdown,
-    ]);
-
-
-    }
-
-    public function contactMessages(): void{
+    public function allBookings(): void
+    {
         $this->requireSuperAdmin();
-        $db =Database::pdo();
+        $db = Database::pdo();
+
+        $search = $_GET['search'] ?? '';
+        $status = $_GET['status'] ?? '';
+        $companyId = (int) ($_GET['company_id'] ?? 0);
+        $filter = $_GET['filter'] ?? '';
+        $limit = min((int) ($_GET['limit'] ?? 100), 500);
+        $offset = max((int) ($_GET['offset'] ?? 0), 0);
+
+        $sql = "SELECT
+            b.id,
+            b.reference,
+            b.booking_date,
+            b.start_time,
+            b.end_time,
+            b.status,
+            b.total_price,
+            b.needs_assistance,
+            b.created_at,
+            c.id AS company_id,
+            c.name AS company_name,
+            cu.name AS customer_name,
+            cu.email AS customer_email,
+            cu.phone AS customer_phone,
+            s.name AS service_name
+        FROM bookings b
+        JOIN companies c ON c.id = b.company_id
+        JOIN customers cu ON cu.id = b.customer_id
+        JOIN services s ON s.id = b.service_id";
+
+        $params = [];
+        $where = [];
+
+        if ($search) {
+            $where[] = "(b.reference LIKE ? OR cu.name LIKE ? OR cu.email LIKE ? OR c.name LIKE ?)";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+        }
+
+        if ($status) {
+            $where[] = "b.status = ?";
+            $params[] = $status;
+        }
+
+        if ($companyId) {
+            $where[] = "b.company_id = ?";
+            $params[] = $companyId;
+        }
+
+        if ($filter === 'today') {
+            $where[] = "b.booking_date = CURDATE()";
+        } elseif ($filter === 'month') {
+            $where[] = "MONTH(b.booking_date) = MONTH(CURDATE()) AND YEAR(b.booking_date) = YEAR(CURDATE())";
+        } elseif ($filter === 'priority') {
+            $where[] = "b.needs_assistance = 1 AND b.status != 'completed'";
+        }
+
+        if ($where) {
+            $sql .= " WHERE " . implode(' AND ', $where);
+        }
+
+        $sql .= " ORDER BY b.created_at DESC LIMIT $limit OFFSET $offset";
+
+        $stmt = $db->prepare($sql);
+        $stmt->execute($params);
+        $bookings = $stmt->fetchAll();
+
+        $countSql = "SELECT COUNT(*) FROM bookings b
+                     JOIN companies c ON c.id = b.company_id
+                     JOIN customers cu ON cu.id = b.customer_id";
+        if ($where) {
+            $countSql .= " WHERE " . implode(' AND ', $where);
+        }
+        $countStmt = $db->prepare($countSql);
+        $countStmt->execute($params);
+        $total = (int) $countStmt->fetchColumn();
+
+        json_ok([
+            'bookings' => $bookings,
+            'total'    => $total,
+            'limit'    => $limit,
+            'offset'   => $offset,
+        ]);
+    }
+
+    public function monthlyReport(): void
+    {
+        $this->requireSuperAdmin();
+        $db = Database::pdo();
+
+        $revenue = $db->query("
+            SELECT 
+                DATE_FORMAT(created_at, '%Y-%m') AS month,
+                COUNT(*) AS invoices_count,
+                SUM(total) AS revenue
+            FROM invoices
+            WHERE status = 'paid'
+              AND created_at >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
+            GROUP BY DATE_FORMAT(created_at, '%Y-%m')
+            ORDER BY month ASC
+        ")->fetchAll();
+
+        $bookings = $db->query("
+            SELECT 
+                DATE_FORMAT(booking_date, '%Y-%m') AS month,
+                COUNT(*) AS bookings_count
+            FROM bookings
+            WHERE booking_date >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
+            GROUP BY DATE_FORMAT(booking_date, '%Y-%m')
+            ORDER BY month ASC
+        ")->fetchAll();
+
+        $topServices = $db->query("
+            SELECT 
+                s.name AS service_name,
+                c.name AS company_name,
+                COUNT(b.id) AS bookings_count,
+                COALESCE(SUM(b.total_price), 0) AS revenue
+            FROM services s
+            JOIN companies c ON c.id = s.company_id
+            LEFT JOIN bookings b ON b.service_id = s.id
+            GROUP BY s.id
+            ORDER BY bookings_count DESC, revenue DESC
+            LIMIT 10
+        ")->fetchAll();
+
+        $byCompany = $db->query("
+            SELECT 
+                c.id,
+                c.name,
+                COUNT(DISTINCT b.id) AS bookings_count,
+                COALESCE(SUM(i.total), 0) AS revenue
+            FROM companies c
+            LEFT JOIN bookings b ON b.company_id = c.id
+            LEFT JOIN invoices i ON i.company_id = c.id AND i.status = 'paid'
+            GROUP BY c.id
+            ORDER BY revenue DESC
+        ")->fetchAll();
+
+        $statusBreakdown = $db->query("
+            SELECT status, COUNT(*) AS count
+            FROM bookings
+            GROUP BY status
+        ")->fetchAll(\PDO::FETCH_KEY_PAIR);
+
+        json_ok([
+            'revenue'            => $revenue,
+            'bookings'           => $bookings,
+            'top_services'       => $topServices,
+            'revenue_by_company' => $byCompany,
+            'status_breakdown'   => $statusBreakdown,
+        ]);
+    }
+
+    public function contactMessages(): void
+    {
+        $this->requireSuperAdmin();
+        $db = Database::pdo();
 
         $status = $_GET['status'] ?? '';
-        $search = $_GET['search'] ??'';
+        $search = $_GET['search'] ?? '';
 
         $sql = "SELECT * FROM contact_messages";
         $params = [];
         $where = [];
-        if($search){
-            $where[]= "(name LIKE ? OR email LIKE ? OR subject LIKE ? OR message LIKE ?)";
 
-            $params[]= "%$search%";
-            $params[]= "%$search%";
-            $params[]= "%$search%";
-            $params[]= "%$search%";
-
-        }
-        if($where){
-            $sql .=" WHERE " .implode ('AND', $where);
+        if ($status) {
+            $where[] = "status = ?";
+            $params[] = $status;
         }
 
-        $sql .= " ORDER BY created_at DESC LIMIT 200 ";
+        if ($search) {
+            $where[] = "(name LIKE ? OR email LIKE ? OR subject LIKE ? OR message LIKE ?)";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+        }
 
-        $stmt=$db->prepare($sql);
+        if ($where) {
+            $sql .= " WHERE " . implode(' AND ', $where);
+        }
+
+        $sql .= " ORDER BY created_at DESC LIMIT 200";
+
+        $stmt = $db->prepare($sql);
         $stmt->execute($params);
         json_ok($stmt->fetchAll());
-
     }
 
-    public function markMessageRead(array $params): void{
-        $this->requireSuperAdmin();
-        $db=Database::pdo();
-
-        $id =(int) ($params['id'] ?? 0);
-        if(!$id) json_err ('Message ID required', 422);
-        $db->prepare("UPDATE contact_messages SET status = 'read' , read_at = NOW () WHERE id=?")->execute([$id]);
-
-        json_ok(['message' =>'Message marked as read']);
-    }
-
-
-    public function deleteMessage (array $params): void{
+    public function markMessageRead(array $params): void
+    {
         $this->requireSuperAdmin();
         $db = Database::pdo();
 
         $id = (int) ($params['id'] ?? 0);
-        if(!$id) json_err ('Message ID required', 422);
+        if (!$id) json_err('Message ID required', 422);
 
-        $db->prepare("DELETE FROM contact_messages WHERE id=?")->execute([$id]);
+        $db->prepare("UPDATE contact_messages SET status = 'read', read_at = NOW() WHERE id = ?")
+           ->execute([$id]);
+
+        json_ok(['message' => 'Message marked as read']);
+    }
+
+    public function deleteMessage(array $params): void
+    {
+        $this->requireSuperAdmin();
+        $db = Database::pdo();
+
+        $id = (int) ($params['id'] ?? 0);
+        if (!$id) json_err('Message ID required', 422);
+
+        $db->prepare("DELETE FROM contact_messages WHERE id = ?")->execute([$id]);
 
         json_ok(['message' => 'Message deleted']);
     }
 
-    public function toggleCompanyStatus(array $params):void {
+    public function toggleCompanyStatus(array $params): void
+    {
         $this->requireSuperAdmin();
         $db = Database::pdo();
 
         $id = (int) ($params['id'] ?? 0);
-        if(!$id) json_err('Company ID is required', 422);
+        if (!$id) json_err('Company ID is required', 422);
 
         $input = input();
-        $status = $input['status'] ?? null;
+        $status = $input['status'] ?? '';
         $reason = trim($input['reason'] ?? '');
 
-        if(!in_array($status,['active','blocked'])){
-            json_err ('Invalid status.Use "active" or "blocked"', 422);
+        if (!in_array($status, ['active', 'blocked'], true)) {
+            json_err('Invalid status. Use "active" or "blocked"', 422);
         }
-        if($status === 'blocked'){
-            $db->prepare("UPDATE companies SET status = ?,blocked_at  =NOW(),blocked_reason = ? WHERE id=?")->execute([$status,$id]);
+
+        if ($status === 'blocked') {
+            $db->prepare("
+                UPDATE companies 
+                SET status = ?, blocked_at = NOW(), blocked_reason = ?
+                WHERE id = ?
+            ")->execute([$status, $reason, $id]);
         } else {
-        $db->prepare("UPDATE companies SET status = ?, blocked_at = NULL, blocked_reason = NULL WHERE id = ?")
-       ->execute([$status, $id]);
-    }
+            $db->prepare("
+                UPDATE companies 
+                SET status = ?, blocked_at = NULL, blocked_reason = NULL
+                WHERE id = ?
+            ")->execute([$status, $id]);
+        }
+
         json_ok([
-            'message' => $status === 'blocked' ? 'Company blocked': 'Company activated', 'status' => $status,
-
+            'message' => $status === 'blocked' ? 'Company blocked' : 'Company activated',
+            'status'  => $status,
         ]);
-
     }
-    public function deleteCompany(array $params): void{
+
+    public function deleteCompany(array $params): void
+    {
         $this->requireSuperAdmin();
         $db = Database::pdo();
 
         $id = (int) ($params['id'] ?? 0);
-        if(!$id) json_err ('Company ID required', 422);
+        if (!$id) json_err('Company ID required', 422);
 
-        $stmt = $db->prepare("SELECT slug FROM companies WHERE id=? LIMIT 1");
+        $stmt = $db->prepare("SELECT slug FROM companies WHERE id = ? LIMIT 1");
         $stmt->execute([$id]);
         $slug = $stmt->fetchColumn();
 
-        if($slug === 'platform-admin'){
-            json_err ('Cannot delete the platform admin company',403);
-
+        if ($slug === 'platform-admin') {
+            json_err('Cannot delete the platform admin company', 403);
         }
 
-        try{
+        try {
             $db->beginTransaction();
 
             $db->prepare("DELETE FROM bookings WHERE company_id = ?")->execute([$id]);
@@ -758,10 +814,10 @@ public function allBookings(): void{
             $db->prepare("DELETE FROM companies WHERE id = ?")->execute([$id]);
 
             $db->commit();
-            json_ok(['message' =>'Company deleted']);
-        }catch(\Throwable $e){
-            if($db->inTransaction()) $db->rollBack();
-            json_err('Delete failed:' .$e->getMessage(),500);
+            json_ok(['message' => 'Company deleted']);
+        } catch (\Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            json_err('Delete failed: ' . $e->getMessage(), 500);
         }
     }
 }
