@@ -63,6 +63,9 @@ import SuperAdminUserDetail from './pages/admin/superadmin/UserDetail';
 import SuperAdminBookings from './pages/admin/superadmin/Bookings';
 import SuperAdminReports from './pages/admin/superadmin/Reports';
 import SuperAdminContactMessages from './pages/admin/superadmin/ContactMessages';
+
+
+
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
 
@@ -145,6 +148,10 @@ export default function App() {
             <Route
               path="/admin/team"
               element={<ProtectedPage allowed={['owner', 'admin']}><Team /></ProtectedPage>}
+            />
+              <Route
+              path="/admin/settings"
+              element={<ProtectedPage allowed={['owner', 'admin']}><Settings /></ProtectedPage>}
             />
             <Route
               path="/admin/working-hours"

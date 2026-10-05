@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar as BigCalendar, dateFnsLocalizer } from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
@@ -6,7 +6,6 @@ import { enGB } from 'date-fns/locale';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
-import { useEffect } from 'react';
 
 const locales = {
   'en-GB': enGB,
@@ -28,7 +27,11 @@ export default function Calendar() {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [googleConnected, setGoogleConnected] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(true);
+  const [googleMessage, setGoogleMessage] = useState('');
 
+  // Load calendar events
   useEffect(() => {
     if (!activeCompany) return;
 
@@ -59,6 +62,39 @@ export default function Calendar() {
       .finally(() => setLoading(false));
   }, [activeCompany, currentDate]);
 
+  // Load Google Calendar status
+  useEffect(() => {
+    if (!activeCompany) return;
+
+    setGoogleLoading(true);
+    api
+      .get('/google/status', { params: { company_id: activeCompany.id } })
+      .then((r) => setGoogleConnected(r.data.data?.connected || false))
+      .catch((err) => console.error('Google status error:', err))
+      .finally(() => setGoogleLoading(false));
+  }, [activeCompany]);
+
+  // Check URL for Google callback
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const googleStatus = params.get('google');
+
+    if (googleStatus === 'success') {
+      setGoogleMessage('Google Calendar connected successfully!');
+      setTimeout(() => setGoogleMessage(''), 5000);
+      window.history.replaceState({}, '', window.location.pathname);
+      // Reload status
+      if (activeCompany) {
+        api.get('/google/status', { params: { company_id: activeCompany.id } })
+          .then((r) => setGoogleConnected(r.data.data?.connected || false));
+      }
+    } else if (googleStatus === 'error') {
+      setGoogleMessage('Failed to connect Google Calendar. Try again.');
+      setTimeout(() => setGoogleMessage(''), 5000);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [activeCompany]);
+
   const handleSelectEvent = (event) => {
     setSelectedEvent(event);
     setShowModal(true);
@@ -67,6 +103,23 @@ export default function Calendar() {
   const handleSelectSlot = ({ start }) => {
     const dateStr = start.toISOString().split('T')[0];
     navigate(`/admin/bookings?date=${dateStr}`);
+  };
+
+  const handleGoogleConnect = () => {
+    window.location.href = `http://booking-api.loc/api/google/connect?company_id=${activeCompany.id}`;
+  };
+
+  const handleGoogleDisconnect = async () => {
+    if (!confirm('Disconnect Google Calendar? Bookings will not be synced anymore.')) return;
+
+    try {
+      await api.post('/google/disconnect', { company_id: activeCompany.id });
+      setGoogleConnected(false);
+      setGoogleMessage('Google Calendar disconnected');
+      setTimeout(() => setGoogleMessage(''), 3000);
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to disconnect');
+    }
   };
 
   const eventStyleGetter = (event) => {
@@ -129,6 +182,67 @@ export default function Calendar() {
           </div>
         </div>
       </div>
+
+      {/* Google Calendar sync banner */}
+      <div
+        className={`rounded-xl border p-4 flex items-center justify-between flex-wrap gap-3 transition ${
+          googleConnected
+            ? 'bg-emerald-50 border-emerald-200'
+            : 'bg-white border-slate-200'
+        }`}
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 via-green-500 to-yellow-500 rounded-lg flex items-center justify-center flex-shrink-0">
+            <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z" />
+            </svg>
+          </div>
+          <div>
+            <div className="text-sm font-semibold text-slate-900">
+              Google Calendar
+            </div>
+            <div className="text-xs text-slate-500">
+              {googleLoading ? (
+                'Checking...'
+              ) : googleConnected ? (
+                <span className="text-emerald-600 font-medium">
+                  ✓ Connected — Bookings sync automatically
+                </span>
+              ) : (
+                'Connect to sync bookings automatically'
+              )}
+            </div>
+          </div>
+        </div>
+
+        {!googleLoading && (
+          <button
+            onClick={googleConnected ? handleGoogleDisconnect : handleGoogleConnect}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+              googleConnected
+                ? 'bg-red-600 text-white hover:bg-red-700'
+                : 'bg-blue-600 text-white hover:bg-blue-700'
+            }`}
+          >
+            {googleConnected ? 'Disconnect' : 'Connect'}
+          </button>
+        )}
+      </div>
+
+      {/* Success/Error message */}
+      {googleMessage && (
+        <div
+          className={`p-3 rounded-lg text-sm ${
+            googleMessage.includes('success')
+              ? 'bg-emerald-50 border border-emerald-200 text-emerald-700'
+              : googleMessage.includes('disconnected')
+              ? 'bg-slate-50 border border-slate-200 text-slate-700'
+              : 'bg-red-50 border border-red-200 text-red-700'
+          }`}
+        >
+          {googleMessage}
+        </div>
+      )}
 
       {/* Calendar */}
       <div className="bg-white rounded-xl border border-slate-200 p-5 calendar-wrapper">
