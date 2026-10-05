@@ -49,15 +49,33 @@ export default function WorkingHours() {
     load();
   }, [activeCompany]);
 
-  const updateDay = (dayValue, field, value) => {
-    setHours((prev) =>
-      prev.map((h) =>
-        h.day_of_week === dayValue ? { ...h, [field]: value } : h
-      )
-    );
-    setSaved(false);
-  };
+const updateDay = (dayValue, field, value) => {
+  setHours((prev) =>
+    prev.map((h) => {
+      if (h.day_of_week !== dayValue) return h;
 
+      const updated = { ...h, [field]: value };
+
+      if (!updated.is_closed) {
+        const openTime = updated.open_time;
+        const closeTime = updated.close_time;
+
+        if (openTime && closeTime && closeTime <= openTime) {
+          if (field === 'open_time') {
+            const [h1, m1] = openTime.split(':').map(Number);
+            const newCloseH = Math.min(h1 + 1, 23);
+            updated.close_time = `${String(newCloseH).padStart(2, '0')}:${String(m1).padStart(2, '0')}`;
+          } else if (field === 'close_time') {
+            return h; 
+          }
+        }
+      }
+
+      return updated;
+    })
+  );
+  setSaved(false);
+};
   const toggleClosed = (dayValue) => {
     setHours((prev) =>
       prev.map((h) =>

@@ -20,7 +20,7 @@ use App\Controllers\ReviewController;
 use App\Controllers\InvoiceController;
 use App\Controllers\ContactController;
 use App\Controllers\SuperAdminController;
-
+use App\Controllers\GoogleCalendarController;
 
 Router::get('/api/health', function() {
     return [
@@ -174,3 +174,8 @@ Router::get('/api/superadmin/reports',              [SuperAdminController::class
 Router::get('/api/superadmin/contact-messages',     [SuperAdminController::class, 'contactMessages']);
 Router::put('/api/superadmin/contact-messages/{id}/read', [SuperAdminController::class, 'markMessageRead']);
 Router::delete('/api/superadmin/contact-messages/{id}',   [SuperAdminController::class, 'deleteMessage']);
+
+Router::get('/api/google/connect', [GoogleCalendarController::class,'connect']);
+Router::get('/api/google/callback', [GoogleCalendarController::class, 'callback']);
+Router::get('/api/google/status', [GoogleCalendarController::class, 'status']);
+Router::post('/api/google/disconnect', [GoogleCalendarController::class, 'disconnect']);
