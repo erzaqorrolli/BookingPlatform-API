@@ -16,10 +16,11 @@ export const getCookie = (name) => {
 };
 
 const api = axios.create({
-  baseURL: 'http://booking-api.loc/api',
+baseURL: `${import.meta.env.VITE_API_URL}/api`,
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
+    'ngrok-skip-browser-warning': 'true',
   },
 });
 

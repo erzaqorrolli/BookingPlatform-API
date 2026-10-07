@@ -8,47 +8,54 @@ use App\Config\Database;
 
 class GoogleCalendarController
 {
-    /**
-     * Start OAuth flow - redirect to Google.
-     */
     public function connect(): void
-    {
-        $uid = auth_user_id();
-        if (!$uid) json_err('Unauthorized', 401);
+{
+    // Provo token nga query parameter (për redirect nga shfletuesi)
+    $token = $_GET['token'] ?? '';
+    $uid = null;
 
-        $companyId = (int) ($_GET['company_id'] ?? 0);
-        if (!$companyId) json_err('Company ID required', 422);
-
-        // Verify user belongs to company with correct role
-        $db = Database::pdo();
-        $stmt = $db->prepare("
-            SELECT r.name FROM company_user cu
-            JOIN roles r ON r.id = cu.role_id
-            WHERE cu.user_id = ? AND cu.company_id = ?
-            LIMIT 1
-        ");
-        $stmt->execute([$uid, $companyId]);
-        $role = $stmt->fetchColumn();
-
-        if (!in_array($role, ['owner', 'admin'], true)) {
-            json_err('Only owner or admin can connect Google Calendar', 403);
-        }
-
-        try {
-            $service = new GoogleCalendarService();
-            $authUrl = $service->getAuthUrl($uid, $companyId);
-
-            header('Location: ' . $authUrl);
-            exit;
-        } catch (\Throwable $e) {
-            error_log('Google connect failed: ' . $e->getMessage());
-            json_err('Failed to start Google auth: ' . $e->getMessage(), 500);
-        }
+    if ($token) {
+        $payload = jwt_decode($token);
+        $uid = $payload['uid'] ?? null;
     }
 
-    /**
-     * Handle OAuth callback from Google.
-     */
+    if (!$uid) {
+        $uid = auth_user_id();
+    }
+
+    if (!$uid) {
+        json_err('Unauthorized', 401);
+    }
+
+    $companyId = (int) ($_GET['company_id'] ?? 0);
+    if (!$companyId) json_err('Company ID required', 422);
+
+    $db = Database::pdo();
+    $stmt = $db->prepare("
+        SELECT r.name FROM company_user cu
+        JOIN roles r ON r.id = cu.role_id
+        WHERE cu.user_id = ? AND cu.company_id = ?
+        LIMIT 1
+    ");
+    $stmt->execute([$uid, $companyId]);
+    $role = $stmt->fetchColumn();
+
+    if (!in_array($role, ['owner', 'admin'], true)) {
+        json_err('Only owner or admin can connect Google Calendar', 403);
+    }
+
+    try {
+        $service = new GoogleCalendarService();
+        $authUrl = $service->getAuthUrl((int) $uid, $companyId);
+
+        header('Location: ' . $authUrl);
+        exit;
+    } catch (\Throwable $e) {
+        error_log('Google connect failed: ' . $e->getMessage());
+        json_err('Failed to start Google auth: ' . $e->getMessage(), 500);
+    }
+}
+    
     public function callback(): void
     {
         $code = $_GET['code'] ?? '';
@@ -90,9 +97,7 @@ class GoogleCalendarController
         }
     }
 
-    /**
-     * Check if Google Calendar is connected.
-     */
+   
     public function status(): void
     {
         $uid = auth_user_id();
@@ -109,9 +114,7 @@ class GoogleCalendarController
         ]);
     }
 
-    /**
-     * Disconnect Google Calendar.
-     */
+   
     public function disconnect(): void
     {
         $uid = auth_user_id();

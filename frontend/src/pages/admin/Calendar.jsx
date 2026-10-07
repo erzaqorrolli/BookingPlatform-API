@@ -106,7 +106,8 @@ export default function Calendar() {
   };
 
   const handleGoogleConnect = () => {
-    window.location.href = `http://booking-api.loc/api/google/connect?company_id=${activeCompany.id}`;
+    const token = localStorage.getItem('auth_token');
+    window.location.href = `${import.meta.env.VITE_API_URL}/api/google/connect?company_id=${activeCompany.id}&token=${encodeURIComponent(token)}`;
   };
 
   const handleGoogleDisconnect = async () => {

@@ -15,4 +15,13 @@ export default defineConfig({
       '@fullcalendar/interaction',
     ],
   },
+  server: {
+    allowedHosts: [
+      '.ngrok-free.app',
+      '.ngrok.io',
+      '.ngrok.app',
+      '.lvh.me',
+      'localhost',
+    ],
+  },
 })
