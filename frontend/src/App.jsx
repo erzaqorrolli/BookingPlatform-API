@@ -65,6 +65,7 @@ import SuperAdminReports from './pages/admin/superadmin/Reports';
 import SuperAdminContactMessages from './pages/admin/superadmin/ContactMessages';
 import SuperAdminCompanyDetail from './pages/admin/superadmin/CompanyDetail';
 import StaffHolidays from './pages/staff/StaffHolidays';
+import SuperAdminAuditLogs from './pages/admin/superadmin/AuditLogs';
 
 
 function ProtectedRoute({ children }) {
@@ -167,6 +168,10 @@ export default function App() {
               path="/admin/discounts"
               element={<ProtectedPage allowed={['owner', 'admin', 'manager']}><Discounts /></ProtectedPage>}
             />
+            <Route
+  path="/admin/superadmin/audit-logs"
+  element={<ProtectedPage allowed={['superadmin']}><SuperAdminAuditLogs /></ProtectedPage>}
+/>
             <Route
   path="/staff/holidays"
   element={
