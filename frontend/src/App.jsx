@@ -66,6 +66,7 @@ import SuperAdminContactMessages from './pages/admin/superadmin/ContactMessages'
 import SuperAdminCompanyDetail from './pages/admin/superadmin/CompanyDetail';
 import StaffHolidays from './pages/staff/StaffHolidays';
 
+
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
 
@@ -229,7 +230,7 @@ export default function App() {
         path="/admin/superadmin/contact-messages"
         element={<ProtectedPage allowed={['superadmin']}><SuperAdminContactMessages /></ProtectedPage>}
       />
-      <Route path="/admin/customers/:id" element={<CustomerDetail />} />
+      <Route path="/admin/customers/:id" element={<ProtectedPage allowed={['owner']}><CustomerDetail /></ProtectedPage>} />
 
     <Route path="/admin/invoices/:id" element={<InvoiceView />} />
             <Route
