@@ -232,7 +232,7 @@ export default function App() {
       />
       <Route path="/admin/customers/:id" element={<ProtectedPage allowed={['owner']}><CustomerDetail /></ProtectedPage>} />
 
-    <Route path="/admin/invoices/:id" element={<InvoiceView />} />
+    <Route path="/admin/invoices/:id" element={<ProtectedPage allowed={['owner']}><InvoiceView /></ProtectedPage>} />
             <Route
               path="/portal"
               element={

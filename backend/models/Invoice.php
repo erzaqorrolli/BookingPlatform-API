@@ -1,13 +1,13 @@
 <?php
 
-declare(strict_types=1);    
+declare(strict_types=1);
 
 namespace App\Models;
 
 use App\Config\Database;
 
-class Invoice{
-
+class Invoice
+{
     public ?int $id = null;
     public ?string $reference = null;
     public int $company_id = 0;
@@ -25,6 +25,22 @@ class Invoice{
     public ?string $notes = null;
     public ?string $created_at = null;
     public ?string $updated_at = null;
+    public ?string $sent_at = null;
+    public ?string $viewed_at = null;
+    public ?string $payment_token = null;
+
+    // Fusha shtesë nga JOIN
+    public ?string $customer_name = null;
+    public ?string $customer_email = null;
+    public ?string $customer_phone = null;
+    public ?string $service_name = null;
+    public ?string $booking_date = null;
+    public ?string $start_time = null;
+    public ?string $end_time = null;
+    public ?string $company_name = null;
+    public ?string $company_email = null;
+    public ?string $company_phone = null;
+    public ?string $company_address = null;
 
     public static function fromRow(array $row): self
     {
@@ -46,39 +62,54 @@ class Invoice{
         $invoice->notes = $row['notes'] ?? null;
         $invoice->created_at = $row['created_at'] ?? null;
         $invoice->updated_at = $row['updated_at'] ?? null;
+        $invoice->sent_at = $row['sent_at'] ?? null;
+        $invoice->viewed_at = $row['viewed_at'] ?? null;
+        $invoice->payment_token = $row['payment_token'] ?? null;
+
+        $invoice->customer_name = $row['customer_name'] ?? null;
+        $invoice->customer_email = $row['customer_email'] ?? null;
+        $invoice->customer_phone = $row['customer_phone'] ?? null;
+        $invoice->service_name = $row['service_name'] ?? null;
+        $invoice->booking_date = $row['booking_date'] ?? null;
+        $invoice->start_time = $row['start_time'] ?? null;
+        $invoice->end_time = $row['end_time'] ?? null;
+        $invoice->company_name = $row['company_name'] ?? null;
+        $invoice->company_email = $row['company_email'] ?? null;
+        $invoice->company_phone = $row['company_phone'] ?? null;
+        $invoice->company_address = $row['company_address'] ?? null;
 
         return $invoice;
     }
 
-   public static function findById(int $id): ?self
-{
-    $db = Database::pdo();
-    $stmt = $db->prepare("
-        SELECT 
-            i.*,
-            c.name AS customer_name,
-            c.email AS customer_email,
-            c.phone AS customer_phone,
-            b.booking_date,
-            b.start_time,
-            b.end_time,
-            s.name AS service_name,
-            co.name AS company_name,
-            co.email AS company_email,
-            co.phone AS company_phone,
-            co.address AS company_address
-        FROM invoices i
-        LEFT JOIN customers c ON c.id = i.customer_id
-        LEFT JOIN bookings b ON b.id = i.booking_id
-        LEFT JOIN services s ON s.id = b.service_id
-        LEFT JOIN companies co ON co.id = i.company_id
-        WHERE i.id = ?
-        LIMIT 1
-    ");
-    $stmt->execute([$id]);
-    $row = $stmt->fetch();
-    return $row ? self::fromRow($row) : null;
-}
+    public static function findById(int $id): ?self
+    {
+        $db = Database::pdo();
+        $stmt = $db->prepare("
+            SELECT 
+                i.*,
+                c.name AS customer_name,
+                c.email AS customer_email,
+                c.phone AS customer_phone,
+                b.booking_date,
+                b.start_time,
+                b.end_time,
+                s.name AS service_name,
+                co.name AS company_name,
+                co.email AS company_email,
+                co.phone AS company_phone,
+                co.address AS company_address
+            FROM invoices i
+            LEFT JOIN customers c ON c.id = i.customer_id
+            LEFT JOIN bookings b ON b.id = i.booking_id
+            LEFT JOIN services s ON s.id = b.service_id
+            LEFT JOIN companies co ON co.id = i.company_id
+            WHERE i.id = ?
+            LIMIT 1
+        ");
+        $stmt->execute([$id]);
+        $row = $stmt->fetch();
+        return $row ? self::fromRow($row) : null;
+    }
 
     public static function findByBooking(int $bookingId): ?self
     {
@@ -94,6 +125,15 @@ class Invoice{
         $db = Database::pdo();
         $stmt = $db->prepare("SELECT * FROM invoices WHERE reference = ? LIMIT 1");
         $stmt->execute([$reference]);
+        $row = $stmt->fetch();
+        return $row ? self::fromRow($row) : null;
+    }
+
+    public static function findByToken(string $token): ?self
+    {
+        $db = Database::pdo();
+        $stmt = $db->prepare("SELECT * FROM invoices WHERE payment_token = ? LIMIT 1");
+        $stmt->execute([$token]);
         $row = $stmt->fetch();
         return $row ? self::fromRow($row) : null;
     }
@@ -226,14 +266,10 @@ class Invoice{
 
     public function updateStatus(string $status): bool
     {
-        if ($this->id === null) {
-            return false;
-        }
+        if ($this->id === null) return false;
 
         $allowed = ['draft', 'sent', 'paid', 'cancelled'];
-        if (!in_array($status, $allowed, true)) {
-            return false;
-        }
+        if (!in_array($status, $allowed, true)) return false;
 
         $db = Database::pdo();
 
@@ -242,15 +278,40 @@ class Invoice{
             return $stmt->execute([$status, $this->id]);
         }
 
+        if ($status === 'sent') {
+            return $this->markAsSent();
+        }
+
         $stmt = $db->prepare("UPDATE invoices SET status = ? WHERE id = ?");
         return $stmt->execute([$status, $this->id]);
     }
 
+    public function markAsSent(): bool
+    {
+        if ($this->id === null) return false;
+
+        $db = Database::pdo();
+        $token = $this->payment_token ?: bin2hex(random_bytes(32));
+
+        $stmt = $db->prepare("
+            UPDATE invoices 
+            SET status = 'sent', sent_at = NOW(), payment_token = ? 
+            WHERE id = ?
+        ");
+        return $stmt->execute([$token, $this->id]);
+    }
+
+    public function markAsViewed(): void
+    {
+        if ($this->id === null || $this->viewed_at !== null) return;
+        $db = Database::pdo();
+        $db->prepare("UPDATE invoices SET viewed_at = NOW() WHERE id = ?")
+           ->execute([$this->id]);
+    }
+
     public function markAsPaid(?string $method = null): bool
     {
-        if ($this->id === null) {
-            return false;
-        }
+        if ($this->id === null) return false;
 
         $db = Database::pdo();
         $stmt = $db->prepare("UPDATE invoices SET status = 'paid', paid_at = NOW(), payment_method = ? WHERE id = ?");
@@ -259,9 +320,7 @@ class Invoice{
 
     public function delete(): bool
     {
-        if ($this->id === null) {
-            return false;
-        }
+        if ($this->id === null) return false;
 
         return Database::pdo()
             ->prepare("DELETE FROM invoices WHERE id = ?")
@@ -288,6 +347,20 @@ class Invoice{
             'notes' => $this->notes,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
+            'sent_at' => $this->sent_at,
+            'viewed_at' => $this->viewed_at,
+            'payment_token' => $this->payment_token,
+            'customer_name' => $this->customer_name,
+            'customer_email' => $this->customer_email,
+            'customer_phone' => $this->customer_phone,
+            'service_name' => $this->service_name,
+            'booking_date' => $this->booking_date,
+            'start_time' => $this->start_time,
+            'end_time' => $this->end_time,
+            'company_name' => $this->company_name,
+            'company_email' => $this->company_email,
+            'company_phone' => $this->company_phone,
+            'company_address' => $this->company_address,
         ];
     }
 }

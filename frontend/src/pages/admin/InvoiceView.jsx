@@ -120,9 +120,7 @@ export default function InvoiceView() {
           Print Invoice
         </button>
       </div>
-
-      <div className="bg-white rounded-xl border border-slate-200 p-8 print:shadow-none print:border-0 print:p-0">
-        {/* Header */}
+<div className="invoice-print-area bg-white rounded-xl border border-slate-200 p-8">
         <div className="flex items-start justify-between mb-8 pb-6 border-b border-slate-200">
           <div>
             <h1 className="text-3xl font-bold text-slate-900 mb-1">

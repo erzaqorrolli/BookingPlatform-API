@@ -181,3 +181,6 @@ Router::get('/api/google/callback', [GoogleCalendarController::class, 'callback'
 Router::get('/api/google/status', [GoogleCalendarController::class, 'status']);
 Router::post('/api/google/disconnect', [GoogleCalendarController::class, 'disconnect']);
 Router::get('/api/me/holidays', [HolidayController::class, 'myHolidays']);
+
+Router::get('/api/public/invoices/{token}', [InvoiceController::class, 'publicView']);
+Router::post('/api/public/invoices/{token}/mark-paid', [InvoiceController::class, 'publicMarkPaid']);

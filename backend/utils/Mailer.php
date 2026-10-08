@@ -168,7 +168,41 @@ class Mailer
     self::send($email, "Booking $reference: $label", $body);
 }
 
-    private static function template(string $title, string $content): string
+
+public static function sendInvoice(string $email, string $customerName, array $invoice): void
+{
+    $appUrl = rtrim($_ENV['APP_URL'] ?? 'http://localhost/booking-api', '/');
+    $token = $invoice['payment_token'] ?? '';
+    $viewUrl = $appUrl . '/#/invoice/' . $token;
+
+    $reference = htmlspecialchars($invoice['reference'] ?? '');
+    $companyName = htmlspecialchars($invoice['company_name'] ?? 'Company');
+    $issueDate = !empty($invoice['issue_date']) ? date('d.m.Y', strtotime($invoice['issue_date'])) : '—';
+    $dueDate = !empty($invoice['due_date']) ? date('d.m.Y', strtotime($invoice['due_date'])) : '—';
+    $total = number_format((float) ($invoice['total'] ?? 0), 2);
+
+    $body = self::template('Invoice ' . $reference, "
+        <p>Hello <strong>" . htmlspecialchars($customerName) . "</strong>,</p>
+        <p>Please find your invoice below from <strong>$companyName</strong>.</p>
+
+        <div style='background: #f8fafc; padding: 20px; border-radius: 12px; margin: 20px 0;'>
+            <table style='width: 100%; font-size: 14px;'>
+                <tr><td style='color: #64748b; padding: 6px 0;'>Reference:</td><td style='font-weight: 600; font-family: monospace;'>$reference</td></tr>
+                <tr><td style='color: #64748b; padding: 6px 0;'>Issue Date:</td><td style='font-weight: 600;'>$issueDate</td></tr>
+                <tr><td style='color: #64748b; padding: 6px 0;'>Due Date:</td><td style='font-weight: 600;'>$dueDate</td></tr>
+                <tr style='border-top: 2px solid #e2e8f0;'><td style='color: #64748b; padding: 12px 0 6px; font-size: 15px;'>Total:</td><td style='font-weight: 700; font-size: 18px; color: #4f46e5; padding: 12px 0 6px;'>€$total</td></tr>
+            </table>
+        </div>
+
+        <p style='text-align: center; margin: 30px 0;'>
+            <a href='$viewUrl' style='background: #4f46e5; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;'>View Invoice</a>
+        </p>
+
+        <p style='color: #64748b; font-size: 13px;'>Or copy this link: <a href='$viewUrl' style='color: #4f46e5;'>$viewUrl</a></p>
+    ");
+
+    self::send($email, "Invoice $reference from $companyName", $body);
+}    private static function template(string $title, string $content): string
     {
         return "
         <!DOCTYPE html>
