@@ -168,6 +168,50 @@ class Mailer
     self::send($email, "Booking $reference: $label", $body);
 }
 
+public static function sendBookingCancellationToOwner(string $email, string $ownerName, array $booking, string $reason): void
+{
+    $reference = $booking['reference'] ?? '';
+    $date = date('d.m.Y', strtotime($booking['booking_date']));
+    $time = substr($booking['start_time'], 0, 5);
+
+    $body = self::template('Booking Cancelled by Customer', "
+        <p>Hello <strong>$ownerName</strong>,</p>
+        <p>A customer has <strong>cancelled</strong> their booking.</p>
+        <div style='background: #fef2f2; padding: 20px; border-radius: 12px; margin: 20px 0; border-left: 4px solid #ef4444;'>
+            <table style='width: 100%; font-size: 14px;'>
+                <tr><td style='color: #64748b; padding: 6px 0;'>Reference:</td><td style='font-weight: 600;'>$reference</td></tr>
+                <tr><td style='color: #64748b; padding: 6px 0;'>Customer:</td><td style='font-weight: 600;'>{$booking['customer_name']}</td></tr>
+                <tr><td style='color: #64748b; padding: 6px 0;'>Email:</td><td style='font-weight: 600;'>{$booking['customer_email']}</td></tr>
+                <tr><td style='color: #64748b; padding: 6px 0;'>Service:</td><td style='font-weight: 600;'>{$booking['service_name']}</td></tr>
+                <tr><td style='color: #64748b; padding: 6px 0;'>Date:</td><td style='font-weight: 600;'>$date at $time</td></tr>
+                <tr><td style='color: #64748b; padding: 6px 0;'>Reason:</td><td style='font-weight: 600; color: #dc2626;'>" . htmlspecialchars($reason) . "</td></tr>
+            </table>
+        </div>
+    ");
+    self::send($email, "Booking $reference cancelled by customer", $body);
+}
+
+public static function sendBookingCancellationToCustomer(string $email, string $customerName, array $booking, string $reason): void
+{
+    $reference = $booking['reference'] ?? '';
+    $date = date('d.m.Y', strtotime($booking['booking_date']));
+    $time = substr($booking['start_time'], 0, 5);
+
+    $body = self::template('Booking Cancelled', "
+        <p>Hello <strong>" . htmlspecialchars($customerName) . "</strong>,</p>
+        <p>Your booking has been successfully <strong>cancelled</strong>.</p>
+        <div style='background: #f8fafc; padding: 20px; border-radius: 12px; margin: 20px 0;'>
+            <table style='width: 100%; font-size: 14px;'>
+                <tr><td style='color: #64748b; padding: 6px 0;'>Reference:</td><td style='font-weight: 600;'>$reference</td></tr>
+                <tr><td style='color: #64748b; padding: 6px 0;'>Service:</td><td style='font-weight: 600;'>{$booking['service_name']}</td></tr>
+                <tr><td style='color: #64748b; padding: 6px 0;'>Date:</td><td style='font-weight: 600;'>$date at $time</td></tr>
+                <tr><td style='color: #64748b; padding: 6px 0;'>Reason:</td><td style='font-weight: 600;'>" . htmlspecialchars($reason) . "</td></tr>
+            </table>
+        </div>
+        <p style='color: #64748b; font-size: 14px;'>If this was a mistake, please contact the business to rebook.</p>
+    ");
+    self::send($email, "Booking $reference cancelled", $body);
+}
 
 public static function sendInvoice(string $email, string $customerName, array $invoice): void
 {

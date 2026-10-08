@@ -147,6 +147,23 @@ class Booking
         return self::findById((int) $db->lastInsertId());
     }
 
+    public function cancelByCustomer(string $reason): bool
+{
+    if ($this->id === null) return false;
+
+    if (!in_array($this->status, ['pending', 'confirmed'], true)) {
+        return false;
+    }
+
+    $bookingTime = strtotime($this->booking_date . ' ' . $this->start_time);
+    if (($bookingTime - time()) < 2 * 3600) {
+        return false;
+    }
+
+    $db = Database::pdo();
+    $stmt = $db->prepare("UPDATE bookings SET status = 'cancelled', cancelled_at = NOW(), cancelled_by = 'customer', cancellation_reason = ? WHERE id = ?");
+    return $stmt->execute([$reason, $this->id]);
+}
     public function updateStatus(string $status): bool
     {
         if ($this->id === null) return false;

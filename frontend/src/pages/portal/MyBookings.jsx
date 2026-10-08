@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../../api/client';
+import Swal from 'sweetalert2';
 
 const STATUS_LABELS = {
   pending: 'Waiting',
@@ -58,6 +59,46 @@ export default function MyBookings() {
     load();
   }, []);
 
+  const handleCancel = async (booking) => {
+    const { value: reason } = await Swal.fire({
+      title: 'Cancel booking?',
+      html: `Are you sure you want to cancel <b>${booking.reference}</b>?`,
+      input: 'textarea',
+      inputLabel: 'Reason for cancellation',
+      inputPlaceholder: 'Please tell us why you want to cancel...',
+      showCancelButton: true,
+      confirmButtonText: 'Cancel booking',
+      confirmButtonColor: '#dc2626',
+      cancelButtonText: 'Keep it',
+      inputValidator: (value) => {
+        if (!value || value.trim().length < 3) {
+          return 'Please write a reason (at least 3 characters)';
+        }
+      },
+    });
+
+    if (!reason) return;
+
+    try {
+      await api.post(`/me/bookings/${booking.id}/cancel`, { reason });
+      await load();
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Cancelled',
+        text: 'Your booking has been cancelled.',
+        timer: 2500,
+        showConfirmButton: false,
+      });
+    } catch (err) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Cannot cancel',
+        text: err.response?.data?.error || 'Action failed',
+      });
+    }
+  };
+
   const filtered = bookings.filter((b) => {
     if (filter === 'upcoming') {
       return isUpcomingBooking(b);
@@ -113,7 +154,6 @@ export default function MyBookings() {
         </p>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white rounded-xl p-5 border border-slate-200">
           <p className="text-sm text-slate-500 mb-1">Upcompings</p>
@@ -129,7 +169,6 @@ export default function MyBookings() {
         </div>
       </div>
 
-      {/* Filters */}
       <div className="flex gap-2 border-b border-slate-200 overflow-x-auto">
         {[
           { key: 'upcoming', label: `Upcoming (${upcomingCount})` },
@@ -150,7 +189,6 @@ export default function MyBookings() {
         ))}
       </div>
 
-      {/* Lista */}
       {loading ? (
         <div className="bg-white rounded-xl border border-slate-200 p-12 text-center text-slate-500">
           Loading...
@@ -170,6 +208,7 @@ export default function MyBookings() {
         <div className="space-y-3">
           {filtered.map((b) => {
             const review = hasReview(b.id);
+            const canCancel = ['pending', 'confirmed'].includes(b.status);
 
             return (
               <div
@@ -213,6 +252,12 @@ export default function MyBookings() {
                         </p>
                       </div>
                     </div>
+
+                    {b.status === 'cancelled' && b.cancellation_reason && (
+                      <div className="mt-3 p-3 bg-red-50 border border-red-100 rounded-lg text-xs text-red-700">
+                        <strong>Reason:</strong> {b.cancellation_reason}
+                      </div>
+                    )}
                   </div>
 
                   <div className="text-right shrink-0">
@@ -220,6 +265,15 @@ export default function MyBookings() {
                       €{parseFloat(b.total_price).toFixed(2)}
                     </div>
                     <div className="text-xs text-slate-400 mt-1">#{b.id}</div>
+
+                    {canCancel && (
+                      <button
+                        onClick={() => handleCancel(b)}
+                        className="mt-3 px-4 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg hover:bg-red-100 font-medium text-xs transition block w-full"
+                      >
+                        Cancel booking
+                      </button>
+                    )}
 
                     {b.status === 'completed' && !review && (
                       <button
@@ -243,7 +297,6 @@ export default function MyBookings() {
         </div>
       )}
 
-      {/* Modal Review */}
       {reviewModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
@@ -263,7 +316,6 @@ export default function MyBookings() {
               </div>
             </div>
 
-            {/* Rating */}
             <div className="mb-5">
               <label className="block text-sm font-medium text-slate-700 mb-2">
                 Rating
@@ -291,7 +343,6 @@ export default function MyBookings() {
               </p>
             </div>
 
-            {/* Comment */}
             <div className="mb-5">
               <label className="block text-sm font-medium text-slate-700 mb-1.5">
                 Comment (optional)
@@ -305,7 +356,6 @@ export default function MyBookings() {
               />
             </div>
 
-            {/* Actions */}
             <div className="flex gap-3">
               <button
                 onClick={() => setReviewModal(null)}

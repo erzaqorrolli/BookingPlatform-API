@@ -29,7 +29,6 @@ class Invoice
     public ?string $viewed_at = null;
     public ?string $payment_token = null;
 
-    // Fusha shtesë nga JOIN
     public ?string $customer_name = null;
     public ?string $customer_email = null;
     public ?string $customer_phone = null;

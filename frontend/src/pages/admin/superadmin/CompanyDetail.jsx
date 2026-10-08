@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../../../api/client';
+import Swal from 'sweetalert2';
 
 export default function CompanyDetail() {
   const { id } = useParams();
@@ -24,27 +25,92 @@ export default function CompanyDetail() {
     loadCompany();
   }, [id]);
 
-  const handleToggleStatus = async () => {
-    if (!data?.company) return;
-    const current = data.company.status;
-    const newStatus = current === 'blocked' ? 'active' : 'blocked';
-    const reason = newStatus === 'blocked'
-      ? prompt('Arsyeja e bllokimit:') || 'No reason'
-      : '';
+ const handleToggleStatus = async () => {
+  if (!data?.company) return;
+  const company = data.company;
+  const isBlocking = company.status !== 'blocked';
+
+  if (isBlocking) {
+    const { value: reason } = await Swal.fire({
+      title: 'Block company?',
+      html: `Are you sure you want to block <b>${company.name}</b>?`,
+      input: 'textarea',
+      inputLabel: 'Reason for blocking',
+      inputPlaceholder: 'Type the reason here...',
+      showCancelButton: true,
+      confirmButtonText: 'Block',
+      confirmButtonColor: '#dc2626',
+      cancelButtonText: 'Cancel',
+      inputValidator: (value) => {
+        if (!value) return 'You need to write a reason!';
+      },
+    });
+
+    if (!reason) return;
 
     try {
-      await api.put(`/superadmin/companies/${id}/status`, {
-        status: newStatus,
-        reason,
+      await api.put(`/superadmin/companies/${company.id}/status`, {
+        status: 'blocked',
+        reason: reason,
       });
-      setData({
-        ...data,
-        company: { ...data.company, status: newStatus },
+
+      const r = await api.get(`/superadmin/companies/${company.id}`);
+      setData(r.data.data);
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Blocked!',
+        text: `"${company.name}" has been blocked.`,
+        timer: 2000,
+        showConfirmButton: false,
       });
     } catch (err) {
-      alert(err.response?.data?.error || 'Action failed');
+      console.error('Block error:', err);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: err.response?.data?.error || err.message || 'Action failed',
+      });
     }
-  };
+  } else {
+    const result = await Swal.fire({
+      title: 'Activate company?',
+      html: `Are you sure you want to activate <b>${company.name}</b>?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Activate',
+      confirmButtonColor: '#059669',
+      cancelButtonText: 'Cancel',
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      await api.put(`/superadmin/companies/${company.id}/status`, {
+        status: 'active',
+        reason: '',
+      });
+
+      const r = await api.get(`/superadmin/companies/${company.id}`);
+      setData(r.data.data);
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Activated!',
+        text: `"${company.name}" has been activated.`,
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    } catch (err) {
+      console.error('Activate error:', err);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: err.response?.data?.error || err.message || 'Action failed',
+      });
+    }
+  }
+};
 
   if (loading) {
     return (

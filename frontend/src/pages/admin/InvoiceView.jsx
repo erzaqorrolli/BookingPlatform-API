@@ -178,7 +178,6 @@ export default function InvoiceView() {
           </tbody>
         </table>
 
-        {/* Totals */}
         <div className="flex justify-end mb-8">
           <div className="w-64 space-y-2">
             <div className="flex justify-between text-sm">
@@ -204,7 +203,6 @@ export default function InvoiceView() {
           </div>
         </div>
 
-        {/* Notes */}
         {invoice.notes && (
           <div className="pt-6 border-t border-slate-200">
             <p className="text-xs uppercase tracking-wider font-semibold text-slate-500 mb-2">Notes</p>
@@ -212,7 +210,6 @@ export default function InvoiceView() {
           </div>
         )}
 
-        {/* Footer */}
         <div className="mt-12 pt-6 border-t border-slate-200 text-center text-xs text-slate-500">
           Thank you for your business!
         </div>
