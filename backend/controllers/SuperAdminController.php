@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Config\Database;
+use App\Models\AuditLog;
 
 class SuperAdminController
 {
@@ -411,7 +412,7 @@ class SuperAdminController
 
     public function toggleUserStatus(array $params): void
     {
-        $this->requireSuperAdmin();
+        $uid = $this->requireSuperAdmin();
         $db = Database::pdo();
 
         $id = (int) ($params['id'] ?? 0);
@@ -430,6 +431,10 @@ class SuperAdminController
             json_err('You cannot block yourself', 403);
         }
 
+        $userStmt = $db->prepare("SELECT name, email FROM users WHERE id = ? LIMIT 1");
+        $userStmt->execute([$id]);
+        $userInfo = $userStmt->fetch();
+
         $db->prepare("
             UPDATE users 
             SET status = ?, blocked_at = ?, blocked_reason = ?
@@ -441,6 +446,12 @@ class SuperAdminController
             $id,
         ]);
 
+        AuditLog::log($uid, 'user.' . $status, 'user', $id, [
+            'name'   => $userInfo['name'] ?? '',
+            'email'  => $userInfo['email'] ?? '',
+            'reason' => $reason,
+        ]);
+
         json_ok([
             'message' => $status === 'blocked' ? 'User blocked' : 'User activated',
             'status'  => $status,
@@ -449,7 +460,7 @@ class SuperAdminController
 
     public function deleteUser(array $params): void
     {
-        $this->requireSuperAdmin();
+        $uid = $this->requireSuperAdmin();
         $db = Database::pdo();
 
         $id = (int) ($params['id'] ?? 0);
@@ -460,6 +471,10 @@ class SuperAdminController
             json_err('You cannot delete yourself', 403);
         }
 
+        $userStmt = $db->prepare("SELECT name, email FROM users WHERE id = ? LIMIT 1");
+        $userStmt->execute([$id]);
+        $userInfo = $userStmt->fetch();
+
         try {
             $db->beginTransaction();
 
@@ -468,6 +483,12 @@ class SuperAdminController
             $db->prepare("DELETE FROM users WHERE id = ?")->execute([$id]);
 
             $db->commit();
+
+            AuditLog::log($uid, 'user.delete', 'user', $id, [
+                'name'  => $userInfo['name'] ?? '',
+                'email' => $userInfo['email'] ?? '',
+            ]);
+
             json_ok(['message' => 'User deleted']);
         } catch (\Throwable $e) {
             if ($db->inTransaction()) $db->rollBack();
@@ -751,7 +772,7 @@ class SuperAdminController
 
     public function toggleCompanyStatus(array $params): void
     {
-        $this->requireSuperAdmin();
+        $uid = $this->requireSuperAdmin();
         $db = Database::pdo();
 
         $id = (int) ($params['id'] ?? 0);
@@ -764,6 +785,10 @@ class SuperAdminController
         if (!in_array($status, ['active', 'blocked'], true)) {
             json_err('Invalid status. Use "active" or "blocked"', 422);
         }
+
+        $companyStmt = $db->prepare("SELECT name, slug FROM companies WHERE id = ? LIMIT 1");
+        $companyStmt->execute([$id]);
+        $companyInfo = $companyStmt->fetch();
 
         if ($status === 'blocked') {
             $db->prepare("
@@ -779,6 +804,12 @@ class SuperAdminController
             ")->execute([$status, $id]);
         }
 
+        AuditLog::log($uid, 'company.' . $status, 'company', $id, [
+            'name'   => $companyInfo['name'] ?? '',
+            'slug'   => $companyInfo['slug'] ?? '',
+            'reason' => $reason,
+        ]);
+
         json_ok([
             'message' => $status === 'blocked' ? 'Company blocked' : 'Company activated',
             'status'  => $status,
@@ -787,17 +818,21 @@ class SuperAdminController
 
     public function deleteCompany(array $params): void
     {
-        $this->requireSuperAdmin();
+        $uid = $this->requireSuperAdmin();
         $db = Database::pdo();
 
         $id = (int) ($params['id'] ?? 0);
         if (!$id) json_err('Company ID required', 422);
 
-        $stmt = $db->prepare("SELECT slug FROM companies WHERE id = ? LIMIT 1");
+        $stmt = $db->prepare("SELECT slug, name FROM companies WHERE id = ? LIMIT 1");
         $stmt->execute([$id]);
-        $slug = $stmt->fetchColumn();
+        $companyRow = $stmt->fetch();
 
-        if ($slug === 'platform-admin') {
+        if (!$companyRow) {
+            json_err('Company not found', 404);
+        }
+
+        if ($companyRow['slug'] === 'platform-admin') {
             json_err('Cannot delete the platform admin company', 403);
         }
 
@@ -814,10 +849,22 @@ class SuperAdminController
             $db->prepare("DELETE FROM companies WHERE id = ?")->execute([$id]);
 
             $db->commit();
+
+            AuditLog::log($uid, 'company.delete', 'company', $id, [
+                'name' => $companyRow['name'] ?? '',
+                'slug' => $companyRow['slug'] ?? '',
+            ]);
+
             json_ok(['message' => 'Company deleted']);
         } catch (\Throwable $e) {
             if ($db->inTransaction()) $db->rollBack();
             json_err('Delete failed: ' . $e->getMessage(), 500);
         }
+    }
+
+    public function auditLogs(): void
+    {
+        $this->requireSuperAdmin();
+        json_ok(AuditLog::recent(200));
     }
 }

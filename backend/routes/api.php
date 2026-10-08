@@ -185,3 +185,4 @@ Router::get('/api/me/holidays', [HolidayController::class, 'myHolidays']);
 Router::get('/api/public/invoices/{token}', [InvoiceController::class, 'publicView']);
 Router::post('/api/public/invoices/{token}/mark-paid', [InvoiceController::class, 'publicMarkPaid']);
 Router::post('/api/me/bookings/{id}/cancel', [CustomerPortalController::class, 'cancelBooking']);
+Router::get('/api/superadmin/audit-logs', [SuperAdminController::class, 'auditLogs']);
