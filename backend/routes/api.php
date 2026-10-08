@@ -22,6 +22,7 @@ use App\Controllers\ContactController;
 use App\Controllers\SuperAdminController;
 use App\Controllers\GoogleCalendarController;
 
+
 Router::get('/api/health', function() {
     return [
         'status' => 'ok',
@@ -179,3 +180,4 @@ Router::get('/api/google/connect', [GoogleCalendarController::class,'connect']);
 Router::get('/api/google/callback', [GoogleCalendarController::class, 'callback']);
 Router::get('/api/google/status', [GoogleCalendarController::class, 'status']);
 Router::post('/api/google/disconnect', [GoogleCalendarController::class, 'disconnect']);
+Router::get('/api/me/holidays', [HolidayController::class, 'myHolidays']);

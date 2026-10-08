@@ -63,8 +63,8 @@ import SuperAdminUserDetail from './pages/admin/superadmin/UserDetail';
 import SuperAdminBookings from './pages/admin/superadmin/Bookings';
 import SuperAdminReports from './pages/admin/superadmin/Reports';
 import SuperAdminContactMessages from './pages/admin/superadmin/ContactMessages';
-
-
+import SuperAdminCompanyDetail from './pages/admin/superadmin/CompanyDetail';
+import StaffHolidays from './pages/staff/StaffHolidays';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -97,14 +97,12 @@ export default function App() {
       <CompanyProvider>
         <BrowserRouter>
           <Routes>
-            {/* PUBLIC */}
             <Route path="/" element={<HomePage />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/book/:slug" element={<BookingWizard />} />
             <Route path="/booking-success/:id" element={<BookingSuccess />} />
 
-            {/* AUTH */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/register-business" element={<RegisterBusiness />} />
@@ -113,7 +111,6 @@ export default function App() {
             <Route path="/verify" element={<VerifyEmail />} />
             <Route path="/accept-invite" element={<AcceptInvite />} />
 
-            {/* ADMIN */}
             <Route
               path="/admin"
               element={<ProtectedPage><Dashboard /></ProtectedPage>}
@@ -138,6 +135,10 @@ export default function App() {
               path="/admin/products"
               element={<ProtectedPage allowed={['owner', 'admin', 'manager']}><Products /></ProtectedPage>}
             />
+            <Route
+            path="/admin/superadmin/companies/:id"
+            element={<ProtectedPage allowed={['superadmin']}><SuperAdminCompanyDetail /></ProtectedPage>}
+          />
             <Route
               path="/admin/customers"
               element={<ProtectedPage allowed={['owner', 'admin', 'manager']}><Customers /></ProtectedPage>}
@@ -165,6 +166,16 @@ export default function App() {
               path="/admin/discounts"
               element={<ProtectedPage allowed={['owner', 'admin', 'manager']}><Discounts /></ProtectedPage>}
             />
+            <Route
+  path="/staff/holidays"
+  element={
+    <ProtectedRoute>
+      <StaffLayout>
+        <StaffHolidays />
+      </StaffLayout>
+    </ProtectedRoute>
+  }
+/>
             <Route
             path="/admin/superadmin"
             element={<ProtectedPage allowed={['superadmin']}><SuperAdminDashboard /></ProtectedPage>}
@@ -221,7 +232,6 @@ export default function App() {
       <Route path="/admin/customers/:id" element={<CustomerDetail />} />
 
     <Route path="/admin/invoices/:id" element={<InvoiceView />} />
-            {/* CUSTOMER PORTAL */}
             <Route
               path="/portal"
               element={
@@ -239,7 +249,6 @@ export default function App() {
               }
             />
 
-            {/* STAFF PORTAL */}
             <Route
               path="/staff"
               element={
@@ -260,6 +269,7 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
+                   
             <Route
               path="/staff/bookings"
               element={
@@ -281,7 +291,6 @@ export default function App() {
               }
             />
 
-            {/* 404 */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

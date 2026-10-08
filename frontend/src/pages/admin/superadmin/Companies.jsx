@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../../api/client';
-
+ import Swal from 'sweetalert2';
 export default function Companies() {
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -24,24 +24,91 @@ export default function Companies() {
     loadCompanies();
   }, []);
 
-  const handleToggleStatus = async (company) => {
-    const newStatus = company.status === 'blocked' ? 'active' : 'blocked';
-    const reason = newStatus === 'blocked'
-      ? prompt('Arsyeja e bllokimit:') || 'No reason'
-      : '';
+ 
 
-    if (newStatus === 'blocked' && reason === null) return;
+const handleToggleStatus = async (company) => {
+  const newStatus = company.status === 'blocked' ? 'active' : 'blocked';
+
+  if (newStatus === 'blocked') {
+    // Kërko arsyen me SweetAlert
+    const { value: reason } = await Swal.fire({
+      title: 'Block company?',
+      text: `Are you sure you want to block "${company.name}"?`,
+      input: 'textarea',
+      inputLabel: 'Reason for blocking',
+      inputPlaceholder: 'Type the reason here...',
+      inputAttributes: {
+        'aria-label': 'Reason for blocking',
+      },
+      showCancelButton: true,
+      confirmButtonText: 'Block',
+      confirmButtonColor: '#dc2626',
+      cancelButtonText: 'Cancel',
+      inputValidator: (value) => {
+        if (!value) return 'You need to write a reason!';
+      },
+    });
+
+    if (!reason) return;
 
     try {
       await api.put(`/superadmin/companies/${company.id}/status`, {
         status: newStatus,
-        reason: reason,
+        reason,
       });
       await loadCompanies();
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Blocked!',
+        text: `"${company.name}" has been blocked.`,
+        timer: 2000,
+        showConfirmButton: false,
+      });
     } catch (err) {
-      alert(err.response?.data?.error || 'Action failed');
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: err.response?.data?.error || 'Action failed',
+      });
     }
-  };
+  } else {
+    // Aktivizo pa pyetje
+    const result = await Swal.fire({
+      title: 'Activate company?',
+      text: `Are you sure you want to activate "${company.name}"?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Activate',
+      confirmButtonColor: '#059669',
+      cancelButtonText: 'Cancel',
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      await api.put(`/superadmin/companies/${company.id}/status`, {
+        status: newStatus,
+        reason: '',
+      });
+      await loadCompanies();
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Activated!',
+        text: `"${company.name}" has been activated.`,
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    } catch (err) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: err.response?.data?.error || 'Action failed',
+      });
+    }
+  }
+};
 
   const handleDelete = async (company) => {
     if (!confirm(`Fshi kompaninë "${company.name}"? This can not be undone!`)) return;

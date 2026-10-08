@@ -23,7 +23,7 @@ class Booking
     public ?string $assistance_notes=null;
 
     public ?string $cancelled_at = null;
-    public ?string $cancelled_b = null;
+    public ?string $cancelled_by = null;
     public ?string $cancellation_reason = null;
 
 

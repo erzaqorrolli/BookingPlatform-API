@@ -176,7 +176,7 @@ export default function StaffSchedule() {
                   </div>
                   {isToday && (
                     <span className="text-[10px] font-bold bg-orange-500 text-white px-2 py-0.5 rounded-full">
-                      SOT
+                      Today
                     </span>
                   )}
                 </div>

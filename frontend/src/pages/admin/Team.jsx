@@ -159,7 +159,7 @@ export default function Team() {
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                   required
-                  placeholder="kolegu@kompania.com"
+                  placeholder="name@company.com"
                   className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:border-indigo-500 outline-none"
                 />
               </div>

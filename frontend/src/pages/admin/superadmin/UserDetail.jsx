@@ -1,18 +1,111 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../../../api/client';
+import Swal from 'sweetalert2';
 
 export default function UserDetail() {
   const { id } = useParams();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const loadUser = async () => {
+    try {
+      const r = await api.get(`/superadmin/users/${id}`);
+      setData(r.data.data);
+    } catch (err) {
+      console.error('Load user error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    api.get(`/superadmin/users/${id}`)
-      .then((r) => setData(r.data.data))
-      .catch((err) => console.error('Load user error:', err))
-      .finally(() => setLoading(false));
+    loadUser();
   }, [id]);
+
+  const handleToggleStatus = async () => {
+    if (!data?.user) return;
+    const user = data.user;
+    const isBlocking = user.status !== 'blocked';
+
+    if (isBlocking) {
+      const { value: reason } = await Swal.fire({
+        title: 'Block user?',
+        html: `Are you sure you want to block <b>${user.name}</b>?`,
+        input: 'textarea',
+        inputLabel: 'Reason for blocking',
+        inputPlaceholder: 'Type the reason here...',
+        inputAttributes: {
+          'aria-label': 'Reason for blocking',
+        },
+        showCancelButton: true,
+        confirmButtonText: 'Block',
+        confirmButtonColor: '#dc2626',
+        cancelButtonText: 'Cancel',
+        inputValidator: (value) => {
+          if (!value) return 'You need to write a reason!';
+        },
+      });
+
+      if (!reason) return;
+
+      try {
+        await api.put(`/superadmin/users/${user.id}/status`, {
+          status: 'blocked',
+          reason: reason,
+        });
+        await loadUser();
+
+        Swal.fire({
+          icon: 'success',
+          title: 'Blocked!',
+          text: `"${user.name}" has been blocked.`,
+          timer: 2000,
+          showConfirmButton: false,
+        });
+      } catch (err) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: err.response?.data?.error || 'Action failed',
+        });
+      }
+    } else {
+      const result = await Swal.fire({
+        title: 'Activate user?',
+        html: `Are you sure you want to activate <b>${user.name}</b>?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Activate',
+        confirmButtonColor: '#059669',
+        cancelButtonText: 'Cancel',
+      });
+
+      if (!result.isConfirmed) return;
+
+      try {
+        await api.put(`/superadmin/users/${user.id}/status`, {
+          status: 'active',
+          reason: '',
+        });
+        await loadUser();
+
+        Swal.fire({
+          icon: 'success',
+          title: 'Activated!',
+          text: `"${user.name}" has been activated.`,
+          timer: 2000,
+          showConfirmButton: false,
+        });
+      } catch (err) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: err.response?.data?.error || 'Action failed',
+        });
+      }
+    }
+  };
 
   if (loading) {
     return (
@@ -42,7 +135,6 @@ export default function UserDetail() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <Link
         to="/admin/superadmin/users"
         className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -53,7 +145,6 @@ export default function UserDetail() {
         Back to users
       </Link>
 
-      {/* User Info Card */}
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
         <div className="flex items-start gap-5 flex-wrap">
           <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-bold flex-shrink-0">
@@ -89,10 +180,26 @@ export default function UserDetail() {
               <span>ID: {user.id}</span>
             </div>
           </div>
+          <div className="flex items-center gap-2">
+            {user.status === 'blocked' ? (
+              <button
+                onClick={handleToggleStatus}
+                className="text-xs font-semibold px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition"
+              >
+                Unblock
+              </button>
+            ) : (
+              <button
+                onClick={handleToggleStatus}
+                className="text-xs font-semibold px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white transition"
+              >
+                Block
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Customer Stats */}
       {customer && stats && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5">

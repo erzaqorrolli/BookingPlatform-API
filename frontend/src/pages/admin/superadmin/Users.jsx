@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../../api/client';
+import Swal from 'sweetalert2';
 
 export default function Users() {
   const [users, setUsers] = useState([]);
@@ -28,35 +29,122 @@ export default function Users() {
     loadUsers();
   }, [search, filterRole]);
 
-  const handleToggleStatus = async (user) => {
-    const newStatus = user.status === 'blocked' ? 'active' : 'blocked';
-    const reason = newStatus === 'blocked'
-      ? prompt('Reason for blocking:') || 'No reason provided'
-      : '';
+const handleToggleStatus = async (user) => {
+  const isBlocking = user.status !== 'blocked';
 
-    if (newStatus === 'blocked' && reason === null) return;
+  if (isBlocking) {
+    // ============ BLOCK ============
+    const { value: reason } = await Swal.fire({
+      title: 'Block user?',
+      html: `Are you sure you want to block <b>${user.name}</b>?`,
+      input: 'textarea',
+      inputLabel: 'Reason for blocking',
+      inputPlaceholder: 'Type the reason here...',
+      inputAttributes: {
+        'aria-label': 'Reason for blocking',
+      },
+      showCancelButton: true,
+      confirmButtonText: 'Block',
+      confirmButtonColor: '#dc2626',
+      cancelButtonText: 'Cancel',
+      inputValidator: (value) => {
+        if (!value) return 'You need to write a reason!';
+      },
+    });
+
+    if (!reason) return;
 
     try {
       await api.put(`/superadmin/users/${user.id}/status`, {
-        status: newStatus,
+        status: 'blocked',
         reason: reason,
       });
       await loadUsers();
-    } catch (err) {
-      alert(err.response?.data?.error || 'Action failed');
-    }
-  };
 
-  const handleDelete = async (user) => {
-    if (!confirm(`Delete user "${user.name}"? This cannot be undone!`)) return;
+      Swal.fire({
+        icon: 'success',
+        title: 'Blocked!',
+        text: `"${user.name}" has been blocked.`,
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    } catch (err) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: err.response?.data?.error || 'Action failed',
+      });
+    }
+  } else {
+    // ============ UNBLOCK / ACTIVATE ============
+    const result = await Swal.fire({
+      title: 'Activate user?',
+      html: `Are you sure you want to activate <b>${user.name}</b>?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Activate',
+      confirmButtonColor: '#059669',
+      cancelButtonText: 'Cancel',
+    });
+
+    if (!result.isConfirmed) return;
 
     try {
-      await api.delete(`/superadmin/users/${user.id}`);
+      await api.put(`/superadmin/users/${user.id}/status`, {
+        status: 'active',
+        reason: '',
+      });
       await loadUsers();
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Activated!',
+        text: `"${user.name}" has been activated.`,
+        timer: 2000,
+        showConfirmButton: false,
+      });
     } catch (err) {
-      alert(err.response?.data?.error || 'Delete failed');
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: err.response?.data?.error || 'Action failed',
+      });
     }
-  };
+  }
+};
+
+const handleDelete = async (user) => {
+  const result = await Swal.fire({
+    title: 'Delete user?',
+    html: `Are you sure you want to delete <b>${user.name}</b>?<br/><span style="color:#dc2626;font-size:13px">This action cannot be undone!</span>`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Delete',
+    confirmButtonColor: '#dc2626',
+    cancelButtonText: 'Cancel',
+  });
+
+  if (!result.isConfirmed) return;
+
+  try {
+    await api.delete(`/superadmin/users/${user.id}`);
+    await loadUsers();
+
+    Swal.fire({
+      icon: 'success',
+      title: 'Deleted!',
+      text: `"${user.name}" has been deleted.`,
+      timer: 2000,
+      showConfirmButton: false,
+    });
+  } catch (err) {
+    Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: err.response?.data?.error || 'Delete failed',
+    });
+  }
+};
 
   return (
     <div className="space-y-6">
