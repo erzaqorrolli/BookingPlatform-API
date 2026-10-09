@@ -67,6 +67,8 @@ import SuperAdminCompanyDetail from './pages/admin/superadmin/CompanyDetail';
 import StaffHolidays from './pages/staff/StaffHolidays';
 import SuperAdminAuditLogs from './pages/admin/superadmin/AuditLogs';
 
+import Payroll from './pages/admin/Payroll';
+
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -182,6 +184,11 @@ export default function App() {
     </ProtectedRoute>
   }
 />
+<Route
+  path="/admin/payroll"
+  element={<ProtectedPage allowed={['owner', 'admin']}><Payroll /></ProtectedPage>}
+/>
+
             <Route
             path="/admin/superadmin"
             element={<ProtectedPage allowed={['superadmin']}><SuperAdminDashboard /></ProtectedPage>}

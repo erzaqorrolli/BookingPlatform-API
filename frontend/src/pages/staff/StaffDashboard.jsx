@@ -95,45 +95,50 @@ export default function StaffDashboard() {
       </div>
 
       {/* Payroll */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="font-bold text-slate-900">My payroll</h2>
-            <p className="text-sm text-slate-500 mt-1">
-              {payroll?.month ? `For ${payroll.month}` : 'Your latest salary information'}
-            </p>
-          </div>
-          <div className="w-11 h-11 bg-emerald-100 rounded-lg flex items-center justify-center">
-            <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 1.12-3 2.5S10.343 13 12 13s3 1.12 3 2.5S13.657 18 12 18m0-10V6m0 12v-2m8-4a8 8 0 11-16 0 8 8 0 0116 0z" />
-            </svg>
-          </div>
-        </div>
-        {payroll ? (
-          <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div>
-              <p className="text-xs text-slate-500">Total</p>
-              <p className="text-xl font-bold text-emerald-600">€{Number(payroll.total || 0).toFixed(2)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-slate-500">Base salary</p>
-              <p className="font-semibold text-slate-900">€{Number(payroll.base_salary || 0).toFixed(2)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-slate-500">Commission + bonus</p>
-              <p className="font-semibold text-slate-900">€{(Number(payroll.commission || 0) + Number(payroll.bonus || 0)).toFixed(2)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-slate-500">Status</p>
-              <p className="font-semibold capitalize text-slate-900">{payroll.status || 'pending'}</p>
-            </div>
-          </div>
-        ) : (
-          <p className="mt-5 rounded-lg bg-slate-50 p-4 text-sm text-slate-500">
-            Your salary has not been configured yet.
-          </p>
-        )}
+<div className="bg-white rounded-xl border border-slate-200 p-6">
+  <div className="flex items-start justify-between gap-4">
+    <div>
+      <h2 className="font-bold text-slate-900">My payroll</h2>
+      <p className="text-sm text-slate-500 mt-1">
+        {payroll?.configured
+          ? `${payroll.hourly_rate}€/hour · ${payroll.total_hours}h worked`
+          : 'Your hourly rate has not been configured yet'}
+      </p>
+    </div>
+    <div className="w-11 h-11 bg-emerald-100 rounded-lg flex items-center justify-center">
+      <svg className="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    </div>
+  </div>
+
+  {payroll?.configured ? (
+    <div className="mt-5 grid grid-cols-2 sm:grid-cols-3 gap-4">
+      <div>
+        <p className="text-xs text-slate-500">Unpaid total</p>
+        <p className="text-2xl font-bold text-emerald-600">
+          €{Number(payroll.total || 0).toFixed(2)}
+        </p>
       </div>
+      <div>
+        <p className="text-xs text-slate-500">Hours worked</p>
+        <p className="font-semibold text-slate-900">
+          {Number(payroll.total_hours || 0).toFixed(2)}h
+        </p>
+      </div>
+      <div>
+        <p className="text-xs text-slate-500">Shifts completed</p>
+        <p className="font-semibold text-slate-900">
+          {payroll.shifts_count || 0}
+        </p>
+      </div>
+    </div>
+  ) : (
+    <div className="mt-5 p-4 bg-slate-50 rounded-lg text-sm text-slate-500 text-center">
+      Your salary has not been configured yet.
+    </div>
+  )}
+</div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

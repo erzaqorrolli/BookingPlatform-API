@@ -21,7 +21,7 @@ use App\Controllers\InvoiceController;
 use App\Controllers\ContactController;
 use App\Controllers\SuperAdminController;
 use App\Controllers\GoogleCalendarController;
-
+use App\Controllers\PayrollController;
 
 Router::get('/api/health', function() {
     return [
@@ -186,3 +186,10 @@ Router::get('/api/public/invoices/{token}', [InvoiceController::class, 'publicVi
 Router::post('/api/public/invoices/{token}/mark-paid', [InvoiceController::class, 'publicMarkPaid']);
 Router::post('/api/me/bookings/{id}/cancel', [CustomerPortalController::class, 'cancelBooking']);
 Router::get('/api/superadmin/audit-logs', [SuperAdminController::class, 'auditLogs']);
+
+
+// PAYROLL
+Router::get('/api/companies/{companyId}/payroll', [PayrollController::class, 'index']);
+Router::post('/api/companies/{companyId}/payroll', [PayrollController::class, 'store']);
+Router::post('/api/companies/{companyId}/payroll/{userId}/mark-paid', [PayrollController::class, 'markPaid']);
+Router::get('/api/companies/{companyId}/payroll/{userId}/history', [PayrollController::class, 'history']);
