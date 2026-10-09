@@ -196,28 +196,29 @@ VALUES (?,?,?,?, DATE_ADD(NOW(), INTERVAL 7 DAY))");
     }
 
     public function myPayroll(array $params): void
-    {
-        $uid = auth_user_id();
-        if (!$uid) json_err('Unauthorized', 401);
+{
+    $uid = auth_user_id();
+    if (!$uid) json_err('Unauthorized', 401);
 
-        $companyId = (int) $params['companyId'];
-        if (!Company::userBelongsTo($uid, $companyId)) {
-            json_err('Forbidden', 403);
-        }
-
-        $db = Database::pdo();
-        $stmt = $db->prepare("
-            SELECT id, month, base_salary, commission, bonus, deductions, total, status, paid_at
-            FROM payroll
-            WHERE user_id = ? AND company_id = ?
-            ORDER BY month DESC, id DESC
-            LIMIT 1
-        ");
-        $stmt->execute([$uid, $companyId]);
-
-        json_ok($stmt->fetch() ?: null);
+    $companyId = (int) $params['companyId'];
+    if (!Company::userBelongsTo($uid, $companyId)) {
+        json_err('Forbidden', 403);
     }
 
+    \App\Models\PayrollEarning::calculateEarnings($companyId, $uid);
+
+    $totals = \App\Models\PayrollEarning::getUnpaidTotal($companyId, $uid);
+
+    $compensation = \App\Models\StaffCompensation::findForUser($companyId, $uid);
+
+    json_ok([
+        'total' => (float) $totals['total'],
+        'total_hours' => (float) $totals['total_hours'],
+        'shifts_count' => (int) $totals['shifts_count'],
+        'hourly_rate' => $compensation ? (float) $compensation['hourly_rate'] : 0,
+        'configured' => $compensation !== null,
+    ]);
+}
     public function getInvitation(array $params): void
 {
     $token = $params['token'] ?? '';
