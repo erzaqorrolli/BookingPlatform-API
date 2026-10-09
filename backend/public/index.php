@@ -50,16 +50,11 @@ if ($isDebug) {
     ini_set('log_errors', '1');
 }
 
-// ============================================================
-// CORS - Allow any origin (development)
-// ============================================================
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 
 if ($origin !== '') {
-    // Allow the specific origin (needed for credentials)
     header("Access-Control-Allow-Origin: $origin");
 } else {
-    // No origin header
     header('Access-Control-Allow-Origin: *');
 }
 
@@ -69,15 +64,11 @@ header('Access-Control-Allow-Headers: Content-Type, Authorization, X-CSRF-Token,
 header('Access-Control-Allow-Credentials: true');
 header('Access-Control-Max-Age: 86400');
 
-// Preflight
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
     http_response_code(204);
     exit;
 }
 
-// ============================================================
-// HEALTH CHECK
-// ============================================================
 if ($path === '/api/health') {
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode([
@@ -92,9 +83,6 @@ if ($path === '/api/health') {
     exit;
 }
 
-// ============================================================
-// ROUTE DISPATCH
-// ============================================================
 try {
     \App\Config\Router::dispatch();
 } catch (\Throwable $e) {

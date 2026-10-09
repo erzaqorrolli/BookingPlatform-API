@@ -358,10 +358,44 @@ class BookingController
                 $db->rollBack();
             }
             throw $e;
-        } finally {
+       } finally {
             $db->prepare('SELECT RELEASE_LOCK(?)')->execute([$lockName]);
         }
-          try {
+
+        try {
+            $googleService = new \App\Services\GoogleCalendarService();
+
+            
+            $bStmt = $db->prepare("
+                SELECT b.*,
+                       c.name AS customer_name,
+                       c.email AS customer_email,
+                       c.phone AS customer_phone,
+                       s.name AS service_name
+                FROM bookings b
+                JOIN customers c ON c.id = b.customer_id
+                JOIN services s ON s.id = b.service_id
+                WHERE b.id = ?
+                LIMIT 1
+            ");
+            $bStmt->execute([$booking->id]);
+            $fullBooking = $bStmt->fetch();
+
+            if ($fullBooking) {
+                $eventId = $googleService->createEvent($companyId, $fullBooking);
+                if ($eventId) {
+                    $db->prepare("UPDATE bookings SET google_event_id = ? WHERE id = ?")
+                       ->execute([$eventId, $booking->id]);
+                    error_log('Google Calendar: event created ' . $eventId . ' for ' . $booking->reference);
+                } else {
+                    error_log('Google Calendar: createEvent returned null for ' . $booking->reference);
+                }
+            }
+        } catch (\Throwable $e) {
+            error_log('Google Calendar sync failed: ' . $e->getMessage());
+        }
+
+        try {
             $inv = \App\Models\Invoice::createFromBooking($booking->id);
             if ($inv) {
                 error_log('DEBUG: Invoice created: ' . $inv->reference);
