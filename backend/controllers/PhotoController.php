@@ -12,9 +12,7 @@ class PhotoController
     private const MAX_SIZE = 5 * 1024 * 1024; // 5MB
     private const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
-    /**
-     * GET /api/companies/{companyId}/photos
-     */
+    
     public function index(array $params): void
     {
         $uid = auth_user_id();
@@ -29,10 +27,6 @@ class PhotoController
         json_ok(array_map(fn($p) => $p->toArray(), $photos));
     }
 
-    /**
-     * POST /api/companies/{companyId}/photos
-     * multipart/form-data: photo (file), is_cover (0/1)
-     */
     public function upload(array $params): void
     {
         $uid = auth_user_id();
@@ -72,11 +66,9 @@ class PhotoController
             ]);
         }
 
-        // Gjenero emër unik
         $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
         $filename = uniqid('img_', true) . '.' . $ext;
 
-        // Krijo folderin nëse s'ekziston
         if (!is_dir(self::UPLOAD_DIR)) {
             mkdir(self::UPLOAD_DIR, 0755, true);
         }
@@ -102,10 +94,6 @@ class PhotoController
             'photo'   => $photo->toArray(),
         ], 201);
     }
-
-    /**
-     * PUT /api/companies/{companyId}/photos/{id}/cover
-     */
     public function setCover(array $params): void
     {
         $uid = auth_user_id();
@@ -129,9 +117,6 @@ class PhotoController
         json_ok(['message' => 'Foto u bë cover']);
     }
 
-    /**
-     * DELETE /api/companies/{companyId}/photos/{id}
-     */
     public function destroy(array $params): void
     {
         $uid = auth_user_id();
