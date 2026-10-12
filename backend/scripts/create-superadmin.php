@@ -44,7 +44,6 @@ try {
         echo "  Role 'superadmin' already exists (ID: $roleId)\n";
     }
 
-    // 2. Create or get the user
     $stmt = $db->prepare("SELECT id FROM users WHERE email = ? LIMIT 1");
     $stmt->execute([$email]);
     $userId = $stmt->fetchColumn();

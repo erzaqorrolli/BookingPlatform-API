@@ -7,6 +7,7 @@ use App\Config\Database;
 
 class Booking
 {
+    // ? allows attribute to be null
     public ?int $id = null;
     public ?string $reference = null;
     public int $company_id = 0;

@@ -117,48 +117,31 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
-          <h3 className="font-semibold text-slate-900 mb-4">Last bookings</h3>
+      <div className="bg-white rounded-xl border border-slate-200 p-6">
+        <h3 className="font-semibold text-slate-900 mb-4">Last bookings</h3>
 
-          {loading ? (
-            <div className="text-center py-8 text-slate-400 text-sm">Loading...</div>
-          ) : recentBookings.length === 0 ? (
-            <div className="text-center py-8 text-slate-400 text-sm">
-              There are no bookings!
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {recentBookings.map((booking) => (
-                <div key={booking.id} className="flex items-center justify-between border-b border-slate-100 pb-3 last:border-b-0 last:pb-0">
-                  <div>
-                    <p className="font-medium text-slate-900">{booking.customer_name || 'Client'}</p>
-                    <p className="text-xs text-slate-500">{booking.service_name || 'Service'} · {booking.booking_date}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-semibold text-slate-900">{booking.status}</p>
-                    <p className="text-xs text-slate-500">{booking.total_price ? formatCurrency(booking.total_price) : '€0.00'}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
-          <h3 className="font-semibold text-slate-900 mb-4">Fast Services</h3>
-          <div className="space-y-2">
-            <button className="w-full text-left px-4 py-3 rounded-lg border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50 transition text-sm font-medium">
-              + Add new service
-            </button>
-            <button className="w-full text-left px-4 py-3 rounded-lg border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50 transition text-sm font-medium">
-              + Create manual booking
-            </button>
-            <button className="w-full text-left px-4 py-3 rounded-lg border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50 transition text-sm font-medium">
-              + Add group members
-            </button>
+        {loading ? (
+          <div className="text-center py-8 text-slate-400 text-sm">Loading...</div>
+        ) : recentBookings.length === 0 ? (
+          <div className="text-center py-8 text-slate-400 text-sm">
+            There are no bookings!
           </div>
-        </div>
+        ) : (
+          <div className="space-y-3">
+            {recentBookings.map((booking) => (
+              <div key={booking.id} className="flex items-center justify-between border-b border-slate-100 pb-3 last:border-b-0 last:pb-0">
+                <div>
+                  <p className="font-medium text-slate-900">{booking.customer_name || 'Client'}</p>
+                  <p className="text-xs text-slate-500">{booking.service_name || 'Service'} · {booking.booking_date}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-semibold text-slate-900">{booking.status}</p>
+                  <p className="text-xs text-slate-500">{booking.total_price ? formatCurrency(booking.total_price) : '€0.00'}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

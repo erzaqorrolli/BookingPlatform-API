@@ -10,7 +10,6 @@ class GoogleCalendarController
 {
     public function connect(): void
 {
-    // Provo token nga query parameter (për redirect nga shfletuesi)
     $token = $_GET['token'] ?? '';
     $uid = null;
 

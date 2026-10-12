@@ -12,6 +12,10 @@ class User
     public string $email = '';
     public string $password = '';
     public ?string $email_verified_at = null;
+    public ?string $status = 'active';
+    public ?string $blocked_at = null;
+    public ?string $blocked_reason = null;
+
     public ?string $verification_token = null;
     public ?string $reset_token = null;
     public ?string $reset_expires = null;
@@ -147,6 +151,10 @@ class User
         return $this->email_verified_at !== null;
     }
 
+    public function isBlocked(): bool{
+        return $this->status === 'blocked';
+    }
+
     public function toArray(): array
     {
         return [
@@ -166,6 +174,9 @@ class User
         $user->email              = $row['email'];
         $user->password           = $row['password'];
         $user->email_verified_at  = $row['email_verified_at'];
+        $user->status             = $row['status'];
+        $user->blocked_at         = $row['blocked_at'];
+        $user->blocked_reason     = $row['blocked_reason'];
         $user->verification_token = $row['verification_token'];
         $user->reset_token        = $row['reset_token'];
         $user->reset_expires      = $row['reset_expires'];

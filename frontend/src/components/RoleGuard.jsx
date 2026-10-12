@@ -11,3 +11,4 @@ export default function RoleGuard({ allowed, children, fallback = '/admin' }) {
 
   return children;
 }
+

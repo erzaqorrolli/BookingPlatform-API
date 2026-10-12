@@ -48,10 +48,8 @@ class Router
             $uri = '/' . $uri;
         }
 
-        // REGISTER ROUTES
         require __DIR__ . '/../routes/api.php';
 
-        // MATCH ROUTES
         foreach (self::$routes as [$routeMethod, $routePath, $handler]) {
             if ($routeMethod !== $method) {
                 continue;

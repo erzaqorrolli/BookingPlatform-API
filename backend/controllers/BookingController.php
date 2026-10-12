@@ -315,7 +315,6 @@ class BookingController
             json_err('Could not reserve the selected slot', 409);
         }
 
-        // Double-check overlap
         $endTime = date('H:i:s', strtotime($startTime) + $dur * 60);
 
         $stmt = $db->prepare("

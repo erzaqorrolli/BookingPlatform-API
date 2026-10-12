@@ -33,3 +33,10 @@ export default function ProtectedPage({ allowed, children }) {
 
   return <AdminLayout>{children}</AdminLayout>;
 }
+
+//this code checks roles and auth
+//if it's not a user redirect to login, 
+// if role is customer redirect to portal
+//if role staff and not allowed role (staff) redirect to staff
+// if user is not allowed redirect to admin
+//if all if-s pass render the page (children) with Adminlayout

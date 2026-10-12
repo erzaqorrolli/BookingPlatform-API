@@ -23,7 +23,7 @@ class AuthController
             json_err('Email already exists', 409);
         }
 
-        $verificationToken = bin2hex(random_bytes(32));
+        $verificationToken = bin2hex(random_bytes(32)); // random_bytes is safe chriptographicly, hackers can't predict token
         $user = User::create($name, $email, $password, $verificationToken);
 
         Mailer::sendVerification($email, $name, $verificationToken);
@@ -49,16 +49,18 @@ class AuthController
 
         json_ok(['message' => 'Email verified successfully']);
     }
-public function login(): void
+public function login(): void // return type void, but can return messages through json_ok and json_error. these are not return values.
 {
     $input    = input();
-    $email    = trim(strtolower($input['email'] ?? ''));
-    $password = $input['password'] ?? '';
-
+    $email    = trim(strtolower($input['email'] ?? '')); // trim removes spaces around an array, but NOT in the middle of it
+    $password = $input['password'] ?? ''; // ??-> is a null coalescing operator, if key name in input exists and its value is not null use that value,otherwise use empty array. 
+    // ?? is used to give a fallback  answer value, when another variable or key is null or doesn't exists
+    // we need to use ?? because the user will not always write all fields that server is waiting for, so ?? avoids effort to read something that is missing
     if (!$email || !$password) json_err('Email and password required', 422);
 
     $user = User::findByEmail($email);
-    if (!$user || !$user->verifyPassword($password)) {
+    if (!$user || !$user->verifyPassword($password)) { // -> operator is used to access a method of an object
+    // :: is used to access static method of class
         json_err('Invalid credentials', 401);
     }
 
@@ -66,7 +68,12 @@ public function login(): void
         json_err('Please verify your email before logging in', 403);
     }
 
-    $expiresIn = (int) ($_ENV['JWT_EXPIRES'] ?? 3600);
+    if($user->isBlocked()){
+        json_err ('Your account has been blocked. Reason: ' . ($user->blocked_reason ?: 'Contact support'),403);
+    }
+
+
+    $expiresIn = (int) ($_ENV['JWT_EXPIRES'] ?? 3600);// $_ENV means that values come in string type, while (int) converts them in integer.
 
     $token = jwt_encode([
         'uid' => $user->id,
@@ -75,19 +82,19 @@ public function login(): void
 
     cookie_set_auth($token, $expiresIn);
 
-    $csrf = generate_token();
+    $csrf = generate_token();//cross site request forgery, token helps to verify that POST request is coming from your real page, and not from an unknwon hacker page
     cookie_set_csrf($csrf);
 
-    $db = \App\Config\Database::pdo();
+    $db = \App\Config\Database::pdo(); // Database::pdo calls static method from class Database
     $stmt = $db->prepare("
         SELECT c.id AS company_id, c.name AS company_name, r.name AS role
         FROM company_user cu
         JOIN companies c ON c.id = cu.company_id
         JOIN roles r ON r.id = cu.role_id
         WHERE cu.user_id = ?
-    ");
-    $stmt->execute([$user->id]);
-    $companies = $stmt->fetchAll();
+    "); // prepare, prepares an sql statement. SQL code travles through 2 seperate chanels, so using prepare avoids sql injection 
+    $stmt->execute([$user->id]);//executes statement and sends ID in placeholder ?
+    $companies = $stmt->fetchAll(); // fetches all rows from result
 
     json_ok([
         'user'       => $user->toArray(),
@@ -146,6 +153,10 @@ public function me(): void
     $user = User::findById($uid);
     if (!$user) json_err('User not found', 404);
 
+    if ($user->status === 'blocked') {
+        json_err('Your account has been blocked. Reason: ' . ($user->blocked_reason ?: 'Contact support'), 403);
+    }
+
     $db = \App\Config\Database::pdo();
     $stmt = $db->prepare("
         SELECT c.id AS company_id, r.name AS role
@@ -157,7 +168,7 @@ public function me(): void
     $stmt->execute([$uid]);
     $companies = $stmt->fetchAll();
 
-    $data = $user->toArray();
+    $data = $user->toArray(); // $user->toArray, converts object in a array
     $data['companies'] = $companies;
 
     json_ok($data);
@@ -198,7 +209,7 @@ public function me(): void
     $companyName = trim($input['company_name'] ?? '');
 
     if ($name === '') json_err('Name is required', 422);
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) json_err('Email is not valid', 422);
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) json_err('Email is not valid', 422); // filter_var follows RFC standards , manual regex often has errors. checks @, and has domain
     if (strlen($password) < 6) json_err('Password must be at least 6 characters', 422);
     if ($companyName === '') json_err('Company name is required', 422);
 
@@ -285,7 +296,7 @@ public function registerInvited(): void
 
 
     try {
-        $db->beginTransaction();
+        $db->beginTransaction();// tells the start of a block executing, they all execute, or none of them executes, they are unbreakable
         $verToken = bin2hex(random_bytes(32));
         $user = User::create($name, $invite['email'], $password, $verToken);
 
@@ -310,7 +321,7 @@ public function registerInvited(): void
             'role'    => $invite['role_name'],
         ], 201);
 
-    } catch (\Throwable $e) {
+    } catch (\Throwable $e) {// Throwable is a interface
         $db->rollBack();
         throw $e;
     }

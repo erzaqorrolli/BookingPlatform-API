@@ -32,3 +32,11 @@ if (['owner', 'admin', 'manager', 'staff'].includes(role)) {
 
   return <PortalLayout>{children}</PortalLayout>;
 }
+
+//this code checks roles, and auth. if it's not a user, it redirects to login,
+//if role is superadmin, it redirects to superadmin
+//if role  is staff, redirect to staff, if role admin ,owner and manager redirect to admindashboard.
+//but if none of the roles matches , then is a client, which pages are allowed to open from children.
+
+
+

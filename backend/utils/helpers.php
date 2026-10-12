@@ -4,11 +4,8 @@ declare(strict_types=1);
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 
-/* ============================================================
- * JSON RESPONSES
- * ============================================================ */
 
-if (!function_exists('json_ok')) {
+if (!function_exists('json_ok')) { //if function doesn't exists declare it
     function json_ok($data = null, int $status = 200): void
     {
         http_response_code($status);
@@ -33,10 +30,6 @@ if (!function_exists('json_err')) {
         exit;
     }
 }
-
-/* ============================================================
- * INPUT
- * ============================================================ */
 
 if (!function_exists('input')) {
     function input(): array
@@ -83,9 +76,6 @@ if (!function_exists('input')) {
     }
 }
 
-/* ============================================================
- * JWT
- * ============================================================ */
 
 if (!function_exists('jwt_encode')) {
     function jwt_encode(array $payload): string
@@ -118,9 +108,6 @@ if (!function_exists('jwt_decode')) {
     }
 }
 
-/* ============================================================
- * AUTH
- * ============================================================ */
 
 if (!function_exists('get_bearer_token')) {
     function get_bearer_token(): ?string
@@ -212,9 +199,6 @@ if (!function_exists('require_auth')) {
     }
 }
 
-/* ============================================================
- * COOKIES + CSRF
- * ============================================================ */
 
 if (!function_exists('cookie_set_auth')) {
     function cookie_set_auth(string $token, int $expiresInSeconds): void
@@ -303,9 +287,6 @@ if (!function_exists('csrf_verify')) {
     }
 }
 
-/* ============================================================
- * MISC
- * ============================================================ */
 
 if (!function_exists('slugify')) {
     function slugify(string $text): string

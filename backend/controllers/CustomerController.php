@@ -127,7 +127,6 @@ public function show(array $params): void
         json_err('Customer not found', 404);
     }
 
-    // Bookings
     $bookingStmt = $db->prepare("
         SELECT 
             b.id,
@@ -148,7 +147,6 @@ public function show(array $params): void
     $bookingStmt->execute([$customerId]);
     $bookings = $bookingStmt->fetchAll();
 
-    // Invoices
     $invoiceStmt = $db->prepare("
         SELECT 
             i.id,
@@ -165,7 +163,6 @@ public function show(array $params): void
     $invoiceStmt->execute([$customerId, $companyId]);
     $invoices = $invoiceStmt->fetchAll();
 
-    // Stats
     $totalSpent = 0;
     foreach ($bookings as $b) {
         if (in_array($b['status'], ['confirmed', 'completed'])) {

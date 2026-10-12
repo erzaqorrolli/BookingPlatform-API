@@ -11,7 +11,6 @@ class PayrollEarning
     {
         $db = Database::pdo();
 
-        // 1. Merr tarifën
         $stmt = $db->prepare("
             SELECT hourly_rate FROM staff_compensation
             WHERE company_id = ? AND user_id = ? AND active = 1
@@ -24,7 +23,6 @@ class PayrollEarning
             return 0;
         }
 
-        // 2. Merr shiftet e mbaruara që nuk janë llogaritur
         $stmt = $db->prepare("
             SELECT 
                 us.id AS user_shift_id,
@@ -47,7 +45,6 @@ class PayrollEarning
             return 0;
         }
 
-        // 3. Llogarit dhe ruaj
         $count = 0;
         foreach ($shifts as $shift) {
             $start = strtotime($shift['start_time']);

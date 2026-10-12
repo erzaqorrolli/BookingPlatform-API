@@ -70,21 +70,21 @@ import SuperAdminAuditLogs from './pages/admin/superadmin/AuditLogs';
 import Payroll from './pages/admin/Payroll';
 
 
-function ProtectedRoute({ children }) {
+function ProtectedRoute({ children }) { //checks if user is logged , if not redirect to login
   const { user, loading } = useAuth();
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">  
         <div className="text-slate-500">Loading...</div>
       </div>
     );
   }
 
-  return user ? children : <Navigate to="/login" replace />;
+  return user ? children : <Navigate to="/login" replace />; // if it's a user show children, it not redirect to login
 }
 
-function NotFound() {
+function NotFound() {//if page not found, show page not found
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
       <div className="text-center">
@@ -97,18 +97,21 @@ function NotFound() {
 
 export default function App() {
   return (
-    <AuthProvider>
+    <AuthProvider> 
       <CompanyProvider>
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<HomePage />} />
+
+        {/* public routes, no login needed */}
+          <Routes> 
+            <Route path="/" element={<HomePage />} /> 
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/book/:slug" element={<BookingWizard />} />
-            <Route path="/booking-success/:id" element={<BookingSuccess />} />
+            <Route path="/booking-success/:id" element={<BookingSuccess />} />  
 
+            {/* auth routes */}
             <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
+            <Route path="/register" element ={<Register />} />
             <Route path="/register-business" element={<RegisterBusiness />} />
             <Route path="/forgot" element={<ForgotPassword />} />
             <Route path="/reset" element={<ResetPassword />} />

@@ -9,7 +9,7 @@ use App\Models\Company;
 class PhotoController
 {
     private const UPLOAD_DIR = __DIR__ . '/../storage/uploads/';
-    private const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+    private const MAX_SIZE = 5 * 1024 * 1024; 
     private const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
     

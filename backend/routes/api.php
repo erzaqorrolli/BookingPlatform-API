@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-
+//importing classes that routes use
 use App\Config\Router;
 use App\Controllers\AuthController;
 use App\Controllers\CompanyController;

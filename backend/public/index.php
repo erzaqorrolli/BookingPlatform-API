@@ -50,24 +50,27 @@ if ($isDebug) {
     ini_set('log_errors', '1');
 }
 
-$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+$origin = $_SERVER['HTTP_ORIGIN'] ?? ''; // tells browser that frontend can communicate with backend
 
 if ($origin !== '') {
     header("Access-Control-Allow-Origin: $origin");
 } else {
     header('Access-Control-Allow-Origin: *');
 }
-
+// without these headers browser blocks request with CORS error
 header('Vary: Origin');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, PATCH, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-CSRF-Token, X-Requested-With, ngrok-skip-browser-warning');
 header('Access-Control-Allow-Credentials: true');
 header('Access-Control-Max-Age: 86400');
 
+// before every post-put-delete, browser sends OPTIONS, it should return 204 so the real request can go on
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
     http_response_code(204);
     exit;
 }
+
+//health check
 
 if ($path === '/api/health') {
     header('Content-Type: application/json; charset=utf-8');
@@ -83,6 +86,7 @@ if ($path === '/api/health') {
     exit;
 }
 
+//calls router::dispatch() that finds controller and executes, if it has error, catch catches it and return 500 with details
 try {
     \App\Config\Router::dispatch();
 } catch (\Throwable $e) {
