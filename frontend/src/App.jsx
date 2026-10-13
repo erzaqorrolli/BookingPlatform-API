@@ -69,6 +69,7 @@ import SuperAdminAuditLogs from './pages/admin/superadmin/AuditLogs';
 
 import Payroll from './pages/admin/Payroll';
 
+//children is a special prop that react fill it automaticlly with everything that stays between tags <x> example </x>
 
 function ProtectedRoute({ children }) { //checks if user is logged , if not redirect to login
   const { user, loading } = useAuth();

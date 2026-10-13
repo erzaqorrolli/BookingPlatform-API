@@ -33,7 +33,6 @@ const handleToggleStatus = async (user) => {
   const isBlocking = user.status !== 'blocked';
 
   if (isBlocking) {
-    // ============ BLOCK ============
     const { value: reason } = await Swal.fire({
       title: 'Block user?',
       html: `Are you sure you want to block <b>${user.name}</b>?`,
@@ -76,7 +75,6 @@ const handleToggleStatus = async (user) => {
       });
     }
   } else {
-    // ============ UNBLOCK / ACTIVATE ============
     const result = await Swal.fire({
       title: 'Activate user?',
       html: `Are you sure you want to activate <b>${user.name}</b>?`,

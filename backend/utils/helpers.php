@@ -8,8 +8,8 @@ use Firebase\JWT\Key;
 if (!function_exists('json_ok')) { //if function doesn't exists declare it
     function json_ok($data = null, int $status = 200): void
     {
-        http_response_code($status);
-        header('Content-Type: application/json; charset=utf-8');
+        http_response_code($status); // tells browser status answer
+        header('Content-Type: application/json; charset=utf-8'); //tells browser that the answer is json and not html
         echo json_encode(
             ['success' => true, 'data' => $data],
             JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
@@ -17,6 +17,8 @@ if (!function_exists('json_ok')) { //if function doesn't exists declare it
         exit;
     }
 }
+
+
 
 if (!function_exists('json_err')) {
     function json_err(string $message, int $status = 400): void

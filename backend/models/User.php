@@ -22,24 +22,28 @@ class User
     public ?string $created_at = null;
     public ?string $updated_at = null;
 
-    public static function findById(int $id): ?self
+    // constructor is a special method that is called automaticlly when an object is cretaing
+    //in this case , class doesn't use a constructor because class uses variables with default values
+    // values are self initialized, thats why we dont need to use construct to initalize variables everytime an object is created
+    public static function findById(int $id): ?self // method findById, accepts as a parameter id as an integer, and 
+   //returns actual type of class, but '?' tells that it can be null
     {
         $db = Database::pdo();
-        $stmt = $db->prepare("SELECT * FROM users WHERE id = ?");
-        $stmt->execute([$id]);
-        $row = $stmt->fetch();
+        $stmt = $db->prepare("SELECT * FROM users WHERE id = ?");//prepare is used when we want to avoid sql injection , while also using ?, so that hackers will not have space to get code
+        $stmt->execute([$id]);// executes statement and sends id in placeholder
+        $row = $stmt->fetch(); // fetches everything from row
 
-        return $row ? self::fromRow($row) : null;
-    }
+        return $row ? self::fromRow($row) : null; 
+    } 
 
-    public static function findByEmail(string $email): ?self
+    public static function findByEmail(string $email): ?self 
     {
         $db = Database::pdo();
         $stmt = $db->prepare("SELECT * FROM users WHERE email = ?");
         $stmt->execute([strtolower(trim($email))]);
         $row = $stmt->fetch();
 
-        return $row ? self::fromRow($row) : null;
+        return $row ? self::fromRow($row) : null; // if row has values, return it and convert in User(class) object, if not return null
     }
 
     public static function findByVerificationToken(string $token): ?self
@@ -67,12 +71,12 @@ class User
 
     public static function create(string $name, string $email, string $password, string $verificationToken): self
     {
-        $db = Database::pdo();
+        $db = Database::pdo();// database is using static method pdo from Database
         $stmt = $db->prepare("
             INSERT INTO users (name, email, password, verification_token)
             VALUES (?, ?, ?, ?)
-        ");
-        $stmt->execute([
+        "); // we use ???? in VALUES because we don't know the values that user will type into
+        $stmt->execute([ // we use trim to remove spaces around 
             trim($name),
             strtolower(trim($email)),
             password_hash($password, PASSWORD_BCRYPT),
@@ -82,11 +86,11 @@ class User
         return self::findById((int) $db->lastInsertId());
     }
 
-    public function markEmailAsVerified(): bool
+    public function markEmailAsVerified(): bool // doesn't accept parameter, returns boolean
     {
-        if ($this->id === null) return false;
+        if ($this->id === null) return false; // if id is null return false
 
-        $db = Database::pdo();
+        $db = Database::pdo(); // using method pdo from Database class
         $stmt = $db->prepare("
             UPDATE users
             SET email_verified_at = NOW(), verification_token = NULL
@@ -94,7 +98,7 @@ class User
         ");
         $stmt->execute([$this->id]);
 
-        return $stmt->rowCount() > 0;
+        return $stmt->rowCount() > 0; // rowCount, counts how many rows have changed, if changes are > 0 , then return true or false
     }
 
     public function updatePassword(string $newPassword): bool
@@ -155,7 +159,7 @@ class User
         return $this->status === 'blocked';
     }
 
-    public function toArray(): array
+    public function toArray(): array //converets object user in array, so that it can be returned like JSON in API
     {
         return [
             'id'                => $this->id,
@@ -166,8 +170,8 @@ class User
         ];
     }
 
-    private static function fromRow(array $row): self
-    {
+    private static function fromRow(array $row): self // database returns array, but we ned objects so we can work with methods
+    { //created null objects and it fills them with data from array
         $user = new self();
         $user->id                 = (int) $row['id'];
         $user->name               = $row['name'];
