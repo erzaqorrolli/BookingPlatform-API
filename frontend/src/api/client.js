@@ -30,7 +30,7 @@ api.interceptors.request.use((config) => { // before every request, adds headers
     config.headers['Authorization'] = `Bearer ${authToken}`;
   }
 
-  const method = (config.method || 'get').toUpperCase();
+  const method = (config.method || 'get').toUpperCase(); // adds csrf token in header only for requests that change data (POST PUT PATCH DELETE)
   const unsafeMethods = ['POST', 'PUT', 'PATCH', 'DELETE'];
 
   if (unsafeMethods.includes(method)) {
@@ -43,7 +43,7 @@ api.interceptors.request.use((config) => { // before every request, adds headers
   return config;
 });
 
-api.interceptors.response.use(
+api.interceptors.response.use( // after every response check if status is 401 (not logged in) , if yes delete token from localstorage 
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {

@@ -152,7 +152,6 @@ export default function CompanyDetail() {
         </Link>
       </div>
 
-      {/* Header */}
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
@@ -185,7 +184,6 @@ export default function CompanyDetail() {
         </div>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
         <StatCard label="Bookings" value={stats.total_bookings} />
         <StatCard label="Services" value={stats.total_services} />
@@ -195,7 +193,6 @@ export default function CompanyDetail() {
         <StatCard label="Revenue" value={`€${parseFloat(stats.total_revenue ?? 0).toFixed(2)}`} />
       </div>
 
-      {/* Company info */}
       <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800">
         <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Details</h2>
         <dl className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -214,7 +211,6 @@ export default function CompanyDetail() {
         </dl>
       </div>
 
-      {/* Staff */}
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Staff ({staff.length})</h2>
@@ -243,7 +239,6 @@ export default function CompanyDetail() {
         </table>
       </div>
 
-      {/* Recent Bookings */}
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Recent Bookings</h2>

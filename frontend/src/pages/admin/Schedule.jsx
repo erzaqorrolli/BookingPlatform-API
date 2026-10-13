@@ -60,8 +60,6 @@ export default function Schedule() {
   useEffect(() => {
     const initialLoad = window.setTimeout(load, 0);
     return () => window.clearTimeout(initialLoad);
-    // load is intentionally invoked asynchronously for this effect.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCompany, weekStartStr]);
 
   const prevWeek = () => {
@@ -153,7 +151,6 @@ export default function Schedule() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Staff working hours</h1>
@@ -168,7 +165,7 @@ export default function Schedule() {
             </svg>
           </button>
           <button onClick={goToToday} className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition">
-            Sot
+            Today
           </button>
           <button onClick={nextWeek} className="p-2 hover:bg-slate-100 rounded-lg transition">
             <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -178,7 +175,6 @@ export default function Schedule() {
         </div>
       </div>
 
-      {/* Legend */}
       <div className="flex flex-wrap gap-4 text-xs">
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 border-l-4 border-emerald-500 bg-white" />
@@ -288,7 +284,6 @@ export default function Schedule() {
         </div>
       )}
 
-      {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">

@@ -158,7 +158,6 @@ const handleDelete = async (user) => {
         </div>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <input
           type="text"
@@ -195,7 +194,6 @@ const handleDelete = async (user) => {
         )}
       </div>
 
-      {/* Table */}
       {loading ? (
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-12 text-center text-slate-500 dark:text-slate-400">
           Loading users...

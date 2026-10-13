@@ -246,7 +246,6 @@ export default function Users() {
         </div>
       )}
 
-      {/* Invite Modal */}
       {showInviteModal && (
         <div
           className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"

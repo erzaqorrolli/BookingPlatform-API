@@ -1,32 +1,32 @@
 import { useEffect, useState, useContext, createContext } from 'react';
 import api from '../api/client';
 
-const AuthContext = createContext(undefined);
+const AuthContext = createContext(undefined); 
 
 export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
+  const context = useContext(AuthContext); //reads AuthContext value
+  if (context === undefined) { // checks if context exists
     throw new Error('useAuth must be used within AuthProvider');
   }
   return context;
 }
 
-function getCsrfToken() {
+function getCsrfToken() { //reads csrf token from cookies, or returns null
   const match = document.cookie.match(/(^| )csrf_token=([^;]+)/);
   return match ? decodeURIComponent(match[2]) : null;
 }
 
 export function AuthProvider({ children }) {
-  const [user, setUser]       = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser]       = useState(null); //saves user 
+  const [loading, setLoading] = useState(true); // saves loading
 
-  const clearAuthSession = () => {
-    sessionStorage.removeItem('activeCompanyId');
-    localStorage.removeItem('activeCompanyId');
-    setUser(null);
+  const clearAuthSession = () => { // cleans Session
+    sessionStorage.removeItem('activeCompanyId'); //deletes from session storage. session storage saves temporary tokens, and deletes when tab closes.
+    localStorage.removeItem('activeCompanyId'); // deletes from localstroage. local storage saves tokens permanently, they stay even after closing the tab
+    setUser(null);// deletes user, user logges out of app
   };
 
-  const normalizeUser = (data) => {
+  const normalizeUser = (data) => { // normalizes users data which come from backend, makes sure that companies and role are coming in right format
     const payload = data?.user || data || {};
     const companies = payload.companies || data?.companies || [];
     const roleFromUser = payload.role || payload.company_role;
@@ -42,8 +42,8 @@ export function AuthProvider({ children }) {
     };
   };
 
-  useEffect(() => {
-    api.get('/auth/me')
+  useEffect(() => { // when app opens, checks if user is logged in and is calling /auth/me, if yesit saves the user, if not deletes it
+    api.get('/auth/me') // useEffect is react hooks that executes code when components change addiction
       .then((response) => {
         const data = response.data?.data || response.data;
         setUser(normalizeUser(data));
@@ -54,7 +54,7 @@ export function AuthProvider({ children }) {
       .finally(() => setLoading(false));
   }, []);
 
- const login = async (email, password) => {
+ const login = async (email, password) => { // when user logs in , sends email,passwod, saves token , saves crf token and user in state
   clearAuthSession();
 
   const response = await api.post('/auth/login', { email, password });
@@ -73,12 +73,12 @@ export function AuthProvider({ children }) {
   return { ...data, user: normalizedUser, role: normalizedUser.role };
 };
 
-  const register = async (name, email, password) => {
+  const register = async (name, email, password) => { // registers name email password in backend and gives response
     const response = await api.post('/auth/register', { name, email, password });
     return response.data?.data || response.data;
   };
 
- const logout = async () => {
+ const logout = async () => { // when user loges out , sends request in backend, cleans session, removes token and csrf token
   try {
     await api.post('/auth/logout');
   } catch {}
@@ -86,7 +86,8 @@ export function AuthProvider({ children }) {
   localStorage.removeItem('auth_token');   
   document.cookie = 'csrf_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
 };
-  return (
+
+  return ( //offers auth data (user,loading,login,register,logout) for all children of authprovider
     <AuthContext.Provider value={{ user, loading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
