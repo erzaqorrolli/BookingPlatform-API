@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
+import InvoiceForm from './InvoiceForm';
 
 const STATUS_LABELS = {
   draft:     'Draft',
@@ -22,6 +23,8 @@ export default function Invoices() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingInvoice, setEditingInvoice] = useState(null);
 
   const loadInvoices = useCallback(async () => {
     if (!activeCompany) return;
@@ -69,7 +72,6 @@ export default function Invoices() {
     );
   }
 
-
   const totalCount = invoices.length;
   const paidCount = invoices.filter((i) => i.status === 'paid').length;
   const pendingCount = invoices.filter((i) => i.status === 'draft' || i.status === 'sent').length;
@@ -79,6 +81,7 @@ export default function Invoices() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Invoices</h1>
@@ -86,8 +89,18 @@ export default function Invoices() {
             {activeCompany.name} · {totalCount} invoices
           </p>
         </div>
+        <button
+          onClick={() => setShowCreateModal(true)}
+          className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium text-sm"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          New Invoice
+        </button>
       </div>
 
+      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white rounded-xl border border-slate-200 p-5">
           <p className="text-sm text-slate-500 mb-1">Total Revenue</p>
@@ -103,6 +116,7 @@ export default function Invoices() {
         </div>
       </div>
 
+      {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <input
           type="text"
@@ -124,7 +138,7 @@ export default function Invoices() {
         </select>
       </div>
 
-
+      {/* Table */}
       {loading ? (
         <div className="bg-white rounded-xl border border-slate-200 p-12 text-center text-slate-500">
           Loading...
@@ -176,7 +190,9 @@ export default function Invoices() {
                     </div>
                     <div className="text-xs text-slate-500">{inv.customer_email}</div>
                   </td>
-                  <td className="px-5 py-4 text-sm text-slate-700">{inv.service_name}</td>
+                  <td className="px-5 py-4 text-sm text-slate-700">
+                    {inv.service_name || '—'}
+                  </td>
                   <td className="px-5 py-4 text-sm text-slate-700">
                     {formatDate(inv.issue_date)}
                   </td>
@@ -193,22 +209,44 @@ export default function Invoices() {
                     </span>
                   </td>
                   <td className="px-5 py-4 text-right">
-                    <select
-                      value={inv.status}
-                      onChange={(e) => updateStatus(inv.id, e.target.value)}
-                      className="text-xs border border-slate-200 rounded px-2 py-1 focus:border-indigo-500 outline-none"
-                    >
-                      <option value="draft">Draft</option>
-                      <option value="sent">Sent</option>
-                      <option value="paid">Paid</option>
-                      <option value="cancelled">Cancelled</option>
-                    </select>
+                    <div className="flex items-center justify-end gap-3">
+                      {inv.status === 'draft' && (
+                        <button
+                          onClick={() => setEditingInvoice(inv)}
+                          className="text-xs font-medium text-indigo-600 hover:underline"
+                        >
+                          Edit
+                        </button>
+                      )}
+                      <select
+                        value={inv.status}
+                        onChange={(e) => updateStatus(inv.id, e.target.value)}
+                        className="text-xs border border-slate-200 rounded px-2 py-1 focus:border-indigo-500 outline-none"
+                      >
+                        <option value="draft">Draft</option>
+                        <option value="sent">Sent</option>
+                        <option value="paid">Paid</option>
+                        <option value="cancelled">Cancelled</option>
+                      </select>
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* Create/Edit Modal */}
+      {(showCreateModal || editingInvoice) && (
+        <InvoiceForm
+          invoice={editingInvoice}
+          onClose={() => {
+            setShowCreateModal(false);
+            setEditingInvoice(null);
+          }}
+          onSaved={loadInvoices}
+        />
       )}
     </div>
   );

@@ -72,18 +72,18 @@ public function login(): void // return type void, but can return messages throu
         json_err ('Your account has been blocked. Reason: ' . ($user->blocked_reason ?: 'Contact support'),403);
     }
 
+    $accessExpiresIn=900;
+    $accessToken = jwt_encode([ 'uid'=> $user->id, 'exp' =>time() + $accessExpiresIn,]);
 
-    $expiresIn = (int) ($_ENV['JWT_EXPIRES'] ?? 3600);// $_ENV means that values come in string type, while (int) converts them in integer.
+    $refreshToken = \App\Models\RefreshToken::create($user->id);
 
-    $token = jwt_encode([
-        'uid' => $user->id,
-        'exp' => time() + $expiresIn,
-    ]);
+    cookie_set_auth($accessToken, $accessExpiresIn);
 
-    cookie_set_auth($token, $expiresIn);
-
-    $csrf = generate_token();//cross site request forgery, token helps to verify that POST request is coming from your real page, and not from an unknwon hacker page
+    $csrf = generate_token();
     cookie_set_csrf($csrf);
+   
+
+    cookie_set_csrf($csrf); // csrf is used to verify that request comes from your page , not other hackers page
 
     $db = \App\Config\Database::pdo(); // Database::pdo calls static method from class Database
     $stmt = $db->prepare("
@@ -100,7 +100,8 @@ public function login(): void // return type void, but can return messages throu
         'user'       => $user->toArray(),
         'companies'  => $companies,
         'csrf_token' => $csrf,
-	'token'      => $token,
+	'access_token'   => $accessToken,
+    'refresh_token'  => $refreshToken,
     ]);
 }
 
@@ -197,9 +198,48 @@ public function me(): void
 
     public function logout(): void
     {
-        json_ok(['message' => 'Logged out']);
+    $input = input();
+    $refreshToken=$input['refresh_token'] ?? '';
+
+    if($refreshToken){
+        \App\Models\RefreshToken::revoke($refreshToken);
     }
 
+    cookie_clear_auth();
+    cookie_clear_csrf();
+    }
+
+
+    public function refresh():void {
+        $input = input();
+        $refreshToken = $input ['refresh_token'] ?? '';
+
+        if(!$refreshToken){
+            json_err('Refresh token required', 422);
+        }
+
+        $tokenRow= \App\Models\RefreshToken::findValid($refreshToken);
+        if(!$tokenRow){
+            json_err ('Invalid or expired refresh token', 401);
+        }
+
+        $userId=(int) $tokenRow['user_id'];
+        $user = User::findById ($userId);
+        if(!$user){
+            json_err('User not found', 404);
+        }
+
+        if($user->isBlocked()){
+            \App\Models\RefreshToken::revoke($refreshToken);
+            json_err('Account blocked',403);
+        }
+
+        $accessExpiresIn = 900;
+        $accessToken = jwt_encode(['uid' => $userId, 'exp' => time() + $accessExpiresIn,]);
+        cookie_set_auth($accessToken, $accessExpiresIn);
+        
+        json_ok(['access_token' =>$accessToken,]);
+    }
    public function registerBusiness(): void
 {
     $input       = input();

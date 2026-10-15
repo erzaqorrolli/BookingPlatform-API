@@ -43,15 +43,104 @@ api.interceptors.request.use((config) => { // before every request, adds headers
   return config;
 });
 
-api.interceptors.response.use( // after every response check if status is 401 (not logged in) , if yes delete token from localstorage 
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      console.warn('[api] 401 Unauthorized:', error.config?.url);
-      localStorage.removeItem('auth_token');
+// Auto-refresh interceptor: on 401, tries to refresh access token
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+    failedQueue.forEach(prom => {
+        if (error) {
+            prom.reject(error);
+        } else {
+            prom.resolve(token);
+        }
+    });
+    failedQueue = [];
+};
+
+api.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+        const originalRequest = error.config;
+        const requestUrl = originalRequest?.url ?? '';
+
+        // Skip refresh for auth endpoints (login, register, refresh, etc.)
+        const isAuthEndpoint =
+            requestUrl.includes('/auth/login') ||
+            requestUrl.includes('/auth/register') ||
+            requestUrl.includes('/auth/refresh') ||
+            requestUrl.includes('/auth/verify') ||
+            requestUrl.includes('/auth/forgot') ||
+            requestUrl.includes('/auth/reset') ||
+            requestUrl.includes('/auth/logout');
+
+        // If 401, not from auth endpoint, and not already retried
+        if (
+            error.response?.status === 401 &&
+            !originalRequest._retry &&
+            !isAuthEndpoint
+        ) {
+            // If already refreshing, queue this request
+            if (isRefreshing) {
+                return new Promise((resolve, reject) => {
+                    failedQueue.push({ resolve, reject });
+                })
+                    .then(token => {
+                        originalRequest.headers['Authorization'] = `Bearer ${token}`;
+                        return api(originalRequest);
+                    })
+                    .catch(err => Promise.reject(err));
+            }
+
+            originalRequest._retry = true;
+            isRefreshing = true;
+
+            const refreshToken = localStorage.getItem('refresh_token');
+
+            // Without a refresh token, let the caller handle the unauthenticated request.
+            if (!refreshToken) {
+                isRefreshing = false;
+                localStorage.removeItem('auth_token');
+                return Promise.reject(error);
+            }
+
+            try {
+                const response = await api.post('/auth/refresh', {
+                    refresh_token: refreshToken,
+                });
+
+                const newToken =
+                    response.data?.data?.access_token ||
+                    response.data?.access_token;
+
+                if (!newToken) throw new Error('No access token returned');
+
+                // Save new access token
+                localStorage.setItem('auth_token', newToken);
+                api.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
+
+                // Resolve all queued requests
+                processQueue(null, newToken);
+
+                // Retry original request
+                originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
+                return api(originalRequest);
+            } catch (refreshError) {
+                // Refresh failed → logout
+                processQueue(refreshError, null);
+                localStorage.removeItem('auth_token');
+                localStorage.removeItem('refresh_token');
+                if (window.location.pathname !== '/login') {
+                    window.location.href = '/login';
+                }
+                return Promise.reject(refreshError);
+            } finally {
+                isRefreshing = false;
+            }
+        }
+
+        return Promise.reject(error);
     }
-    return Promise.reject(error);
-  }
 );
 
 export default api;

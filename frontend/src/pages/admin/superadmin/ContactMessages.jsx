@@ -40,7 +40,6 @@ export default function ContactMessages() {
     setSelectedMessage(message);
     setShowModal(true);
 
-    // Mark as read nëse është new
     if (message.status === 'new') {
       try {
         await api.put(`/superadmin/contact-messages/${message.id}/read`);
@@ -85,7 +84,6 @@ export default function ContactMessages() {
         </div>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <input
           type="text"
@@ -120,7 +118,6 @@ export default function ContactMessages() {
         )}
       </div>
 
-      {/* Messages List */}
       {loading ? (
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-12 text-center text-slate-500 dark:text-slate-400">
           Loading messages...
@@ -184,7 +181,6 @@ export default function ContactMessages() {
         </div>
       )}
 
-      {/* Message Modal */}
       {showModal && selectedMessage && (
         <div
           className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
@@ -194,7 +190,6 @@ export default function ContactMessages() {
             className="bg-white dark:bg-slate-900 rounded-xl max-w-2xl w-full p-6 shadow-xl max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Modal Header */}
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white text-lg font-semibold">
@@ -220,7 +215,6 @@ export default function ContactMessages() {
               </button>
             </div>
 
-            {/* Subject */}
             <div className="mb-4">
               <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">
                 Subject
@@ -230,7 +224,6 @@ export default function ContactMessages() {
               </div>
             </div>
 
-            {/* Message */}
             <div className="mb-4">
               <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">
                 Message
@@ -240,7 +233,6 @@ export default function ContactMessages() {
               </div>
             </div>
 
-            {/* Meta */}
             <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400 mb-6 flex-wrap">
               <span>
                 <strong>Status:</strong> <span className="capitalize">{selectedMessage.status}</span>
@@ -261,7 +253,6 @@ export default function ContactMessages() {
               )}
             </div>
 
-            {/* Actions */}
             <div className="flex gap-2 flex-wrap">
               <a
                 href={`mailto:${selectedMessage.email}?subject=Re: ${encodeURIComponent(selectedMessage.subject)}`}

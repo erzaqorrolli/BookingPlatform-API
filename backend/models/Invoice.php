@@ -40,6 +40,7 @@ class Invoice
     public ?string $company_email = null;
     public ?string $company_phone = null;
     public ?string $company_address = null;
+    public ?string $items = null;
 
     public static function fromRow(array $row): self
     {
@@ -76,6 +77,7 @@ class Invoice
         $invoice->company_email = $row['company_email'] ?? null;
         $invoice->company_phone = $row['company_phone'] ?? null;
         $invoice->company_address = $row['company_address'] ?? null;
+        $invoice->items = $row['items'] ?? null;
 
         return $invoice;
     }
@@ -155,12 +157,12 @@ class Invoice
                 co.email AS company_email,
                 co.phone AS company_phone,
                 co.address AS company_address
-            FROM invoices i
-            JOIN customers c ON c.id = i.customer_id
-            JOIN bookings b ON b.id = i.booking_id
-            JOIN services s ON s.id = b.service_id
-            JOIN companies co ON co.id = i.company_id
-            WHERE i.company_id = ?
+                    FROM invoices i
+                LEFT JOIN customers c ON c.id = i.customer_id
+                LEFT JOIN bookings b ON b.id = i.booking_id
+                LEFT JOIN services s ON s.id = b.service_id
+                LEFT JOIN companies co ON co.id = i.company_id
+                WHERE i.company_id = ?
         ";
         $params = [$companyId];
 
@@ -360,6 +362,7 @@ class Invoice
             'company_email' => $this->company_email,
             'company_phone' => $this->company_phone,
             'company_address' => $this->company_address,
+            'items'=>$this->items ? json_decode ($this->items,true): null,
         ];
     }
 }

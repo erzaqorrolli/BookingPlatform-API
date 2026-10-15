@@ -18,7 +18,9 @@ function getCsrfToken() { //reads csrf token from cookies, or returns null
 
 export function AuthProvider({ children }) {
   const [user, setUser]       = useState(null); //saves user 
-  const [loading, setLoading] = useState(true); // saves loading
+  const [loading, setLoading] = useState(() =>
+    Boolean(localStorage.getItem('auth_token') || localStorage.getItem('refresh_token'))
+  ); // saves loading
 
   const clearAuthSession = () => { // cleans Session
     sessionStorage.removeItem('activeCompanyId'); //deletes from session storage. session storage saves temporary tokens, and deletes when tab closes.
@@ -43,6 +45,10 @@ export function AuthProvider({ children }) {
   };
 
   useEffect(() => { // when app opens, checks if user is logged in and is calling /auth/me, if yesit saves the user, if not deletes it
+    if (!localStorage.getItem('auth_token') && !localStorage.getItem('refresh_token')) {
+      return;
+    }
+
     api.get('/auth/me') // useEffect is react hooks that executes code when components change addiction
       .then((response) => {
         const data = response.data?.data || response.data;
@@ -60,8 +66,12 @@ export function AuthProvider({ children }) {
   const response = await api.post('/auth/login', { email, password });
   const data = response.data?.data || response.data;
 
-  if (data.token) {
-    localStorage.setItem('auth_token', data.token);
+  if (data.access_token) {
+    localStorage.setItem('auth_token', data.access_token);
+  }
+
+  if (data.refresh_token) {
+    localStorage.setItem('refresh_token', data.refresh_token);
   }
 
   if (data.csrf_token) {
@@ -78,13 +88,15 @@ export function AuthProvider({ children }) {
     return response.data?.data || response.data;
   };
 
- const logout = async () => { // when user loges out , sends request in backend, cleans session, removes token and csrf token
-  try {
-    await api.post('/auth/logout');
-  } catch {}
-  clearAuthSession();
-  localStorage.removeItem('auth_token');   
-  document.cookie = 'csrf_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+const logout = async () => {
+    const refreshToken = localStorage.getItem('refresh_token');
+    try {
+        await api.post('/auth/logout', { refresh_token: refreshToken });
+    } catch {}
+    clearAuthSession();
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('refresh_token');
+    document.cookie = 'csrf_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
 };
 
   return ( //offers auth data (user,loading,login,register,logout) for all children of authprovider

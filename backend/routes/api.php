@@ -33,6 +33,7 @@ Router::get('/api/health', function() {
 
 Router::post('/api/auth/register',        [AuthController::class, 'register']);
 Router::post('/api/auth/login',           [AuthController::class, 'login']);
+Router::post('/api/auth/refresh',         [AuthController::class, 'refresh']);
 Router::post('/api/auth/verify',          [AuthController::class, 'verify']);
 Router::post('/api/auth/forgot',          [AuthController::class, 'forgotPassword']);
 Router::post('/api/auth/reset',           [AuthController::class, 'resetPassword']);
@@ -193,3 +194,4 @@ Router::get('/api/companies/{companyId}/payroll', [PayrollController::class, 'in
 Router::post('/api/companies/{companyId}/payroll', [PayrollController::class, 'store']);
 Router::post('/api/companies/{companyId}/payroll/{userId}/mark-paid', [PayrollController::class, 'markPaid']);
 Router::get('/api/companies/{companyId}/payroll/{userId}/history', [PayrollController::class, 'history']);
+Router::put('/api/companies/{companyId}/invoices/{id}', [InvoiceController::class, 'update']);

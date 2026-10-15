@@ -29,6 +29,18 @@ class InvoiceController
         json_ok($invoices);
     }
 
+
+        public static function generateReference(): string{
+            $db =Database::pdo();
+            do{
+                $reference = 'INV-' . date('Y') . ' - ' . str_pad((string) random_int(0,99999), 5,'0',STR_PAD_LEFT);
+                $stmt = $db->prepare("SELECT 1 FROM invoices WHERE reference = ? LIMIT 1");
+                $stmt->execute([$reference]);
+            }while($stmt->fetchColumn());
+            return $reference;
+        }
+
+
     
     public function show(array $params): void
     {
@@ -49,7 +61,7 @@ class InvoiceController
     }
 
 
-    public function store(array $params): void
+    public  static function store(array $params): void
     {
         $uid = auth_user_id();
         if (!$uid) json_err('Unauthorized', 401);
@@ -61,29 +73,142 @@ class InvoiceController
         }
 
         $input     = input();
-        $bookingId = (int) ($input['booking_id'] ?? 0);
 
-        if (!$bookingId) {
-            json_err('booking_id is required', 422);
+        $customerId=(int) ($input['customer_id'] ?? 0);
+        if(!$customerId) json_err('Customer is required',422);
+
+        $items=$input['items'] ?? [];
+        if(empty($items)){
+        json_err ('At least one item is required',422);
         }
 
-        $booking = Booking::findById($bookingId);
-        if (!$booking || $booking->company_id !== $companyId) {
-            json_err('Booking not found', 404);
+        $issueDate=$input['issue_date']?? date ('Y-m-d');
+        $dueDate  =$input['due_date'] ?? date('Y-m-d', strtotime ('+14 days'));
+        $notes = $input['notes'] ?? null;
+        $discountAmount = (float) ($input['discount_amount'] ?? 0);
+        $taxAmount =(float) ($input['tax_amount'] ?? 0);
+        $bookingId = !empty($input['booking_id']) ? (int) $input ['booking_id'] : null;
+
+
+        $db = Database::pdo();
+        $stmt = $db->prepare("SELECT id,name,email FROM customers WHERE id = ? AND company_id = ? LIMIT 1");
+        $stmt->execute([$customerId, $companyId]);
+        $customer=$stmt->fetch();
+        if(!$customer) json_err ('Customer not found',404);
+
+        $subtotal = 0;
+        foreach($items as $item){
+            $qty = (float) ($item['quantity'] ?? 1);
+            $price = (float) ($item['price'] ?? 0);
+            $subtotal += $qty * $price;
         }
 
-        $invoice = Invoice::createFromBooking($bookingId);
-        if (!$invoice) {
-            json_err('Could not create invoice', 500);
+        $total = $subtotal - $discountAmount + $taxAmount;
+
+        $reference = self ::generateReference();
+
+        $insert = $db->prepare ("
+        INSERT INTO invoices (
+        reference, company_id, booking_id, customer_id, issue_date, due_date, subtotal, discount_amount, tax_amount, total, status, notes,items) VALUES (?,?,?,?,?,?,?,?,?,?, 'draft', ?,?) ");
+        
+
+        $insert->execute([
+        $reference,
+        $companyId,
+        $bookingId,
+        $customerId,
+        $issueDate,
+        $dueDate,
+        $subtotal,
+        $discountAmount,
+        $taxAmount,
+        $total,
+        $notes,
+        !empty($items) ? json_encode($items) : null
+
+        ]);
+
+        $invoiceId = (int) $db->lastInsertId();
+        
+
+        json_ok ([
+
+        'message'=> 'Invoice created',
+        'invoice' => Invoice::findById($invoiceId)->toArray(),
+
+        ],201);
         }
 
-        json_ok([
-            'message' => 'Invoice created',
-            'invoice' => $invoice->toArray(),
-        ], 201);
+
+       
+   public function update (array $params): void{
+    $uid = auth_user_id();
+    if(!$uid) json_err ('Unauthorized',401);
+
+    $companyId = (int) $params['companyId'];
+    $invoiceId= (int) $params['id'];
+
+    $role = Company::userRole($uid,$companyId);
+    if(!in_array($role,['owner','admin','manager'], true)){
+        json_err('Forbidden',403);
     }
 
-   
+    $invoice = Invoice::findById($invoiceId);
+    if(!$invoice || $invoice->company_id !== $companyId){
+        json_err ('Invoice not found', 404);
+    }
+
+    if($invoice->status !== 'draft'){
+        json_err ('Only draft invoices can be edited',403);
+    }
+
+
+    $input=input();
+    $db=Database::pdo();
+
+    $items = $input['items'] ?? [];
+    $subtotal=0;
+    foreach($items as $item){
+        $qty = (float) ($item['quantity'] ?? 1);
+        $price = (float) ($item['price'] ?? 0);
+        $subtotal += $qty * $price;
+    }
+
+    $discountAmount =(float) ($input['discount_amount'] ?? $invoice->discount_amount);
+    $taxAmount=(float) ($input['tax_amount'] ?? $invoice->tax_amount);
+    $total = $subtotal - $discountAmount + $taxAmount;
+
+    $update = $db->prepare("
+    UPDATE invoices SET customer_id=?,
+    issue_date = ?,
+    due_date = ?,
+    subtotal = ?,
+    discount_amount =?,
+    tax_amount =?,
+    total =?,
+    notes =?,
+    items=?
+    WHERE id=?
+    ");
+
+    $update->execute([
+        (int) ($input['customer_id'] ?? $invoice->customer_id),
+        $input['issue_date'] ?? $invoice->issue_date,
+        $input['due_date'] ?? $invoice->due_date,
+        $subtotal,
+        $discountAmount,
+        $taxAmount,
+        $total,
+        $input['notes'] ?? $invoice->notes,
+        !empty($items)? json_encode($items): null,
+        $invoiceId,
+    ]);
+
+    json_ok([
+        'message'=>'Invoice updated',
+        'invoice'=> Invoice::findById($invoiceId)->toArray(),
+    ]);
+   }
     public function createFromBooking(array $params): void
     {
         $uid = auth_user_id();

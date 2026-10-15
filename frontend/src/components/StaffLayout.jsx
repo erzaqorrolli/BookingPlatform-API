@@ -65,7 +65,6 @@ export default function StaffLayout({ children }) {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Top navbar - orange theme */}
       <nav className="bg-white border-b border-slate-200 sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link to="/staff" className="flex items-center gap-2.5">
@@ -99,7 +98,6 @@ export default function StaffLayout({ children }) {
             })}
           </div>
 
-          {/* User Menu */}
           <div className="relative">
             <button
               onClick={() => setUserMenuOpen(!userMenuOpen)}
@@ -147,7 +145,6 @@ export default function StaffLayout({ children }) {
         </div>
       </nav>
 
-      {/* Mobile menu */}
       <div className="md:hidden bg-white border-b border-slate-200 overflow-x-auto">
         <div className="flex gap-1 px-4 py-2">
           {menuItems.map((item) => {
@@ -170,7 +167,6 @@ export default function StaffLayout({ children }) {
         </div>
       </div>
 
-      {/* Content */}
       <main className="max-w-7xl mx-auto px-6 py-8">{children}</main>
     </div>
   );

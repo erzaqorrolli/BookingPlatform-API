@@ -63,7 +63,6 @@ export default function AuditLogs() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
@@ -75,7 +74,6 @@ export default function AuditLogs() {
         </div>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <input
           type="text"
@@ -108,8 +106,6 @@ export default function AuditLogs() {
           </button>
         )}
       </div>
-
-      {/* Table */}
       {filtered.length === 0 ? (
         <div className="bg-white dark:bg-slate-900 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-12 text-center">
           <div className="text-5xl mb-3">📋</div>
