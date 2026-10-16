@@ -69,6 +69,8 @@ import SuperAdminAuditLogs from './pages/admin/superadmin/AuditLogs';
 
 import Payroll from './pages/admin/Payroll';
 
+import Notifications from './pages/admin/Notifications';
+
 //children is a special prop that react fill it automaticlly with everything that stays between tags <x> example </x>
 
 function ProtectedRoute({ children }) { //checks if user is logged , if not redirect to login
@@ -307,6 +309,10 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+  path="/admin/notifications"
+  element={<ProtectedPage><Notifications /></ProtectedPage>}
+/>
 
             <Route path="*" element={<NotFound />} />
           </Routes>

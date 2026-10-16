@@ -22,6 +22,7 @@ use App\Controllers\ContactController;
 use App\Controllers\SuperAdminController;
 use App\Controllers\GoogleCalendarController;
 use App\Controllers\PayrollController;
+use App\Controllers\NotificationController;
 
 Router::get('/api/health', function() {
     return [
@@ -195,3 +196,9 @@ Router::post('/api/companies/{companyId}/payroll', [PayrollController::class, 's
 Router::post('/api/companies/{companyId}/payroll/{userId}/mark-paid', [PayrollController::class, 'markPaid']);
 Router::get('/api/companies/{companyId}/payroll/{userId}/history', [PayrollController::class, 'history']);
 Router::put('/api/companies/{companyId}/invoices/{id}', [InvoiceController::class, 'update']);
+
+Router::get('/api/me/notifications', [NotificationController::class, 'index']);
+Router::get('/api/me/notifications/unread-count', [NotificationController::class, 'unreadCount']);
+Router::post('/api/me/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+Router::post('/api/me/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
+Router::delete('/api/me/notifications/{id}', [NotificationController::class, 'destroy']);

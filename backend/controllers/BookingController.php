@@ -441,6 +441,14 @@ class BookingController
         $notification
     );
 
+    \App\Models\Notification::notifyCompanyOwners(
+    $companyId,
+    'booking',
+    'New booking received',
+    "{$name} booked {$service->name} on {$date} at {$startTime}",
+    "/admin/bookings"
+);
+
     if (!empty($input['needs_assistance'])) {
         try {
             $priorityMessage = "<h2 style='color:#d97706;'>Priority booking</h2>
@@ -602,6 +610,32 @@ class BookingController
                     $status
                 );
             }
+
+            if ($booking->customer_id) {
+                $customerStmt = \App\Config\Database::pdo()->prepare("
+                    SELECT user_id FROM customers WHERE id = ? LIMIT 1
+                ");
+                $customerStmt->execute([$booking->customer_id]);
+                $customerUserId = $customerStmt->fetchColumn();
+
+                if ($customerUserId) {
+                    \App\Models\Notification::create(
+                        (int) $customerUserId,
+                        'booking',
+                        "Booking {$status}",
+                        "Your booking status is now {$status}",
+                        "/portal"
+                    );
+                }
+            }
+
+            \App\Models\Notification::notifyCompanyOwners(
+                (int) $booking->company_id,
+                'booking_status',
+                "Booking {$status}",
+                "Booking #{$booking->reference} status changed to {$status}",
+                "/admin/bookings"
+            );
         }
 
         json_ok([
@@ -609,7 +643,6 @@ class BookingController
             'booking' => Booking::findById($bookingId)->toArray(),
         ]);
     }
-
     public function publicCompanyBySlug(array $params): void
     {
         $slug = trim((string) ($params['slug'] ?? ''));

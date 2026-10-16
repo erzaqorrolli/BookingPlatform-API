@@ -233,7 +233,7 @@ class InvoiceController
     }
 
   
-    public function updateStatus(array $params): void
+  public function updateStatus(array $params): void
 {
     $uid = auth_user_id();
     if (!$uid) json_err('Unauthorized', 401);
@@ -274,8 +274,6 @@ class InvoiceController
             ");
             $stmt->execute([$invoiceId]);
             $info = $stmt->fetch();
-                    error_log('DEBUG kontroller info: ' . json_encode($info));
-        error_log('DEBUG email valid: ' . (filter_var($info['customer_email'] ?? '', FILTER_VALIDATE_EMAIL) ? 'yes' : 'no'));
 
             if ($info && filter_var($info['customer_email'], FILTER_VALIDATE_EMAIL)) {
                 $fresh = Invoice::findById($invoiceId);
@@ -291,6 +289,16 @@ class InvoiceController
         } catch (\Throwable $e) {
             error_log('Invoice email failed: ' . $e->getMessage());
         }
+    }
+
+    if ($previousStatus !== $status) {
+        \App\Models\Notification::notifyCompanyOwners(
+            $companyId,
+            'invoice_status',
+            "Invoice {$status}",
+            "Invoice {$invoice->reference} status changed to {$status}",
+            "/admin/invoices"
+        );
     }
 
     json_ok([
