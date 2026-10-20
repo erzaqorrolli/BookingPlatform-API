@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
 import { useAuth } from '../../contexts/AuthContext';
-import ConfirmModal from '../../components/ConfirmModal'; // <-- Importi i ri
+import ConfirmModal from '../../components/ConfirmModal'; 
+import toast from 'react-hot-toast';
 
 export default function Settings() {
   const { activeCompany, refreshCompanies } = useCompany();
@@ -187,7 +188,6 @@ export default function Settings() {
         </form>
       </div>
 
-      {/* Account Info */}
       <div className="bg-white rounded-xl border border-slate-200 p-6">
         <h2 className="text-lg font-bold text-slate-900 mb-5">
           Account
@@ -259,27 +259,43 @@ export default function Settings() {
         </form>
       </div>
 
-      {/* Danger Zone */}
       <div className="bg-white rounded-xl border-2 border-red-100 p-6">
         <h2 className="text-lg font-bold text-red-700 mb-2">Danger Zone</h2>
         <p className="text-sm text-slate-500 mb-4">
-          Deleting company is permanent. All your data will be deleted!
+          Company deletion is permanent.All data will be deleted! This request will be sent to Superadmin.
         </p>
         <button
           type="button"
-          onClick={() => setIsDeleteModalOpen(true)} 
+          onClick={() => setIsDeleteModalOpen(true)}
           className="px-5 py-2.5 border border-red-200 text-red-700 rounded-lg hover:bg-red-50 font-medium text-sm transition"
         >
-          Delete Company
+          Request Company Deletion
         </button>
       </div>
 
-      
       <ConfirmModal
         isOpen={isDeleteModalOpen}
-        title="Contact Admin"
-        message="To delete this company, please contact admin@booking-platform.com. This action cannot be performed directly from the dashboard."
-        onConfirm={() => setIsDeleteModalOpen(false)}
+        title="Request for company deletion"
+        message={
+          <span>
+            While clicking "Send Request", you will inform Superadmin that you want to delete company <br/><br/>
+            <span className="text-xs text-slate-400">
+The SuperAdmin will review your request and contact you.            </span>
+          </span>
+        }
+        confirmText="Send Request"
+        cancelText="Cancel"
+        hideDeleteStyle={true}
+        onConfirm={async () => {
+          try {
+            const res = await api.post(`/companies/${activeCompany.id}/request-deletion`);
+            setIsDeleteModalOpen(false);
+            toast.success(res.data.data.message || 'Request sent!');
+          } catch (err) {
+            toast.error(err.response?.data?.error || 'Request failed');
+            setIsDeleteModalOpen(false);
+          }
+        }}
         onCancel={() => setIsDeleteModalOpen(false)}
         isLoading={false}
       />

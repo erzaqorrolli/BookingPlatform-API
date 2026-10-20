@@ -143,4 +143,46 @@ class ContactController
 
         return in_array('superadmin', $roles, true);
     }
+
+    public function requestDeletion(array $params): void{
+        $uid=auth_user_id();
+        if(!$uid)json_err('Unauthorized',403);
+    
+        $companyId=(int) $params['id'];
+
+        $role=Company::userRole($uid,$companyId);
+        if($role !=='owner'){
+            json_err('Only the owner can request deletion',403);
+        }
+
+        $db=Database::pdo();
+
+        $stmt=$db->prepare("SELECT name FROM companies WHERE id=?");
+        $stmt->execute([$companyId]);
+        $companyName = $stmt->fetchColumn();
+
+        if(!$companyName) json_err('Company not found',404);
+
+        $stmt =$db->prepare("SELECT 1 FROM deletion_requests WHERE company_id =? AND status = 'pending'");
+        $stmt->execute([$companyId]);
+        if($stmt->fetchColumn()){
+            json_err('You already have a pending deletion request.',422);
+        }
+
+        $stmt = $db->prepare("INSERT INTO deletion_requests (company_id, requested_by VALUES(?,?)");
+        $stmt->execute([$companyId,$uid]);
+
+        $superAdmins = $db->query("SELECT cu.user_id FROM company_user cu JOIN
+        roles r ON r.id = cu.role_id 
+        WHERE r.name ='superadmin'")->fetchAll(\PDO::FETCH_COLUMN);
+
+        foreach($superAdmins as $saId){
+            \App\Models\Notification::create( (int) $saId, 'deletion_request','Request to delete company',"Company owner '{$companyName}' requested to delete account.", "/admin/superadmin/companies");
+        }
+
+        json_ok(['message' =>'Request sent successfully!']);
+}
+
+
+
 }

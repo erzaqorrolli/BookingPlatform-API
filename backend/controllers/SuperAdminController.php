@@ -1067,4 +1067,36 @@ class SuperAdminController
 
         json_ok($results);
     }
+
+    public function deletionRequests(): void{
+
+    $this->requireSuperAdmin();
+    $db=Database::pdo();
+
+    $stmt =$db->query(" SELECT dr.id, dr.company_id,dr.status,dr.created_at,c.name AS company_name,c.slug S company_slug, u.name AS owner_name, u.email AS owner_email FROM
+    deletion_requests dr JOIN companies c ON c.id=dr.company_id
+    JOIN users u ON u.id = dr.requested_by WHERE dr.status ='pending'
+    ORDER BY dr.created_at DESC");
+    
+    json_ok($stmt->fetchAll());
+    }
+
+        public function getDeletionRequests(): void
+    {
+        $this->requireSuperAdmin();
+        $db = Database::pdo();
+
+        $stmt = $db->query("
+            SELECT n.id as notification_id, n.message, n.created_at, n.read_at,
+                   c.id AS company_id, c.name AS company_name, c.slug AS company_slug
+            FROM notifications n
+            JOIN companies c ON c.name LIKE CONCAT('%', SUBSTRING_INDEX(SUBSTRING_INDEX(n.message, '''', 2), '''', -1), '%')
+            WHERE n.type = 'deletion_request' AND n.read_at IS NULL
+            ORDER BY n.created_at DESC
+        ");
+        
+        
+        json_ok($stmt->fetchAll());
+    }
+    
 }

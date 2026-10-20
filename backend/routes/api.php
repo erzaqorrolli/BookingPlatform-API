@@ -56,7 +56,8 @@ Router::put('/api/companies/{id}',               [CompanyController::class, 'upd
 Router::post('/api/companies/{id}/invite',       [CompanyController::class, 'invite']);
 Router::get('/api/companies/{id}/members',       [CompanyController::class, 'members']);
 Router::get('/api/companies/{companyId}/payroll/me', [CompanyController::class, 'myPayroll']);
-Router::post('/api/invitations/accept',          [CompanyController::class, 'acceptInvite']);
+Router::post('/api/companies/accept-invite', [CompanyController::class, 'acceptInvite']);
+
 
 Router::get('/api/companies/{companyId}/discounts',         [DiscountController::class, 'index']);
 Router::post('/api/companies/{companyId}/discounts',        [DiscountController::class, 'store']);
@@ -214,3 +215,14 @@ Router::get('/api/superadmin/export/bookings', [SuperAdminController::class, 'ex
 Router::get('/api/superadmin/search', [SuperAdminController::class, 'globalSearch']);
 
 Router::get('/api/me/search', [SuperAdminController::class, 'searchForCompany']);
+
+Router::delete('/api/companies/{companyId}/members/{id}', [CompanyController::class, 'removeMember']);
+Router::delete('/api/companies/{companyId}/members/{id}/account', [CompanyController::class, 'deleteMemberAccount']);
+
+Router::post('/api/companies/{id}/request-deletion', [CompanyController::class, 'requestDeletion']);
+
+Router::post('/api/companies/{id}/request-deletion', [CompanyController::class, 'requestDeletion']);
+
+Router::get('/api/superadmin/deletion-requests', [SuperAdminController::class, 'deletionRequests']);
+
+Router::get('/api/superadmin/deletion-requests', [SuperAdminController::class, 'getDeletionRequests']);

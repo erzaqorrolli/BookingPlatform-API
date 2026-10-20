@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
+import { useRole } from '../../hooks/useRole';
+import Swal from 'sweetalert2';
 
 export default function Team() {
   const { activeCompany } = useCompany();
+  const role = useRole();
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -33,7 +36,7 @@ export default function Team() {
     setSuccess('');
     setSaving(true);
     try {
-      const r = await api.post(`/companies/${activeCompany.id}/invite`, form);
+      await api.post(`/companies/${activeCompany.id}/invite`, form);
       setSuccess(`Invite sent to ${form.email}`);
       setShowModal(false);
       setForm({ email: '', role: 'staff' });
@@ -42,6 +45,68 @@ export default function Team() {
       setError(err.response?.data?.error || 'Request failed');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleRemove = async (member) => {
+    const result = await Swal.fire({
+      title: 'Remove member?',
+      html: `Are you sure you want to remove <b>${member.name}</b> from this company?<br/><span class="text-sm text-gray-500">This account will be active for other workspaces</span>`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d97706',
+      confirmButtonText: 'Yes, remove',
+      cancelButtonText: 'Cancel',
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      Swal.fire({ title: 'Removing...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+      
+      await api.delete(`/companies/${activeCompany.id}/members/${member.id}`);
+      await load();
+      
+      Swal.fire({
+        icon: 'success',
+        title: 'Removed!',
+        text: `${member.name} removed from company.`,
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'Gabim', text: err.response?.data?.error || 'Action failed' });
+    }
+  };
+
+    const handleDelete = async (member) => {
+    const result = await Swal.fire({
+      title: 'Delete member permanently?',
+      html: `Are you sure you want to delete <b>${member.name}</b>?<br/><br/><span class="text-sm text-red-600 font-bold">Warning: This action will permanently delete this account from all companies, and can't be back!</span>`,
+      icon: 'error',
+      showCancelButton: true,
+      confirmButtonColor: '#dc2626',
+      confirmButtonText: 'Yes, delete!',
+      cancelButtonText: 'Cancel',
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      Swal.fire({ title: 'Deleting...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+      
+      await api.delete(`/companies/${activeCompany.id}/members/${member.id}/account`);
+      await load();
+      
+      Swal.fire({
+        icon: 'success',
+        title: 'Deleted!',
+        text: ` Account ${member.name} deleted permanently.`,
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'Error', text: err.response?.data?.error || 'Deletion failed' });
     }
   };
 
@@ -111,6 +176,7 @@ export default function Team() {
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Email</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Role</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Added</th>
+                <th className="text-right px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -132,6 +198,31 @@ export default function Team() {
                   </td>
                   <td className="px-5 py-4 text-sm text-slate-500">
                     {m.created_at ? new Date(m.created_at).toLocaleDateString('sq-AL') : '—'}
+                  </td>
+                  <td className="px-5 py-4 text-right">
+                    {m.role !== 'owner' && m.id !== undefined && (
+                      <div className="flex items-center justify-end gap-2">
+                        
+                        <button
+                          onClick={() => handleRemove(m)}
+                          className="text-xs font-medium text-amber-600 hover:text-amber-700 px-2 py-1 hover:bg-amber-50 rounded transition"
+                          title="Remove form this company"
+                        >
+                          Remove
+                        </button>
+                        
+                        
+                        {role === 'owner' && (
+                          <button
+                            onClick={() => handleDelete(m)}
+                            className="text-xs font-medium text-red-600 hover:text-red-700 px-2 py-1 hover:bg-red-50 rounded transition"
+                            title="Delete account permanently"
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}

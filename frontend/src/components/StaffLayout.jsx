@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useCompany } from '../contexts/CompanyContext';
+import { ChevronDown, Check, Building2 } from 'lucide-react'; // Importuam ikonat
 
 const menuItems = [
   {
@@ -23,14 +24,14 @@ const menuItems = [
     ),
   },
   {
-  label: 'Holidays',
-  path: '/staff/holidays',
-  icon: (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-    </svg>
-  ),
-},
+    label: 'Holidays',
+    path: '/staff/holidays',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+      </svg>
+    ),
+  },
   {
     label: 'Bookings',
     path: '/staff/bookings',
@@ -53,10 +54,29 @@ const menuItems = [
 
 export default function StaffLayout({ children }) {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false); // State për menunë e kompanive
+  
+  const workspaceRef = useRef(null); // Për të mbyllur menunë kur klikon jashtë
+  const userMenuRef = useRef(null);
+
   const { user, logout } = useAuth();
-  const { activeCompany } = useCompany();
+  const { activeCompany, companies, switchCompany } = useCompany();
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Mbyll dropdown-et kur klikohet jashtë
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (workspaceRef.current && !workspaceRef.current.contains(event.target)) {
+        setWorkspaceMenuOpen(false);
+      }
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setUserMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -67,20 +87,65 @@ export default function StaffLayout({ children }) {
     <div className="min-h-screen bg-slate-50">
       <nav className="bg-white border-b border-slate-200 sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link to="/staff" className="flex items-center gap-2.5">
-            <div className="w-9 h-9 bg-gradient-to-br from-orange-500 to-amber-600 rounded-lg flex items-center justify-center">
+          
+          {/* Logo dhe Workspace Switcher */}
+          <div className="flex items-center gap-3">
+            <Link to="/staff" className="w-9 h-9 bg-gradient-to-br from-orange-500 to-amber-600 rounded-lg flex items-center justify-center shrink-0">
               <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
-            </div>
-            <div>
-              <span className="font-bold text-slate-900 text-lg">Staff Portal</span>
-              {activeCompany && (
-                <span className="text-xs text-slate-500 block -mt-0.5">{activeCompany.name}</span>
+            </Link>
+            
+            <div className="relative flex flex-col justify-center" ref={workspaceRef}>
+              <span className="font-bold text-slate-900 text-sm leading-tight">Staff Portal</span>
+              
+              {/* Nëse ka më shumë se 1 kompani, shfaqet si buton i bukur me dropdown */}
+              {companies.length > 1 ? (
+                <>
+                  <button
+                    onClick={() => setWorkspaceMenuOpen(!workspaceMenuOpen)}
+                    className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-orange-600 transition-colors -mt-0.5 outline-none"
+                  >
+                    <Building2 className="w-3 h-3" />
+                    <span className="truncate max-w-[120px]">{activeCompany?.name}</span>
+                    <ChevronDown className={`w-3 h-3 transition-transform ${workspaceMenuOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {/* Menuja Dropdown */}
+                  {workspaceMenuOpen && (
+                    <div className="absolute top-full left-0 mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-xl py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
+                      <div className="px-3 pb-1.5 mb-1 border-b border-slate-100">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Workspaces</p>
+                      </div>
+                      {companies.map((c) => (
+                        <button
+                          key={c.id}
+                          onClick={() => {
+                            switchCompany(c.id);
+                            setWorkspaceMenuOpen(false);
+                          }}
+                          className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors ${
+                            activeCompany?.id === c.id 
+                              ? 'bg-orange-50 text-orange-700 font-medium' 
+                              : 'text-slate-700 hover:bg-slate-50'
+                          }`}
+                        >
+                          <span className="truncate">{c.name}</span>
+                          {activeCompany?.id === c.id && <Check className="w-4 h-4 text-orange-600" />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                activeCompany && (
+                  <span className="text-xs text-slate-500 -mt-0.5">{activeCompany.name}</span>
+                )
               )}
             </div>
-          </Link>
+          </div>
 
+          {/* Menuja e Mesme */}
           <div className="hidden md:flex items-center gap-6">
             {menuItems.map((item) => {
               const active = location.pathname === item.path;
@@ -98,7 +163,8 @@ export default function StaffLayout({ children }) {
             })}
           </div>
 
-          <div className="relative">
+          {/* User Menu */}
+          <div className="relative" ref={userMenuRef}>
             <button
               onClick={() => setUserMenuOpen(!userMenuOpen)}
               className="flex items-center gap-3 hover:bg-slate-100 rounded-lg px-3 py-2 transition"
@@ -109,42 +175,35 @@ export default function StaffLayout({ children }) {
               <div className="text-left hidden sm:block">
                 <p className="text-sm font-medium text-slate-900">{user?.name}</p>
               </div>
-              <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
+              <ChevronDown className="w-4 h-4 text-slate-400" />
             </button>
 
             {userMenuOpen && (
-              <>
-                <div
-                  className="fixed inset-0 z-10"
-                  onClick={() => setUserMenuOpen(false)}
-                />
-                <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-lg shadow-lg py-1 z-20">
-                  <div className="px-4 py-3 border-b border-slate-100">
-                    <p className="text-sm font-medium text-slate-900">{user?.name}</p>
-                    <p className="text-xs text-slate-500 truncate">{user?.email}</p>
-                  </div>
-                  <Link
-                    to="/staff/profile"
-                    className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                    onClick={() => setUserMenuOpen(false)}
-                  >
-                    Profile
-                  </Link>
-                  <button
-                    onClick={handleLogout}
-                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                  >
-                    Logout
-                  </button>
+              <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-xl py-1 z-20 animate-in fade-in zoom-in-95 duration-100">
+                <div className="px-4 py-3 border-b border-slate-100">
+                  <p className="text-sm font-medium text-slate-900">{user?.name}</p>
+                  <p className="text-xs text-slate-500 truncate">{user?.email}</p>
                 </div>
-              </>
+                <Link
+                  to="/staff/profile"
+                  className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                  onClick={() => setUserMenuOpen(false)}
+                >
+                  Profile
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                >
+                  Logout
+                </button>
+              </div>
             )}
           </div>
         </div>
       </nav>
 
+      {/* Mobile Menu */}
       <div className="md:hidden bg-white border-b border-slate-200 overflow-x-auto">
         <div className="flex gap-1 px-4 py-2">
           {menuItems.map((item) => {

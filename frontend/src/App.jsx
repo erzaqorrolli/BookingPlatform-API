@@ -71,6 +71,7 @@ import Payroll from './pages/admin/Payroll';
 
 import Notifications from './pages/admin/Notifications';
 import { Toaster } from 'react-hot-toast';
+import DeletionRequests from './pages/admin/superadmin/DeletionRequests';
 
 //children is a special prop that react fill it automaticlly with everything that stays between tags <x> example </x>
 
@@ -283,6 +284,7 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
+            <Route path="/admin/superadmin/deletion-requests" element={<DeletionRequests />} />
             <Route
               path="/staff/schedule"
               element={
