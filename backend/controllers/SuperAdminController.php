@@ -5,6 +5,7 @@ namespace App\Controllers;
 
 use App\Config\Database;
 use App\Models\AuditLog;
+use App\Models\Company;
 
 class SuperAdminController
 {
@@ -866,5 +867,204 @@ class SuperAdminController
     {
         $this->requireSuperAdmin();
         json_ok(AuditLog::recent(200));
+    }
+
+    public function exportBookings(): void
+    {
+        $this->requireSuperAdmin();
+        $db = Database::pdo();
+
+        $stmt = $db->query("
+            SELECT b.reference, c.name AS company_name, cu.name AS customer_name,
+                   cu.email AS customer_email, s.name AS service_name,
+                   b.booking_date, b.start_time, b.status, b.total_price
+            FROM bookings b
+            JOIN companies c ON c.id = b.company_id
+            JOIN customers cu ON cu.id = b.customer_id
+            JOIN services s ON s.id = b.service_id
+            ORDER BY b.created_at DESC
+        ");
+
+        $rows = array_map(function($r) {
+            return [
+                $r['reference'], $r['company_name'], $r['customer_name'],
+                $r['customer_email'], $r['service_name'], $r['booking_date'],
+                $r['start_time'], $r['status'], $r['total_price']
+            ];
+        }, $stmt->fetchAll());
+
+        $headers = ['Reference', 'Company', 'Customer', 'Email', 'Service', 'Date', 'Time', 'Status', 'Total'];
+        \App\Utils\CsvExporter::download('all-bookings-' . date('Y-m-d') . '.csv', $headers, $rows);
+    }
+
+    public function exportUsers(): void
+    {
+        $this->requireSuperAdmin();
+        $db = Database::pdo();
+
+        $stmt = $db->query("
+            SELECT u.id, u.name, u.email, u.status, u.created_at, 
+                   GROUP_CONCAT(DISTINCT r.name SEPARATOR ', ') AS roles
+            FROM users u
+            LEFT JOIN company_user cu ON cu.user_id = u.id
+            LEFT JOIN roles r ON r.id = cu.role_id
+            GROUP BY u.id
+            ORDER BY u.created_at DESC
+        ");
+
+        $rows = array_map(function($r) {
+            return [
+                $r['id'], $r['name'], $r['email'], $r['status'] ?? 'active',
+                $r['roles'] ?? 'customer', $r['created_at']
+            ];
+        }, $stmt->fetchAll());
+
+        $headers = ['ID', 'Name', 'Email', 'Status', 'Roles', 'Joined Date'];
+        \App\Utils\CsvExporter::download('all-users-' . date('Y-m-d') . '.csv', $headers, $rows);
+    }
+
+    public function exportInvoices(): void
+    {
+        $this->requireSuperAdmin();
+        $db = Database::pdo();
+
+        $stmt = $db->query("
+            SELECT i.reference, c.name AS company_name, cu.name AS customer_name, 
+                   i.issue_date, i.due_date, i.status, i.total
+            FROM invoices i
+            JOIN companies c ON c.id = i.company_id
+            JOIN customers cu ON cu.id = i.customer_id
+            ORDER BY i.created_at DESC
+        ");
+
+        $rows = array_map(function($r) {
+            return [
+                $r['reference'], $r['company_name'], $r['customer_name'],
+                $r['issue_date'], $r['due_date'], $r['status'], $r['total']
+            ];
+        }, $stmt->fetchAll());
+
+        $headers = ['Reference', 'Company', 'Customer', 'Issue Date', 'Due Date', 'Status', 'Total'];
+        \App\Utils\CsvExporter::download('all-invoices-' . date('Y-m-d') . '.csv', $headers, $rows);
+    }
+
+    public function globalSearch(): void
+    {
+        $this->requireSuperAdmin();
+        $db = Database::pdo();
+        
+        $q = trim($_GET['q'] ?? '');
+        if (strlen($q) < 2) {
+            json_ok([]);
+            return;
+        }
+
+        $term = "%{$q}%";
+        $results = [];
+
+        $stmt = $db->prepare("SELECT id, name, slug FROM companies WHERE name LIKE ? OR slug LIKE ? LIMIT 3");
+        $stmt->execute([$term, $term]);
+        foreach ($stmt->fetchAll() as $row) {
+            $results[] = [
+                'type' => 'company',
+                'title' => $row['name'],
+                'subtitle' => $row['slug'],
+                'link' => "/admin/superadmin/companies/{$row['id']}",
+            ];
+        }
+
+        $stmt = $db->prepare("SELECT id, name, email FROM users WHERE name LIKE ? OR email LIKE ? LIMIT 3");
+        $stmt->execute([$term, $term]);
+        foreach ($stmt->fetchAll() as $row) {
+            $results[] = [
+                'type' => 'user',
+                'title' => $row['name'],
+                'subtitle' => $row['email'],
+                'link' => "/admin/superadmin/users",
+            ];
+        }
+
+        $stmt = $db->prepare("
+            SELECT b.id, b.reference, c.name as company_name, cu.name as customer_name
+            FROM bookings b
+            JOIN customers cu ON cu.id = b.customer_id
+            JOIN companies c ON c.id = b.company_id
+            WHERE b.reference LIKE ? OR cu.name LIKE ? OR cu.email LIKE ?
+            LIMIT 3
+        ");
+        $stmt->execute([$term, $term, $term]);
+        foreach ($stmt->fetchAll() as $row) {
+            $results[] = [
+                'type' => 'booking',
+                'title' => $row['reference'] . ' - ' . $row['customer_name'],
+                'subtitle' => 'Company: ' . $row['company_name'],
+                'link' => "/admin/superadmin/bookings",
+            ];
+        }
+
+        json_ok($results);
+    }
+
+    public function searchForCompany(): void
+    {
+        $uid = auth_user_id();
+        if (!$uid) json_err('Unauthorized', 401);
+
+        $companyId = (int) ($_GET['company_id'] ?? 0);
+        if (!$companyId || !Company::userBelongsTo($uid, $companyId)) {
+            json_err('Forbidden', 403);
+        }
+
+        $db = Database::pdo();
+        $q = trim($_GET['q'] ?? '');
+        if (strlen($q) < 2) {
+            json_ok([]);
+            return;
+        }
+
+        $term = "%{$q}%";
+        $results = [];
+
+        $stmt = $db->prepare("SELECT id, name, email FROM customers WHERE company_id = ? AND (name LIKE ? OR email LIKE ?) LIMIT 3");
+        $stmt->execute([$companyId, $term, $term]);
+        foreach ($stmt->fetchAll() as $row) {
+            $results[] = [
+                'type' => 'user',
+                'title' => $row['name'],
+                'subtitle' => 'Customer - ' . $row['email'],
+                'link' => "/admin/customers",
+            ];
+        }
+
+        $stmt = $db->prepare("
+            SELECT b.id, b.reference, cu.name as customer_name
+            FROM bookings b
+            JOIN customers cu ON cu.id = b.customer_id
+            WHERE b.company_id = ? AND (b.reference LIKE ? OR cu.name LIKE ?)
+            LIMIT 3
+        ");
+        $stmt->execute([$companyId, $term, $term]);
+        foreach ($stmt->fetchAll() as $row) {
+            $results[] = [
+                'type' => 'booking',
+                'title' => $row['reference'] . ' - ' . $row['customer_name'],
+                'subtitle' => 'Booking',
+                'link' => "/admin/bookings",
+            ];
+        }
+
+        // 3. Shërbimet
+        $stmt = $db->prepare("SELECT id, name FROM services WHERE company_id = ? AND name LIKE ? LIMIT 3");
+        $stmt->execute([$companyId, $term]);
+        foreach ($stmt->fetchAll() as $row) {
+            $results[] = [
+                'type' => 'company',
+                'title' => $row['name'],
+                'subtitle' => 'Service',
+                'link' => "/admin/services",
+            ];
+        }
+
+        json_ok($results);
     }
 }

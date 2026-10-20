@@ -75,7 +75,6 @@ export default function StaffBookings() {
         </p>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <select
           value={filterStatus}
@@ -165,7 +164,7 @@ export default function StaffBookings() {
                         <option value="pending">Waiting</option>
                         <option value="confirmed">Confirmed</option>
                         <option value="completed">Done</option>
-                        <option value="cancelled">Canceleld</option>
+                        <option value="cancelled">Cancelled</option>
                         <option value="no_show">Absent</option>
                       </select>
                     </td>

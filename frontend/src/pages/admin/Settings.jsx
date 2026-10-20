@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
 import { useAuth } from '../../contexts/AuthContext';
+import ConfirmModal from '../../components/ConfirmModal'; // <-- Importi i ri
 
 export default function Settings() {
   const { activeCompany, refreshCompanies } = useCompany();
@@ -19,6 +20,9 @@ export default function Settings() {
   const [pwSaving, setPwSaving] = useState(false);
   const [pwSuccess, setPwSuccess] = useState('');
   const [pwError, setPwError] = useState('');
+
+  // State për modalin e fshirjes (E REJA)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   useEffect(() => {
     if (!activeCompany) return;
@@ -231,7 +235,7 @@ export default function Settings() {
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">
-              New password(minimun 6 charachters)
+              New password (minimum 6 characters)
             </label>
             <input
               type="password"
@@ -263,12 +267,22 @@ export default function Settings() {
         </p>
         <button
           type="button"
-          onClick={() => alert('To delete company contact admin@booking-platform.com')}
-          className="px-5 py-2.5 border border-red-200 text-red-700 rounded-lg hover:bg-red-50 font-medium text-sm"
+          onClick={() => setIsDeleteModalOpen(true)} 
+          className="px-5 py-2.5 border border-red-200 text-red-700 rounded-lg hover:bg-red-50 font-medium text-sm transition"
         >
           Delete Company
         </button>
       </div>
+
+      
+      <ConfirmModal
+        isOpen={isDeleteModalOpen}
+        title="Contact Admin"
+        message="To delete this company, please contact admin@booking-platform.com. This action cannot be performed directly from the dashboard."
+        onConfirm={() => setIsDeleteModalOpen(false)}
+        onCancel={() => setIsDeleteModalOpen(false)}
+        isLoading={false}
+      />
     </div>
   );
 }

@@ -70,6 +70,7 @@ import SuperAdminAuditLogs from './pages/admin/superadmin/AuditLogs';
 import Payroll from './pages/admin/Payroll';
 
 import Notifications from './pages/admin/Notifications';
+import { Toaster } from 'react-hot-toast';
 
 //children is a special prop that react fill it automaticlly with everything that stays between tags <x> example </x>
 
@@ -103,6 +104,8 @@ export default function App() {
     <AuthProvider> 
       <CompanyProvider>
         <BrowserRouter>
+
+        
 
         {/* public routes, no login needed */}
           <Routes> 
@@ -190,6 +193,8 @@ export default function App() {
     </ProtectedRoute>
   }
 />
+
+
 <Route
   path="/admin/payroll"
   element={<ProtectedPage allowed={['owner', 'admin']}><Payroll /></ProtectedPage>}
@@ -309,6 +314,8 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
+
+            
             <Route
   path="/admin/notifications"
   element={<ProtectedPage><Notifications /></ProtectedPage>}
@@ -316,7 +323,18 @@ export default function App() {
 
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </BrowserRouter>
+
+            <Toaster 
+      position="bottom-right" 
+      toastOptions={{
+        style: {
+          background: '#333',
+          color: '#fff',
+          borderRadius: '10px',
+        },
+      }} 
+    />
+  </BrowserRouter>
       </CompanyProvider>
     </AuthProvider>
   );

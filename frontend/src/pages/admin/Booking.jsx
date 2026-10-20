@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
+import { Download } from 'lucide-react';
 
 const STATUS_COLORS = {
   pending: 'bg-amber-100 text-amber-700',
@@ -70,6 +71,26 @@ export default function Bookings() {
     }
   };
 
+  const handleExport = async () => {
+    try {
+      const response = await api.get(`/companies/${activeCompany.id}/bookings/export`, {
+        responseType: 'blob',
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `bookings-${activeCompany.id}-${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to export CSV');
+    }
+  };
+
   if (!activeCompany) {
     return (
       <div className="bg-white border-2 border-dashed border-slate-200 rounded-xl p-12 text-center">
@@ -96,13 +117,21 @@ export default function Bookings() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Bookings</h1>
           <p className="text-sm text-slate-500 mt-1">
             {activeCompany.name} · {filteredBookings.length} bookings
           </p>
         </div>
+        
+        <button
+          onClick={handleExport}
+          className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition shadow-sm"
+        >
+          <Download className="w-4 h-4" />
+          Export CSV
+        </button>
       </div>
 
       {priorityCount > 0 && (

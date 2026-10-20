@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
+import toast from 'react-hot-toast';
 
 export default function Companies() {
     const { companies, activeCompany, switchCompany, refreshCompanies } = useCompany();
@@ -31,7 +32,7 @@ export default function Companies() {
         setShowModal(true);
     };
 
-    const handleSubmit = async (event) => {
+     const handleSubmit = async (event) => {
         event.preventDefault();
         setError('');
         setLoading(true);
@@ -43,20 +44,27 @@ export default function Companies() {
             address: form.address.trim(),
         };
 
+        
+        const toastId = toast.loading(editing ? 'Saving changes...' : 'Creating company...');
+
         try {
             if (editing) {
                 await api.put(`/companies/${editing.id}`, payload);
+                toast.success('Company updated successfully!', { id: toastId });
             } else {
                 await api.post('/companies', payload);
+                toast.success('Company created successfully!', { id: toastId });
             }
             await refreshCompanies();
             setShowModal(false);
         } catch (err) {
-            setError(
+            const errorMsg = 
                 err.response?.data?.error ||
                 err.response?.data?.message ||
-                'Something went wrong'
-            );
+                'Something went wrong';
+            
+            setError(errorMsg);
+            toast.error(errorMsg, { id: toastId }); 
         } finally {
             setLoading(false);
         }
@@ -132,8 +140,11 @@ Manage Companies          </p>
 
               <div className="flex items-center gap-2 pt-3 border-t border-slate-100">
                 {activeCompany?.id !== c.id && (
-                  <button
-                    onClick={() => switchCompany(c.id)}
+                   <button
+                    onClick={() => {
+                      switchCompany(c.id);
+                      toast.success(`Switched to ${c.name}`);
+                    }}
                     className="flex-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50 py-1.5 rounded transition"
                   >
                     Activate

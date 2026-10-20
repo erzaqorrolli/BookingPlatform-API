@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../../../api/client';
+import { Download } from 'lucide-react'; 
 
 const STATUS_COLORS = {
   pending: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300',
@@ -52,10 +53,30 @@ export default function Bookings() {
     if (offset > 0) setOffset(Math.max(0, offset - limit));
   };
 
+  const handleExport = async () => {
+    try {
+      const response = await api.get('/superadmin/export/bookings', {
+        responseType: 'blob',
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `all-bookings-${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to export CSV');
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
             All Bookings
@@ -64,9 +85,16 @@ export default function Bookings() {
             {total} bookings across all companies
           </p>
         </div>
+        
+        <button
+          onClick={handleExport}
+          className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition shadow-sm"
+        >
+          <Download className="w-4 h-4" />
+          Export CSV
+        </button>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <input
           type="text"
@@ -115,7 +143,6 @@ export default function Bookings() {
         )}
       </div>
 
-      {/* Table */}
       {loading ? (
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-12 text-center text-slate-500 dark:text-slate-400">
           Loading bookings...

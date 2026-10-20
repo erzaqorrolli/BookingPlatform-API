@@ -1,6 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { io } from 'socket.io-client';
 import api from '../../../api/client';
 import { Link } from 'react-router-dom';
+import { Building2, Users, Calendar, Euro, BarChart3, TrendingUp, AlertTriangle, Sparkles } from 'lucide-react';
+
+const SOCKET_URL = 'http://localhost:3001';
 
 export default function SuperAdminDashboard() {
   const [stats, setStats] = useState(null);
@@ -8,22 +12,58 @@ export default function SuperAdminDashboard() {
   const [topCompanies, setTopCompanies] = useState([]);
   const [monthlyRevenue, setMonthlyRevenue] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [live, setLive] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState(null);
+  const socketRef = useRef(null);
+
+  const loadDashboard = async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const [statsRes, recentRes, topRes, monthlyRes] = await Promise.all([
+        api.get('/superadmin/stats'),
+        api.get('/superadmin/recent-bookings'),
+        api.get('/superadmin/top-companies'),
+        api.get('/superadmin/monthly-revenue'),
+      ]);
+      setStats(statsRes.data.data);
+      setRecentBookings(recentRes.data.data || []);
+      setTopCompanies(topRes.data.data || []);
+      setMonthlyRevenue(monthlyRes.data.data || []);
+      setLastUpdate(new Date());
+    } catch (err) {
+      console.error('Dashboard error:', err);
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    Promise.all([
-      api.get('/superadmin/stats'),
-      api.get('/superadmin/recent-bookings'),
-      api.get('/superadmin/top-companies'),
-      api.get('/superadmin/monthly-revenue'),
-    ])
-      .then(([statsRes, recentRes, topRes, monthlyRes]) => {
-        setStats(statsRes.data.data);
-        setRecentBookings(recentRes.data.data || []);
-        setTopCompanies(topRes.data.data || []);
-        setMonthlyRevenue(monthlyRes.data.data || []);
-      })
-      .catch((err) => console.error('Dashboard error:', err))
-      .finally(() => setLoading(false));
+    loadDashboard();
+
+    const socket = io(SOCKET_URL, {
+      transports: ['websocket', 'polling'],
+    });
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+      console.log('✅ Dashboard WS connected');
+      socket.emit('join-channel', 'superadmin');
+      socket.emit('join-channel', 'admin');
+      setLive(true);
+    });
+
+    socket.on('dashboard-update', (data) => {
+      console.log('📊 Dashboard update received:', data);
+      loadDashboard(true);
+      setLastUpdate(new Date());
+    });
+
+    socket.on('disconnect', () => {
+      console.log('❌ Dashboard WS disconnected');
+      setLive(false);
+    });
+
+    return () => socket.disconnect();
   }, []);
 
   if (loading) {
@@ -38,132 +78,141 @@ export default function SuperAdminDashboard() {
     {
       label: 'Total Companies',
       value: stats?.total_companies || 0,
-      icon: '🏢',
+      icon: <Building2 className="w-6 h-6 text-white" />,
       color: 'from-indigo-500 to-purple-600',
       link: '/admin/superadmin/companies',
     },
     {
       label: 'Total Users',
       value: stats?.total_users || 0,
-      icon: '👥',
+      icon: <Users className="w-6 h-6 text-white" />,
       color: 'from-blue-500 to-cyan-600',
       link: '/admin/superadmin/users',
     },
     {
       label: 'Total Bookings',
       value: stats?.total_bookings || 0,
-      icon: '📅',
+      icon: <Calendar className="w-6 h-6 text-white" />,
       color: 'from-emerald-500 to-teal-600',
       link: '/admin/superadmin/bookings',
     },
     {
       label: 'Total Revenue',
       value: `€${(stats?.total_revenue || 0).toFixed(2)}`,
-      icon: '💰',
+      icon:<Euro className="w-6 h-6 text-white" />,
       color: 'from-amber-500 to-orange-600',
       link: '/admin/superadmin/reports',
     },
     {
       label: 'Bookings Today',
       value: stats?.bookings_today || 0,
-      icon: '📊',
+      icon: <BarChart3 className="w-6 h-6 text-white" />,
       color: 'from-pink-500 to-rose-600',
-      link:'/admin/superadmin/bookings?filters=today',
+      link: '/admin/superadmin/bookings?filters=today',
     },
     {
       label: 'This Month',
       value: stats?.bookings_this_month || 0,
-      icon: '📈',
+      icon: <TrendingUp className="w-6 h-6 text-white" />,
       color: 'from-violet-500 to-purple-600',
       link: '/admin/superadmin/bookings?filter=month',
     },
     {
       label: 'Priority Bookings',
       value: stats?.priority_bookings || 0,
-      icon: '⚠️',
+      icon: <AlertTriangle className="w-6 h-6 text-white" />,
       color: 'from-red-500 to-orange-600',
       link: '/admin/superadmin/bookings?filter=priority',
     },
     {
       label: 'New Companies',
       value: stats?.new_companies_this_month || 0,
-      icon: '✨',
+      icon: <Sparkles className="w-6 h-6 text-white" />,
       color: 'from-cyan-500 to-blue-600',
-      link:'/admin/superadmin/companies?filter=new',
+      link: '/admin/superadmin/companies?filter=new',
     },
   ];
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-          Super Admin Dashboard
-        </h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Platform overview across all companies
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+            Super Admin Dashboard
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Platform overview across all companies
+          </p>
+        </div>
+        <div className="flex items-center gap-2 text-xs">
+          {live ? (
+            <span className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-full font-medium">
+              <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+              Live
+            </span>
+          ) : (
+            <span className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-full font-medium">
+              <span className="w-2 h-2 bg-slate-400 rounded-full" />
+              Offline
+            </span>
+          )}
+          {lastUpdate && (
+            <span className="text-slate-400">
+              Updated {lastUpdate.toLocaleTimeString()}
+            </span>
+          )}
+        </div>
       </div>
 
-     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-  {statCards.map((card) => (
-    <Link
-      key={card.label}
-      to={card.link}
-      className="group bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 hover:border-indigo-400 dark:hover:border-indigo-500 hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer"
-    >
-      <div
-        className={`w-12 h-12 bg-gradient-to-br ${card.color} rounded-lg flex items-center justify-center text-2xl mb-3 group-hover:scale-110 transition-transform`}
-      >
-        {card.icon}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {statCards.map((card) => (
+          <Link
+            key={card.label}
+            to={card.link}
+            className="group bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 hover:border-indigo-400 dark:hover:border-indigo-500 hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer"
+          >
+            <div
+              className={`w-12 h-12 bg-gradient-to-br ${card.color} rounded-lg flex items-center justify-center text-2xl mb-3 group-hover:scale-110 transition-transform`}
+            >
+              {card.icon}
+            </div>
+            <div className="text-2xl font-bold text-slate-900 dark:text-white">
+              {card.value}
+            </div>
+            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center justify-between">
+              <span>{card.label}</span>
+              <svg
+                className="w-3 h-3 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </Link>
+        ))}
       </div>
-      <div className="text-2xl font-bold text-slate-900 dark:text-white">
-        {card.value}
-      </div>
-      <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center justify-between">
-        <span>{card.label}</span>
-        <svg
-          className="w-3 h-3 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-        </svg>
-      </div>
-    </Link>
-  ))}
-</div>
+
+      {/* Recent Bookings */}
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800">
-          <h2 className="font-semibold text-slate-900 dark:text-white">
-            Recent Bookings
-          </h2>
+          <h2 className="font-semibold text-slate-900 dark:text-white">Recent Bookings</h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
               <tr>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
-                  Reference
-                </th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
-                  Company
-                </th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
-                  Customer
-                </th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
-                  Service
-                </th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
-                  Date
-                </th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
-                  Status
-                </th>
-                <th className="text-right px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
-                  Total
-                </th>
+                {['Reference', 'Company', 'Customer', 'Service', 'Date', 'Status', 'Total'].map((h) => (
+                  <th
+                    key={h}
+                    className={`px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase ${
+                      h === 'Total' ? 'text-right' : 'text-left'
+                    }`}
+                  >
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -209,9 +258,7 @@ export default function SuperAdminDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800">
-            <h2 className="font-semibold text-slate-900 dark:text-white">
-              Top Companies
-            </h2>
+            <h2 className="font-semibold text-slate-900 dark:text-white">Top Companies</h2>
           </div>
           <div className="divide-y divide-slate-100 dark:divide-slate-800">
             {topCompanies.map((c, i) => (
@@ -221,9 +268,7 @@ export default function SuperAdminDashboard() {
                     {i + 1}
                   </span>
                   <div>
-                    <div className="text-sm font-medium text-slate-900 dark:text-white">
-                      {c.name}
-                    </div>
+                    <div className="text-sm font-medium text-slate-900 dark:text-white">{c.name}</div>
                     <div className="text-xs text-slate-500 dark:text-slate-400">
                       {c.bookings_count} bookings
                     </div>
@@ -250,9 +295,7 @@ export default function SuperAdminDashboard() {
               return (
                 <div key={m.month}>
                   <div className="flex justify-between text-xs mb-1">
-                    <span className="text-slate-600 dark:text-slate-400">
-                      {m.month}
-                    </span>
+                    <span className="text-slate-600 dark:text-slate-400">{m.month}</span>
                     <span className="font-medium text-slate-900 dark:text-white">
                       €{parseFloat(m.revenue).toFixed(2)}
                     </span>
@@ -271,6 +314,4 @@ export default function SuperAdminDashboard() {
       </div>
     </div>
   );
-
-  
 }

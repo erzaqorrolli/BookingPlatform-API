@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../../api/client';
- import Swal from 'sweetalert2';
+import Swal from 'sweetalert2';
+
 export default function Companies() {
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -24,79 +25,119 @@ export default function Companies() {
     loadCompanies();
   }, []);
 
- 
+  const handleToggleStatus = async (company) => {
+    const newStatus = company.status === 'blocked' ? 'active' : 'blocked';
 
-const handleToggleStatus = async (company) => {
-  const newStatus = company.status === 'blocked' ? 'active' : 'blocked';
-
-  if (newStatus === 'blocked') {
-    // Kërko arsyen me SweetAlert
-    const { value: reason } = await Swal.fire({
-      title: 'Block company?',
-      text: `Are you sure you want to block "${company.name}"?`,
-      input: 'textarea',
-      inputLabel: 'Reason for blocking',
-      inputPlaceholder: 'Type the reason here...',
-      inputAttributes: {
-        'aria-label': 'Reason for blocking',
-      },
-      showCancelButton: true,
-      confirmButtonText: 'Block',
-      confirmButtonColor: '#dc2626',
-      cancelButtonText: 'Cancel',
-      inputValidator: (value) => {
-        if (!value) return 'You need to write a reason!';
-      },
-    });
-
-    if (!reason) return;
-
-    try {
-      await api.put(`/superadmin/companies/${company.id}/status`, {
-        status: newStatus,
-        reason,
+    if (newStatus === 'blocked') {
+      const { value: reason } = await Swal.fire({
+        title: 'Block company?',
+        text: `Are you sure you want to block "${company.name}"?`,
+        input: 'textarea',
+        inputLabel: 'Reason for blocking',
+        inputPlaceholder: 'Type the reason here...',
+        inputAttributes: {
+          'aria-label': 'Reason for blocking',
+        },
+        showCancelButton: true,
+        confirmButtonText: 'Block',
+        confirmButtonColor: '#dc2626',
+        cancelButtonText: 'Cancel',
+        inputValidator: (value) => {
+          if (!value) return 'You need to write a reason!';
+        },
       });
-      await loadCompanies();
 
-      Swal.fire({
-        icon: 'success',
-        title: 'Blocked!',
-        text: `"${company.name}" has been blocked.`,
-        timer: 2000,
-        showConfirmButton: false,
+      if (!reason) return;
+
+      try {
+        await api.put(`/superadmin/companies/${company.id}/status`, {
+          status: newStatus,
+          reason,
+        });
+        await loadCompanies();
+
+        Swal.fire({
+          icon: 'success',
+          title: 'Blocked!',
+          text: `"${company.name}" has been blocked.`,
+          timer: 2000,
+          showConfirmButton: false,
+        });
+      } catch (err) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: err.response?.data?.error || 'Action failed',
+        });
+      }
+    } else {
+      const result = await Swal.fire({
+        title: 'Activate company?',
+        text: `Are you sure you want to activate "${company.name}"?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Activate',
+        confirmButtonColor: '#059669',
+        cancelButtonText: 'Cancel',
       });
-    } catch (err) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: err.response?.data?.error || 'Action failed',
-      });
+
+      if (!result.isConfirmed) return;
+
+      try {
+        await api.put(`/superadmin/companies/${company.id}/status`, {
+          status: newStatus,
+          reason: '',
+        });
+        await loadCompanies();
+
+        Swal.fire({
+          icon: 'success',
+          title: 'Activated!',
+          text: `"${company.name}" has been activated.`,
+          timer: 2000,
+          showConfirmButton: false,
+        });
+      } catch (err) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: err.response?.data?.error || 'Action failed',
+        });
+      }
     }
-  } else {
-    // Aktivizo pa pyetje
+  };
+
+  const handleDelete = async (company) => {
+    
     const result = await Swal.fire({
-      title: 'Activate company?',
-      text: `Are you sure you want to activate "${company.name}"?`,
-      icon: 'question',
+      title: 'Delete company?',
+      html: `Are you sure you want to delete <b>"${company.name}"</b>?<br/><span class="text-sm text-gray-500">This action can't be undone and it will delete all data.</span>`,
+      icon: 'warning',
       showCancelButton: true,
-      confirmButtonText: 'Activate',
-      confirmButtonColor: '#059669',
+      confirmButtonColor: '#dc2626',
+      confirmButtonText: 'Yes, delete!',
       cancelButtonText: 'Cancel',
     });
 
     if (!result.isConfirmed) return;
 
     try {
-      await api.put(`/superadmin/companies/${company.id}/status`, {
-        status: newStatus,
-        reason: '',
+      Swal.fire({
+        title: 'Deleting...',
+        text: 'Please wait',
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        },
       });
+
+      await api.delete(`/superadmin/companies/${company.id}`);
       await loadCompanies();
 
       Swal.fire({
         icon: 'success',
-        title: 'Activated!',
-        text: `"${company.name}" has been activated.`,
+        title: 'Deleted!',
+        text: `"${company.name}" deleted successfully.`,
         timer: 2000,
         showConfirmButton: false,
       });
@@ -104,20 +145,8 @@ const handleToggleStatus = async (company) => {
       Swal.fire({
         icon: 'error',
         title: 'Error',
-        text: err.response?.data?.error || 'Action failed',
+        text: err.response?.data?.error || 'Deletion failed',
       });
-    }
-  }
-};
-
-  const handleDelete = async (company) => {
-    if (!confirm(`Fshi kompaninë "${company.name}"? This can not be undone!`)) return;
-
-    try {
-      await api.delete(`/superadmin/companies/${company.id}`);
-      await loadCompanies();
-    } catch (err) {
-      alert(err.response?.data?.error || 'Deletion failed');
     }
   };
 
@@ -157,7 +186,6 @@ const handleToggleStatus = async (company) => {
         </div>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <input
           type="text"
@@ -190,7 +218,6 @@ const handleToggleStatus = async (company) => {
         )}
       </div>
 
-      {/* Table */}
       {filtered.length === 0 ? (
         <div className="bg-white dark:bg-slate-900 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-12 text-center">
           <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">

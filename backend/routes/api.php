@@ -1,6 +1,5 @@
 <?php
 declare(strict_types=1);
-//importing classes that routes use
 use App\Config\Router;
 use App\Controllers\AuthController;
 use App\Controllers\CompanyController;
@@ -202,3 +201,16 @@ Router::get('/api/me/notifications/unread-count', [NotificationController::class
 Router::post('/api/me/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
 Router::post('/api/me/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
 Router::delete('/api/me/notifications/{id}', [NotificationController::class, 'destroy']);
+
+
+Router::get('/api/superadmin/export/bookings', [SuperAdminController::class, 'exportBookings']);
+Router::get('/api/superadmin/export/users',    [SuperAdminController::class, 'exportUsers']);
+Router::get('/api/superadmin/export/invoices', [SuperAdminController::class, 'exportInvoices']);
+
+Router::get('/api/companies/{companyId}/bookings/export', [BookingController::class, 'exportCompanyBookings']);
+
+Router::get('/api/superadmin/export/bookings', [SuperAdminController::class, 'exportBookings']);
+
+Router::get('/api/superadmin/search', [SuperAdminController::class, 'globalSearch']);
+
+Router::get('/api/me/search', [SuperAdminController::class, 'searchForCompany']);

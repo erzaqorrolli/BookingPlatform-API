@@ -449,6 +449,12 @@ class BookingController
     "/admin/bookings"
 );
 
+    // WebSocket Broadcast për dashboard
+    \App\Utils\WebSocket::notifyAll([
+        'type'    => 'booking_created',
+        'message' => "Booking i re: {$name} - {$service->name}",
+    ]);
+
     if (!empty($input['needs_assistance'])) {
         try {
             $priorityMessage = "<h2 style='color:#d97706;'>Priority booking</h2>
@@ -636,6 +642,12 @@ class BookingController
                 "Booking #{$booking->reference} status changed to {$status}",
                 "/admin/bookings"
             );
+
+            // WebSocket Broadcast për dashboard
+            \App\Utils\WebSocket::notifyAll([
+                'type'    => 'booking_status_changed',
+                'message' => "Booking {$booking->reference} → {$status}",
+            ]);
         }
 
         json_ok([
@@ -751,5 +763,38 @@ class BookingController
         $h = (int) ($parts[0] ?? 0);
         $m = (int) ($parts[1] ?? 0);
         return $h * 60 + $m;
+    }
+
+
+    public function exportCompanyBookings(array $params): void{
+        
+    
+    $uid=auth_user_id();
+    if(!$uid)json_err('Unauthorized',401);
+
+    $companyId=(int) $params['companyId'];
+    if(!Company::userBelongsTo($uid,$companyId)){
+        json_err('Forbbiedn',403);
+    }
+
+    $db=Database::pdo();
+    $stmt=$db->prepare("SELECT b.reference,cu.name AS customer_name, cu.email AS customer_email,
+    s.name AS service_name,b.booking_date,b.start_time,b.status,
+    b.total_price FROM bookings b 
+    JOIN customers cu ON cu.id = b.customer_id
+    JOIN services s ON s.id=b.service_id WHERE b.company_id=? ORDER BY b.created_at DESC");
+
+    $stmt->execute([$companyId]);
+    $rows=array_map(function($r){
+        return[
+            $r['reference'],$r['customer_name'],$r['customer_email'],
+            $r['service_name'],$r['booking_date'],$r['start_time'],
+            $r['status'],$r['total_price']
+        ];
+    },$stmt->fetchAll());
+    
+
+    $headers=['Reference','Customer','Email','Service','Date','Time','Stauts','Total'];
+    \App\Utils\CsvExporter::download('bookings-' .$companyId . '-' . date('Y-m-d') . '.csv',$headers,$rows);
     }
 }
