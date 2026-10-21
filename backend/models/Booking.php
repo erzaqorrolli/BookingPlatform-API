@@ -39,15 +39,17 @@ class Booking
         return $row ? self::fromRow($row) : null;
     }
 
-    public static function forCompany(int $companyId, array $filters = []): array
+     public static function forCompany(int $companyId, array $filters = []): array
     {
         $db = Database::pdo();
         $sql = "
             SELECT b.*, c.name AS customer_name, c.email AS customer_email, c.phone AS customer_phone,
-                   s.name AS service_name, s.duration_minutes
+                   s.name AS service_name, s.duration_minutes,
+                   staff.name AS staff_name
             FROM bookings b
             JOIN customers c ON c.id = b.customer_id
             JOIN services s ON s.id = b.service_id
+            LEFT JOIN users staff ON staff.id = b.staff_id
             WHERE b.company_id = ?
         ";
         $params = [$companyId];

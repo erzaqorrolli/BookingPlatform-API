@@ -116,7 +116,6 @@ export default function Bookings() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Bookings</h1>
@@ -231,6 +230,7 @@ export default function Bookings() {
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Reference Id</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Client</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Service</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Staff</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Date</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Time</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Total</th>
@@ -278,6 +278,20 @@ export default function Bookings() {
                     </td>
 
                     <td className="px-5 py-4 text-sm text-slate-700">{b.service_name}</td>
+                    
+                    <td className="px-5 py-4">
+                      {b.staff_name ? (
+                        <span className="text-sm font-medium text-slate-900 flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold shrink-0">
+                            {b.staff_name.charAt(0).toUpperCase()}
+                          </div>
+                          {b.staff_name}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-slate-400 italic">Unassigned</span>
+                      )}
+                    </td>
+
                     <td className="px-5 py-4 text-sm text-slate-700">
                       {new Date(b.booking_date).toLocaleDateString('sq-AL')}
                     </td>

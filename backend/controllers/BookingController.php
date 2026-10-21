@@ -347,6 +347,18 @@ class BookingController
             ]);
             \App\Models\Customer::updateVipStatus($customerId);
 
+            $requestedStaffId = !empty($input['staff_id']) ? (int) $input['staff_id']: null;
+
+            if($requestedStaffId){
+                $db->prepare("UPDATE bookings SET staff_id = ? WHERE id =?")
+                ->execute([$requestedStaffId,$booking->id]);
+            }else{
+                $autoStaffId=$this->findAvailableStaff($companyId,$date,$startTime,$endTime);
+                if($autoStaffId){
+                    $db->prepare("UPDATE bookings SET staff_id = ? WHERE id =?")->execute([$autoStaffId,$booking->id]);
+                }
+            }
+
             if ($discount) {
                 $discount->incrementUsage();
             }
@@ -447,9 +459,10 @@ class BookingController
     'New booking received',
     "{$name} booked {$service->name} on {$date} at {$startTime}",
     "/admin/bookings"
+
+    
 );
 
-    // WebSocket Broadcast për dashboard
     \App\Utils\WebSocket::notifyAll([
         'type'    => 'booking_created',
         'message' => "Booking i re: {$name} - {$service->name}",
@@ -796,5 +809,38 @@ class BookingController
 
     $headers=['Reference','Customer','Email','Service','Date','Time','Stauts','Total'];
     \App\Utils\CsvExporter::download('bookings-' .$companyId . '-' . date('Y-m-d') . '.csv',$headers,$rows);
+    }
+
+    public function findAvailableStaff(int $companyId,string $date,string $startTime,string $endTime): ?int{
+
+    $db = Database::pdo();
+
+    $stmt = $db->prepare("
+    SELECT u.id FROM company_user cu 
+    JOIN users u ON u.id = cu.user_id
+    JOIN roles r ON r.id=cu.role_id
+    WHERE cu.company_id=?
+    AND r.name IN ('staff','manager','admin')
+    AND u.status = 'active'
+    ");
+
+    $stmt->execute([$companyId]);
+    $staffIds=$stmt->fetchAll(\PDO::FETCH_COLUMN);
+
+    if(empty($staffIds)) return null;
+
+    foreach($staffIds as $staffId){
+        $checkStmt =$db->prepare("SELECT COUNT(*) FROM bookings WHERE company_id =? AND staff_id =? AND booking_date =? AND status IN ('pending', 'confirmed')
+        AND (start_time < ? AND end_time > ?)
+        ");
+
+        $checkStmt->execute([$companyId, $staffId, $date, $endTime, $startTime]);
+
+        if((int) $checkStmt->fetchColumn() === 0){
+            return (int) $staffId;
+        }
+    }
+
+    return null;
     }
 }
