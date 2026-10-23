@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
+import { CheckCircle } from 'lucide-react';
 
 const STATUS_LABELS = {
   pending: 'Waiting',
@@ -55,6 +56,15 @@ export default function StaffBookings() {
       await load();
     } catch (err) {
       alert(err.response?.data?.error || 'Change failed');
+    }
+  };
+
+  const handleClaim = async (bookingId) => {
+    try {
+      await api.post(`/companies/${activeCompany.id}/bookings/${bookingId}/claim`);
+      await load();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to claim booking');
     }
   };
 
@@ -120,22 +130,25 @@ export default function StaffBookings() {
       ) : (
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[800px]">
+            <table className="w-full min-w-[900px]">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase">ID</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Reference</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Client</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Service</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Date</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Time</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Status</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Staff</th>
                   <th className="text-right px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {bookings.map((b) => (
                   <tr key={b.id} className="hover:bg-slate-50">
-                    <td className="px-5 py-4 text-sm font-mono text-slate-500">#{b.id}</td>
+                    <td className="px-5 py-4 text-sm font-mono text-slate-500">
+                      {b.reference || `#${b.id}`}
+                    </td>
                     <td className="px-5 py-4">
                       <div className="text-sm font-medium text-slate-900">{b.customer_name}</div>
                       <div className="text-xs text-slate-500">{b.customer_email}</div>
@@ -155,18 +168,40 @@ export default function StaffBookings() {
                         {STATUS_LABELS[b.status]}
                       </span>
                     </td>
+                    
+                    <td className="px-5 py-4">
+                      {b.staff_name ? (
+                        <span className="text-sm font-medium text-slate-900">
+                          {b.staff_name}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-slate-400 italic">Unassigned</span>
+                      )}
+                    </td>
+
                     <td className="px-5 py-4 text-right">
-                      <select
-                        value={b.status}
-                        onChange={(e) => updateStatus(b.id, e.target.value)}
-                        className="text-xs border border-slate-200 rounded px-2 py-1 focus:border-orange-500 outline-none"
-                      >
-                        <option value="pending">Waiting</option>
-                        <option value="confirmed">Confirmed</option>
-                        <option value="completed">Done</option>
-                        <option value="cancelled">Cancelled</option>
-                        <option value="no_show">Absent</option>
-                      </select>
+                      <div className="flex items-center justify-end gap-2">
+                        {!b.staff_name && (
+                          <button
+                            onClick={() => handleClaim(b.id)}
+                            className="px-3 py-1.5 text-xs font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-lg transition"
+                          >
+                            Accept
+                          </button>
+                        )}
+                        
+                        <select
+                          value={b.status}
+                          onChange={(e) => updateStatus(b.id, e.target.value)}
+                          className="text-xs border border-slate-200 rounded px-2 py-1 focus:border-orange-500 outline-none"
+                        >
+                          <option value="pending">Waiting</option>
+                          <option value="confirmed">Confirmed</option>
+                          <option value="completed">Done</option>
+                          <option value="cancelled">Cancelled</option>
+                          <option value="no_show">Absent</option>
+                        </select>
+                      </div>
                     </td>
                   </tr>
                 ))}

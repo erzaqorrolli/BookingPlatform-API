@@ -347,16 +347,11 @@ class BookingController
             ]);
             \App\Models\Customer::updateVipStatus($customerId);
 
-            $requestedStaffId = !empty($input['staff_id']) ? (int) $input['staff_id']: null;
+              $requestedStaffId = !empty($input['staff_id']) ? (int) $input['staff_id'] : null;
 
-            if($requestedStaffId){
-                $db->prepare("UPDATE bookings SET staff_id = ? WHERE id =?")
-                ->execute([$requestedStaffId,$booking->id]);
-            }else{
-                $autoStaffId=$this->findAvailableStaff($companyId,$date,$startTime,$endTime);
-                if($autoStaffId){
-                    $db->prepare("UPDATE bookings SET staff_id = ? WHERE id =?")->execute([$autoStaffId,$booking->id]);
-                }
+            if ($requestedStaffId) {
+                $db->prepare("UPDATE bookings SET staff_id = ? WHERE id = ?")
+                   ->execute([$requestedStaffId, $booking->id]);
             }
 
             if ($discount) {
@@ -623,6 +618,7 @@ class BookingController
 
             if ($customer && filter_var($customer['email'], FILTER_VALIDATE_EMAIL)) {
                 Mailer::sendStatusUpdate(
+                    $companyId,
                     $customer['email'],
                     $customer['name'],
                     $booking->reference ?? ('#' . $booking->id),
@@ -842,5 +838,80 @@ class BookingController
     }
 
     return null;
+    }
+
+
+    public function claimBooking(array $params): void{
+
+    $uid = auth_user_id();
+
+    if(!$uid) json_err('Unauthorized',401);
+
+    $companyId=(int) $params['companyId'];
+    $bookingId=(int) $params['id'];
+
+    $role =Company::userRole($uid,$companyId);
+    if(!in_array($role,['staff','manager','admin'],true)){
+        json_err('Forbidden',403);
+    }
+
+    $db=Database::pdo();
+
+    $booking=Booking::findById($bookingId);
+    if(!$booking || $booking->company_id !==$companyId){
+        json_err('Booking not found',404);
+    }
+
+    if(!empty($booking->staff_id) && $booking->staff_id !==$uid){
+        json_err('This booking is already claimed by someone else',422);
+    }
+
+    $stmt=$db->prepare("UPDATE bookings SET staff_id=? WHERE id=?");
+    $stmt->execute([$uid,$bookingId]);
+
+    $staffStmt =$db->prepare("SELECT name FROM users WHERE id=?");
+    $staffStmt->execute([$uid]);
+
+    $staffName=$staffStmt->fetchColumn();
+
+    \App\Models\Notification::notifyCompanyOwners(
+    $companyId,
+    'booking_claimed',
+    'Staff claimed a booking',
+    "{$staffName} accepted booking #{$booking->reference},",
+    "/admin/bookings"
+    );
+
+    \App\Utils\WebSocket::notifyAll([
+        'type' => 'booking_claimed',
+        'message' => "{$staffName} accepted booking #{$booking->reference}",
+    ]);
+
+    json_ok([
+        'message' => 'Booking accepted successfully',
+        'booking'=> Booking::findById($bookingId)->toArray()
+    ]);
+
+    }
+
+    public function sendEmailToClient(array $params):void{
+
+    $uid = auth_user_id();
+    $companyId=(int) $params['companyId'];
+
+    if(!Company::userBelongsTo($uid,$companyId)) json_err('Forbidden',403);
+
+    $input=input();
+    $to=$input['email'];
+    $subject=$input['subject'];
+    $body=$input['body'];
+
+    $sent = \App\Utils\TenantMailer::send($companyId,$to,$subject,$body);
+
+    if($sent){
+        json_ok(['message' =>'Email sent successfully']);
+    } else{
+        json_err('Failed to send email.Please check SMTP settings',500);    
+    }
     }
 }

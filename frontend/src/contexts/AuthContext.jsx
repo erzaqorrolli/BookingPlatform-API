@@ -4,31 +4,32 @@ import api from '../api/client';
 const AuthContext = createContext(undefined); 
 
 export function useAuth() {
-  const context = useContext(AuthContext); //reads AuthContext value
-  if (context === undefined) { // checks if context exists
+  const context = useContext(AuthContext);
+  if (context === undefined) {
     throw new Error('useAuth must be used within AuthProvider');
   }
   return context;
 }
 
-function getCsrfToken() { //reads csrf token from cookies, or returns null
+function getCsrfToken() {
   const match = document.cookie.match(/(^| )csrf_token=([^;]+)/);
   return match ? decodeURIComponent(match[2]) : null;
 }
 
 export function AuthProvider({ children }) {
-  const [user, setUser]       = useState(null); //saves user 
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(() =>
     Boolean(localStorage.getItem('auth_token') || localStorage.getItem('refresh_token'))
-  ); // saves loading
+  );
 
-  const clearAuthSession = () => { // cleans Session
-    sessionStorage.removeItem('activeCompanyId'); //deletes from session storage. session storage saves temporary tokens, and deletes when tab closes.
-    localStorage.removeItem('activeCompanyId'); // deletes from localstroage. local storage saves tokens permanently, they stay even after closing the tab
-    setUser(null);// deletes user, user logges out of app
+  const clearAuthSession = () => {
+    sessionStorage.removeItem('activeCompanyId');
+    localStorage.removeItem('activeCompanyId');
+    localStorage.removeItem('user'); // Fshijmë user-in nga localStorage
+    setUser(null);
   };
 
-  const normalizeUser = (data) => { // normalizes users data which come from backend, makes sure that companies and role are coming in right format
+  const normalizeUser = (data) => {
     const payload = data?.user || data || {};
     const companies = payload.companies || data?.companies || [];
     const roleFromUser = payload.role || payload.company_role;
@@ -44,62 +45,76 @@ export function AuthProvider({ children }) {
     };
   };
 
-  useEffect(() => { // when app opens, checks if user is logged in and is calling /auth/me, if yesit saves the user, if not deletes it
+  useEffect(() => {
     if (!localStorage.getItem('auth_token') && !localStorage.getItem('refresh_token')) {
+      setLoading(false);
       return;
     }
 
-    api.get('/auth/me') // useEffect is react hooks that executes code when components change addiction
+    // Nëse e kemi user-in e ruajtur, e vendosim menjëherë (për shpejtësi)
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) {
+      try {
+        setUser(JSON.parse(savedUser));
+      } catch (e) {}
+    }
+
+    api.get('/auth/me')
       .then((response) => {
         const data = response.data?.data || response.data;
-        setUser(normalizeUser(data));
+        const normalized = normalizeUser(data);
+        setUser(normalized);
+        localStorage.setItem('user', JSON.stringify(normalized)); // E ruajmë në localStorage
       })
       .catch(() => {
         setUser(null);
+        localStorage.removeItem('user');
       })
       .finally(() => setLoading(false));
   }, []);
 
- const login = async (email, password) => { // when user logs in , sends email,passwod, saves token , saves crf token and user in state
-  clearAuthSession();
+  const login = async (email, password) => {
+    clearAuthSession();
 
-  const response = await api.post('/auth/login', { email, password });
-  const data = response.data?.data || response.data;
+    const response = await api.post('/auth/login', { email, password });
+    const data = response.data?.data || response.data;
 
-  if (data.access_token) {
-    localStorage.setItem('auth_token', data.access_token);
-  }
+    if (data.access_token) {
+      localStorage.setItem('auth_token', data.access_token);
+    }
 
-  if (data.refresh_token) {
-    localStorage.setItem('refresh_token', data.refresh_token);
-  }
+    if (data.refresh_token) {
+      localStorage.setItem('refresh_token', data.refresh_token);
+    }
 
-  if (data.csrf_token) {
-    document.cookie = `csrf_token=${data.csrf_token}; path=/; SameSite=Lax`;
-  }
+    if (data.csrf_token) {
+      document.cookie = `csrf_token=${data.csrf_token}; path=/; SameSite=Lax`;
+    }
 
-  const normalizedUser = normalizeUser(data);
-  setUser(normalizedUser);
-  return { ...data, user: normalizedUser, role: normalizedUser.role };
-};
+    const normalizedUser = normalizeUser(data);
+    setUser(normalizedUser);
+    localStorage.setItem('user', JSON.stringify(normalizedUser)); // RUAJTJA KRYESORE
 
-  const register = async (name, email, password) => { // registers name email password in backend and gives response
+    return { ...data, user: normalizedUser, role: normalizedUser.role };
+  };
+
+  const register = async (name, email, password) => {
     const response = await api.post('/auth/register', { name, email, password });
     return response.data?.data || response.data;
   };
 
-const logout = async () => {
+  const logout = async () => {
     const refreshToken = localStorage.getItem('refresh_token');
     try {
-        await api.post('/auth/logout', { refresh_token: refreshToken });
+      await api.post('/auth/logout', { refresh_token: refreshToken });
     } catch {}
     clearAuthSession();
     localStorage.removeItem('auth_token');
     localStorage.removeItem('refresh_token');
     document.cookie = 'csrf_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-};
+  };
 
-  return ( //offers auth data (user,loading,login,register,logout) for all children of authprovider
+  return (
     <AuthContext.Provider value={{ user, loading, login, register, logout }}>
       {children}
     </AuthContext.Provider>

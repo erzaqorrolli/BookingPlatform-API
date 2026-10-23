@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useCompany } from '../contexts/CompanyContext';
-import { ChevronDown, Check, Building2 } from 'lucide-react'; // Importuam ikonat
+import { ChevronDown, Check, Building2, MessageCircle } from 'lucide-react'; 
+import { usePermissions } from '../contexts/PermissionsContext';
 
 const menuItems = [
   {
@@ -42,6 +43,12 @@ const menuItems = [
     ),
   },
   {
+    label: 'Chat',
+    path: '/staff/chat',
+    icon: <MessageCircle className="w-5 h-5" />,
+    permission: 'staff_can_send_emails',
+  },
+  {
     label: 'Profile',
     path: '/staff/profile',
     icon: (
@@ -50,21 +57,32 @@ const menuItems = [
       </svg>
     ),
   },
+  
+  {
+    label: 'My Role',
+    path: '/staff/my-role',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+      </svg>
+    ),
+  },
+  
 ];
 
 export default function StaffLayout({ children }) {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false); // State për menunë e kompanive
+  const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false); 
   
-  const workspaceRef = useRef(null); // Për të mbyllur menunë kur klikon jashtë
+  const workspaceRef = useRef(null); 
   const userMenuRef = useRef(null);
 
   const { user, logout } = useAuth();
   const { activeCompany, companies, switchCompany } = useCompany();
   const location = useLocation();
   const navigate = useNavigate();
+  const { hasPermission } = usePermissions(); 
 
-  // Mbyll dropdown-et kur klikohet jashtë
   useEffect(() => {
     function handleClickOutside(event) {
       if (workspaceRef.current && !workspaceRef.current.contains(event.target)) {
@@ -83,12 +101,16 @@ export default function StaffLayout({ children }) {
     navigate('/login');
   };
 
+  const visibleMenuItems = menuItems.filter(item => {
+    if (!item.permission) return true; 
+    return hasPermission(item.permission); 
+  });
+
   return (
     <div className="min-h-screen bg-slate-50">
       <nav className="bg-white border-b border-slate-200 sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           
-          {/* Logo dhe Workspace Switcher */}
           <div className="flex items-center gap-3">
             <Link to="/staff" className="w-9 h-9 bg-gradient-to-br from-orange-500 to-amber-600 rounded-lg flex items-center justify-center shrink-0">
               <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -99,7 +121,6 @@ export default function StaffLayout({ children }) {
             <div className="relative flex flex-col justify-center" ref={workspaceRef}>
               <span className="font-bold text-slate-900 text-sm leading-tight">Staff Portal</span>
               
-              {/* Nëse ka më shumë se 1 kompani, shfaqet si buton i bukur me dropdown */}
               {companies.length > 1 ? (
                 <>
                   <button
@@ -111,7 +132,6 @@ export default function StaffLayout({ children }) {
                     <ChevronDown className={`w-3 h-3 transition-transform ${workspaceMenuOpen ? 'rotate-180' : ''}`} />
                   </button>
 
-                  {/* Menuja Dropdown */}
                   {workspaceMenuOpen && (
                     <div className="absolute top-full left-0 mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-xl py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
                       <div className="px-3 pb-1.5 mb-1 border-b border-slate-100">
@@ -145,9 +165,8 @@ export default function StaffLayout({ children }) {
             </div>
           </div>
 
-          {/* Menuja e Mesme */}
           <div className="hidden md:flex items-center gap-6">
-            {menuItems.map((item) => {
+            {visibleMenuItems.map((item) => {
               const active = location.pathname === item.path;
               return (
                 <Link
@@ -163,7 +182,6 @@ export default function StaffLayout({ children }) {
             })}
           </div>
 
-          {/* User Menu */}
           <div className="relative" ref={userMenuRef}>
             <button
               onClick={() => setUserMenuOpen(!userMenuOpen)}
@@ -177,6 +195,7 @@ export default function StaffLayout({ children }) {
               </div>
               <ChevronDown className="w-4 h-4 text-slate-400" />
             </button>
+
 
             {userMenuOpen && (
               <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-xl py-1 z-20 animate-in fade-in zoom-in-95 duration-100">
@@ -197,16 +216,16 @@ export default function StaffLayout({ children }) {
                 >
                   Logout
                 </button>
-              </div>
+                
+              </div>      
             )}
           </div>
         </div>
       </nav>
 
-      {/* Mobile Menu */}
       <div className="md:hidden bg-white border-b border-slate-200 overflow-x-auto">
         <div className="flex gap-1 px-4 py-2">
-          {menuItems.map((item) => {
+          {visibleMenuItems.map((item) => {
             const active = location.pathname === item.path;
             return (
               <Link

@@ -3,6 +3,7 @@ import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
 import { useRole } from '../../hooks/useRole';
 import Swal from 'sweetalert2';
+import toast from 'react-hot-toast';
 
 export default function Team() {
   const { activeCompany } = useCompany();
@@ -15,12 +16,32 @@ export default function Team() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  // States për Rolet e Reja
+  const [customRoles, setCustomRoles] = useState([]);
+  const [memberRoles, setMemberRoles] = useState({}); 
+
   const load = async () => {
     if (!activeCompany) return;
     setLoading(true);
     try {
       const r = await api.get(`/companies/${activeCompany.id}/members`);
-      setMembers(r.data.data || []);
+      const membersList = r.data.data || [];
+      setMembers(membersList);
+      
+      // Marrim rolet e reja për secilin anëtar
+      const rolesMap = {};
+      await Promise.all(membersList.map(async (m) => {
+        if (m.role !== 'owner') {
+          try {
+            const res = await api.get(`/companies/${activeCompany.id}/members/${m.id}/custom-role`);
+            rolesMap[m.id] = res.data.data.custom_role_id || '';
+          } catch (err) {
+            rolesMap[m.id] = '';
+          }
+        }
+      }));
+      setMemberRoles(rolesMap);
+
     } catch (err) {
       console.error(err);
     } finally {
@@ -28,7 +49,30 @@ export default function Team() {
     }
   };
 
-  useEffect(() => { load(); }, [activeCompany]);
+  const loadCustomRoles = async () => {
+    if (!activeCompany) return;
+    try {
+      const res = await api.get(`/companies/${activeCompany.id}/custom-roles`);
+      setCustomRoles(res.data.data || []);
+    } catch (err) { console.error(err); }
+  };
+
+  useEffect(() => { 
+    load(); 
+    loadCustomRoles();
+  }, [activeCompany]);
+
+  const handleRoleChange = async (userId, newRoleId) => {
+    try {
+      await api.post(`/companies/${activeCompany.id}/members/${userId}/custom-role`, {
+        custom_role_id: newRoleId ? parseInt(newRoleId) : null
+      });
+      setMemberRoles(prev => ({ ...prev, [userId]: newRoleId }));
+      toast.success('Roli u përditësua');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Dështoi përditësimi i rolit');
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -79,7 +123,7 @@ export default function Team() {
     }
   };
 
-    const handleDelete = async (member) => {
+  const handleDelete = async (member) => {
     const result = await Swal.fire({
       title: 'Delete member permanently?',
       html: `Are you sure you want to delete <b>${member.name}</b>?<br/><br/><span class="text-sm text-red-600 font-bold">Warning: This action will permanently delete this account from all companies, and can't be back!</span>`,
@@ -175,6 +219,7 @@ export default function Team() {
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Member</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Email</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Role</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Custom Role (Permissions)</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Added</th>
                 <th className="text-right px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Actions</th>
               </tr>
@@ -196,6 +241,27 @@ export default function Team() {
                       {m.role}
                     </span>
                   </td>
+
+                  {/* KOLONA E RE PËR CUSTOM ROLE */}
+                  <td className="px-5 py-4">
+                    {role === 'owner' && m.role !== 'owner' ? (
+                      <select
+                        value={memberRoles[m.id] || ''}
+                        onChange={(e) => handleRoleChange(m.id, e.target.value)}
+                        className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 focus:border-indigo-500 outline-none bg-white w-full max-w-[150px]"
+                      >
+                        <option value="">Standard (No Custom Role)</option>
+                        {customRoles.map(r => (
+                          <option key={r.id} value={r.id}>{r.name}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="text-sm text-slate-500">
+                        {customRoles.find(r => r.id === memberRoles[m.id])?.name || 'Standard'}
+                      </span>
+                    )}
+                  </td>
+
                   <td className="px-5 py-4 text-sm text-slate-500">
                     {m.created_at ? new Date(m.created_at).toLocaleDateString('sq-AL') : '—'}
                   </td>
@@ -210,7 +276,6 @@ export default function Team() {
                         >
                           Remove
                         </button>
-                        
                         
                         {role === 'owner' && (
                           <button

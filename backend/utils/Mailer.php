@@ -145,28 +145,44 @@ class Mailer
     self::send($email, "New Booking $reference", $body);
 }
 
-  public static function sendStatusUpdate(string $email, string $name, string $reference, string $status): void
-{
-    $labels = [
-        'pending'   => 'Waiting',
-        'waiting'   => 'Waiting',
-        'confirmed' => 'Confirmed',
-        'cancelled' => 'Cancelled',
-        'completed' => 'Done',
-        'no_show'   => 'Absent',
-    ];
-    $label = $labels[$status] ?? $status;
+        public static function sendStatusUpdate(int $companyId, string $email, string $name, string $reference, string $status): void
+    {
+        $labels = [
+            'pending'   => 'Waiting',
+            'waiting'   => 'Waiting',
+            'confirmed' => 'Confirmed',
+            'cancelled' => 'Cancelled',
+            'completed' => 'Done',
+            'no_show'   => 'Absent',
+        ];
+        $label = $labels[$status] ?? $status;
+        $subject = "Booking $reference: $label";
 
-    $body = self::template('Booking Status Updated', "
-        <p>Hello <strong>$name</strong>,</p>
-        <p>The status of your booking has been updated to: <strong>$label</strong>.</p>
-        <div style='background: #f8fafc; padding: 20px; border-radius: 12px; margin: 20px 0; text-align: center;'>
-            <p style='color: #64748b; font-size: 13px; margin: 0 0 6px;'>Booking Reference</p>
-            <p style='font-family: monospace; font-size: 22px; font-weight: 700; color: #4f46e5; margin: 0;'>$reference</p>
-        </div>
-    ");
-    self::send($email, "Booking $reference: $label", $body);
-}
+        $body = self::template('Booking Status Updated', "
+            <p>Hello <strong>$name</strong>,</p>
+            <p>The status of your booking has been updated to: <strong>$label</strong>.</p>
+            <div style='background: #f8fafc; padding: 20px; border-radius: 12px; margin: 20px 0; text-align: center;'>
+                <p style='color: #64748b; font-size: 13px; margin: 0 0 6px;'>Booking Reference</p>
+                <p style='font-family: monospace; font-size: 22px; font-weight: 700; color: #4f46e5; margin: 0;'>$reference</p>
+            </div>
+        ");
+        
+        self::send($email, $subject, $body);
+         try {
+            $db = \App\Config\Database::pdo();
+            
+            $plainTextBody = strip_tags($body);
+            $plainTextBody = html_entity_decode($plainTextBody, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            $plainTextBody = preg_replace('/\s+/', ' ', $plainTextBody);
+            $plainTextBody = trim($plainTextBody);
+
+            $stmt = $db->prepare("INSERT INTO email_messages (company_id, customer_email, subject, body, direction) VALUES (?, ?, ?, ?, 'outbound')");
+            $stmt->execute([$companyId, $email, $subject, $plainTextBody]);
+        } catch (\Throwable $e) {
+            error_log('Failed to save status update to chat: ' . $e->getMessage());
+        }
+    }
+
 
 public static function sendBookingCancellationToOwner(string $email, string $ownerName, array $booking, string $reason): void
 {
@@ -271,5 +287,15 @@ public static function sendInvoice(string $email, string $customerName, array $i
             </table>
         </body>
         </html>";
+    }
+
+    private static function saveToChat(int $companyId,string $toEmail,string $subject,string $body): void{
+        try{
+            $db=\App\Config\Database::pdo();
+            $db->prepare("INSERT INTO email_messages (company_id,customer_email,subject,body,direction) VALUES(?,?,?,?, 'outbound')")
+                ->execute([$companyId,$toEmail,$subject,$body]);
+        }catch(\Throwable $e){
+            error_log ('Failed to save email to chat: ' . $e->getMessage());
+        }
     }
 }

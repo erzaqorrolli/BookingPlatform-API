@@ -226,3 +226,35 @@ Router::post('/api/companies/{id}/request-deletion', [CompanyController::class, 
 Router::get('/api/superadmin/deletion-requests', [SuperAdminController::class, 'deletionRequests']);
 
 Router::get('/api/superadmin/deletion-requests', [SuperAdminController::class, 'getDeletionRequests']);
+
+Router::post('/api/companies/{companyId}/bookings/{id}/claim', [BookingController::class, 'claimBooking']);
+
+Router::put('/api/companies/{id}/smtp-settings', [CompanyController::class, 'updateSmtpSettings']);
+
+Router::post('/api/companies/{companyId}/send-email', [BookingController::class, 'sendEmailToClient']);
+
+Router::post('/api/companies/{id}/test-smtp', [CompanyController::class, 'testSmtp']);
+
+// CHAT ROUTES
+Router::get('/api/companies/{id}/chat', [CompanyController::class, 'getChatMessages']);
+Router::post('/api/companies/{id}/chat', [CompanyController::class, 'sendChatMessage']);
+
+Router::get('/api/companies/{id}/chat-customers', [CompanyController::class, 'getChatCustomers']);
+Router::get('/api/companies/{id}/all-customers', [CompanyController::class, 'getCompanyCustomers']);
+
+Router::post('/api/companies/{id}/sync-inbox', [CompanyController::class, 'syncInbox']);
+Router::get('/api/companies/{id}/custom-roles', [CompanyController::class, 'getCustomRoles']);
+
+Router::post('/api/companies/{id}/custom-roles', [CompanyController::class, 'createCustomRole']);
+
+Router::post('/api/companies/{id}/custom-roles/{roleId}/permissions', [CompanyController::class, 'updateRolePermissions']);
+
+Router::get('/api/companies/{id}/members/{userId}/custom-role', [CompanyController::class, 'getUserCustomRole']);
+
+Router::post('/api/companies/{id}/members/{userId}/custom-role', [CompanyController::class, 'assignCustomRole']);
+
+Router::get('/api/companies/{id}/my-permissions', [CompanyController::class, 'getMyPermissions']);
+Router::delete('/api/companies/{id}/custom-roles/{roleId}', [CompanyController::class, 'deleteCustomRole']);
+
+Router::put('/api/companies/{id}/custom-roles/{roleId}', [CompanyController::class, 'updateCustomRole']);
+Router::get('/api/companies/{id}/my-role-details', [CompanyController::class, 'getMyRoleDetails']);

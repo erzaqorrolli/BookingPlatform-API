@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { CompanyProvider } from './contexts/CompanyContext';
+import { PermissionsProvider } from './contexts/PermissionsContext';
 
 // AUTH
 import Login from './pages/auth/Login';
@@ -51,7 +52,6 @@ import ProtectedPage from './components/ProtectedPage';
 import ProtectedPortal from './components/ProtectedPortal';
 import StaffLayout from './components/StaffLayout';
 
-
 import CustomerDetail from './pages/admin/CustomerDetail';
 import InvoiceView from './pages/admin/InvoiceView';
 import Calendar from './pages/admin/Calendar';
@@ -66,12 +66,13 @@ import SuperAdminContactMessages from './pages/admin/superadmin/ContactMessages'
 import SuperAdminCompanyDetail from './pages/admin/superadmin/CompanyDetail';
 import StaffHolidays from './pages/staff/StaffHolidays';
 import SuperAdminAuditLogs from './pages/admin/superadmin/AuditLogs';
-
 import Payroll from './pages/admin/Payroll';
-
 import Notifications from './pages/admin/Notifications';
 import { Toaster } from 'react-hot-toast';
 import DeletionRequests from './pages/admin/superadmin/DeletionRequests';
+import Chat from './pages/admin/Chat';
+import Roles from './pages/admin/Roles';
+import MyRole from './pages/staff/MyRole';
 
 //children is a special prop that react fill it automaticlly with everything that stays between tags <x> example </x>
 
@@ -86,10 +87,10 @@ function ProtectedRoute({ children }) { //checks if user is logged , if not redi
     );
   }
 
-  return user ? children : <Navigate to="/login" replace />; // if it's a user show children, it not redirect to login
+  return user ? children : <Navigate to="/login" replace />;
 }
 
-function NotFound() {//if page not found, show page not found
+function NotFound() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
       <div className="text-center">
@@ -104,239 +105,89 @@ export default function App() {
   return (
     <AuthProvider> 
       <CompanyProvider>
-        <BrowserRouter>
+        <PermissionsProvider>
+          <BrowserRouter>
+            <Routes> 
+              {/* public routes */}
+              <Route path="/" element={<HomePage />} /> 
+              <Route path="/about" element={<About />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/book/:slug" element={<BookingWizard />} />
+              <Route path="/booking-success/:id" element={<BookingSuccess />} />  
 
-        
+              {/* auth routes */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element ={<Register />} />
+              <Route path="/register-business" element={<RegisterBusiness />} />
+              <Route path="/forgot" element={<ForgotPassword />} />
+              <Route path="/reset" element={<ResetPassword />} />
+              <Route path="/verify" element={<VerifyEmail />} />
+              <Route path="/accept-invite" element={<AcceptInvite />} />
 
-        {/* public routes, no login needed */}
-          <Routes> 
-            <Route path="/" element={<HomePage />} /> 
-            <Route path="/about" element={<About />} />
-            <Route path="/contact" element={<Contact />} />
-            <Route path="/book/:slug" element={<BookingWizard />} />
-            <Route path="/booking-success/:id" element={<BookingSuccess />} />  
+              <Route path="/admin" element={<ProtectedPage><Dashboard /></ProtectedPage>} />
+              <Route path="/admin/companies" element={<ProtectedPage allowed={['owner', 'admin']}><Companies /></ProtectedPage>} />
+              <Route path="/admin/calendar" element={<ProtectedPage allowed={['owner', 'admin', 'manager']}><Calendar /></ProtectedPage>} />
+              <Route path="/admin/services" element={<ProtectedPage allowed={['owner', 'admin', 'manager']}><Services /></ProtectedPage>} />
+              <Route path="/admin/bookings" element={<ProtectedPage><Bookings /></ProtectedPage>} />
+              <Route path="/admin/products" element={<ProtectedPage allowed={['owner', 'admin', 'manager']}><Products /></ProtectedPage>} />
+              <Route path="/admin/superadmin/companies/:id" element={<ProtectedPage allowed={['superadmin']}><SuperAdminCompanyDetail /></ProtectedPage>} />
+              <Route path="/admin/customers" element={<ProtectedPage allowed={['owner', 'admin', 'manager']}><Customers /></ProtectedPage>} />
+              <Route path="/admin/superadmin/reports" element={<ProtectedPage allowed={['superadmin']}><SuperAdminReports/></ProtectedPage>}/>
+              <Route path="/admin/team" element={<ProtectedPage allowed={['owner', 'admin']}><Team /></ProtectedPage>} />
+              <Route path="/admin/roles" element={<ProtectedPage allowed={['owner', 'admin']}><Roles /></ProtectedPage>} />
+              <Route path="/admin/settings" element={<ProtectedPage allowed={['owner', 'admin']}><Settings /></ProtectedPage>} />
+              <Route path="/admin/working-hours" element={<ProtectedPage allowed={['owner', 'admin', 'manager']}><WorkingHours /></ProtectedPage>} />
+              <Route path="/admin/holidays" element={<ProtectedPage allowed={['owner', 'admin', 'manager']}><Holidays /></ProtectedPage>} />
+              <Route path="/admin/discounts" element={<ProtectedPage allowed={['owner', 'admin', 'manager']}><Discounts /></ProtectedPage>} />
+              <Route path="/admin/superadmin/audit-logs" element={<ProtectedPage allowed={['superadmin']}><SuperAdminAuditLogs /></ProtectedPage>} />
+              
+              <Route path="/staff/holidays" element={<ProtectedRoute><StaffLayout><StaffHolidays /></StaffLayout></ProtectedRoute>} />
+              <Route path="/admin/payroll" element={<ProtectedPage allowed={['owner', 'admin']}><Payroll /></ProtectedPage>} />
+              <Route path="/admin/superadmin" element={<ProtectedPage allowed={['superadmin']}><SuperAdminDashboard /></ProtectedPage>} />
+              <Route path="/admin/gallery" element={<ProtectedPage allowed={['owner', 'admin', 'manager']}><Gallery /></ProtectedPage>} />
+              <Route path="/admin/reviews" element={<ProtectedPage allowed={['owner', 'admin', 'manager']}><Reviews /></ProtectedPage>} />
+              <Route path="/admin/happy-hours" element={<ProtectedPage allowed={['owner', 'admin', 'manager']}><HappyHours /></ProtectedPage>} />
+              <Route path="/admin/shifts" element={<ProtectedPage allowed={['owner', 'admin', 'manager']}><Shifts /></ProtectedPage>} />
+              <Route path="/admin/schedule" element={<ProtectedPage allowed={['owner', 'admin', 'manager']}><Schedule /></ProtectedPage>} />
+              <Route path="/admin/superadmin/companies" element={<ProtectedPage allowed={['superadmin']}><SuperAdminCompanies /></ProtectedPage>} />
+              <Route path="/admin/invoices" element={<ProtectedPage allowed={['owner', 'admin', 'manager']}><Invoices /></ProtectedPage>} />
+              <Route path="/admin/superadmin/users" element={<ProtectedPage allowed={['superadmin']}><SuperAdminUsers /></ProtectedPage>} />
+              <Route path="/admin/superadmin/users/:id" element={<ProtectedPage allowed={['superadmin']}><SuperAdminUserDetail /></ProtectedPage>} />
+              <Route path="/admin/superadmin/bookings" element={<ProtectedPage allowed={['superadmin']}><SuperAdminBookings /></ProtectedPage>} />
+              <Route path="/admin/superadmin/contact-messages" element={<ProtectedPage allowed={['superadmin']}><SuperAdminContactMessages /></ProtectedPage>} />
+              <Route path="/admin/customers/:id" element={<ProtectedPage allowed={['owner']}><CustomerDetail /></ProtectedPage>} />
+              <Route path="/admin/invoices/:id" element={<ProtectedPage allowed={['owner']}><InvoiceView /></ProtectedPage>} />
+              
+              <Route path="/portal" element={<ProtectedPortal><MyBookings /></ProtectedPortal>} />
+              <Route path="/portal/profile" element={<ProtectedPortal><Profile /></ProtectedPortal>} />
 
-            {/* auth routes */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element ={<Register />} />
-            <Route path="/register-business" element={<RegisterBusiness />} />
-            <Route path="/forgot" element={<ForgotPassword />} />
-            <Route path="/reset" element={<ResetPassword />} />
-            <Route path="/verify" element={<VerifyEmail />} />
-            <Route path="/accept-invite" element={<AcceptInvite />} />
+              <Route path="/staff" element={<ProtectedRoute><StaffLayout><StaffDashboard /></StaffLayout></ProtectedRoute>} />
+              <Route path="/admin/superadmin/deletion-requests" element={<DeletionRequests />} />
+              <Route path="/staff/schedule" element={<ProtectedRoute><StaffLayout><StaffSchedule /></StaffLayout></ProtectedRoute>} />
+              <Route path="/staff/bookings" element={<ProtectedRoute><StaffLayout><StaffBookings /></StaffLayout></ProtectedRoute>} />
+              <Route path="/staff/profile" element={<ProtectedRoute><StaffLayout><StaffProfile /></StaffLayout></ProtectedRoute>} />
+              
+              <Route path="/staff/my-role" element={<ProtectedRoute><StaffLayout><MyRole /></StaffLayout></ProtectedRoute>} />
+              <Route path="/staff/chat" element={<ProtectedRoute><StaffLayout><Chat /></StaffLayout></ProtectedRoute>} />
+              
+              <Route path="/admin/chat" element={<ProtectedPage><Chat /></ProtectedPage>} />
+              <Route path="/admin/notifications" element={<ProtectedPage><Notifications /></ProtectedPage>} />
 
-            <Route
-              path="/admin"
-              element={<ProtectedPage><Dashboard /></ProtectedPage>}
-            />
-            <Route
-              path="/admin/companies"
-              element={<ProtectedPage allowed={['owner', 'admin']}><Companies /></ProtectedPage>}
-            />
-            <Route
-              path="/admin/calendar"
-              element={<ProtectedPage allowed={['owner', 'admin', 'manager']}><Calendar /></ProtectedPage>}
-            />
-            <Route
-              path="/admin/services"
-              element={<ProtectedPage allowed={['owner', 'admin', 'manager']}><Services /></ProtectedPage>}
-            />
-            <Route
-              path="/admin/bookings"
-              element={<ProtectedPage><Bookings /></ProtectedPage>}
-            />
-            <Route
-              path="/admin/products"
-              element={<ProtectedPage allowed={['owner', 'admin', 'manager']}><Products /></ProtectedPage>}
-            />
-            <Route
-            path="/admin/superadmin/companies/:id"
-            element={<ProtectedPage allowed={['superadmin']}><SuperAdminCompanyDetail /></ProtectedPage>}
-          />
-            <Route
-              path="/admin/customers"
-              element={<ProtectedPage allowed={['owner', 'admin', 'manager']}><Customers /></ProtectedPage>}
-            />
-            <Route 
-            path="/admin/superadmin/reports"
-            element={<ProtectedPage allowed={['superadmin']}><SuperAdminReports/></ProtectedPage>}/>
-            <Route
-              path="/admin/team"
-              element={<ProtectedPage allowed={['owner', 'admin']}><Team /></ProtectedPage>}
-            />
-              <Route
-              path="/admin/settings"
-              element={<ProtectedPage allowed={['owner', 'admin']}><Settings /></ProtectedPage>}
-            />
-            <Route
-              path="/admin/working-hours"
-              element={<ProtectedPage allowed={['owner', 'admin', 'manager']}><WorkingHours /></ProtectedPage>}
-            />
-            <Route
-              path="/admin/holidays"
-              element={<ProtectedPage allowed={['owner', 'admin', 'manager']}><Holidays /></ProtectedPage>}
-            />
-            <Route
-              path="/admin/discounts"
-              element={<ProtectedPage allowed={['owner', 'admin', 'manager']}><Discounts /></ProtectedPage>}
-            />
-            <Route
-  path="/admin/superadmin/audit-logs"
-  element={<ProtectedPage allowed={['superadmin']}><SuperAdminAuditLogs /></ProtectedPage>}
-/>
-            <Route
-  path="/staff/holidays"
-  element={
-    <ProtectedRoute>
-      <StaffLayout>
-        <StaffHolidays />
-      </StaffLayout>
-    </ProtectedRoute>
-  }
-/>
-
-
-<Route
-  path="/admin/payroll"
-  element={<ProtectedPage allowed={['owner', 'admin']}><Payroll /></ProtectedPage>}
-/>
-
-            <Route
-            path="/admin/superadmin"
-            element={<ProtectedPage allowed={['superadmin']}><SuperAdminDashboard /></ProtectedPage>}
-          />
-            <Route
-              path="/admin/gallery"
-              element={<ProtectedPage allowed={['owner', 'admin', 'manager']}><Gallery /></ProtectedPage>}
-            />
-            <Route
-              path="/admin/reviews"
-              element={<ProtectedPage allowed={['owner', 'admin', 'manager']}><Reviews /></ProtectedPage>}
-            />
-            <Route
-              path="/admin/happy-hours"
-              element={<ProtectedPage allowed={['owner', 'admin', 'manager']}><HappyHours /></ProtectedPage>}
-            />
-            <Route
-              path="/admin/shifts"
-              element={<ProtectedPage allowed={['owner', 'admin', 'manager']}><Shifts /></ProtectedPage>}
-            />
-            <Route
-              path="/admin/schedule"
-              element={<ProtectedPage allowed={['owner', 'admin', 'manager']}><Schedule /></ProtectedPage>}
-            />
-            <Route
-              path="/admin/settings"
-              element={<ProtectedPage allowed={['owner', 'admin']}><Settings /></ProtectedPage>}
-            />
-
-                      <Route
-                path="/admin/superadmin/companies"
-                element={<ProtectedPage allowed={['superadmin']}><SuperAdminCompanies /></ProtectedPage>}
-          />
-            <Route
-              path="/admin/invoices"
-              element={<ProtectedPage allowed={['owner', 'admin', 'manager']}><Invoices /></ProtectedPage>}
-            />
-                      <Route
-            path="/admin/superadmin/users"
-            element={<ProtectedPage allowed={['superadmin']}><SuperAdminUsers /></ProtectedPage>}
-          />
-          <Route
-            path="/admin/superadmin/users/:id"
-            element={<ProtectedPage allowed={['superadmin']}><SuperAdminUserDetail /></ProtectedPage>}
-          />
-          <Route
-            path="/admin/superadmin/bookings"
-            element={<ProtectedPage allowed={['superadmin']}><SuperAdminBookings /></ProtectedPage>}
-          />
-          <Route
-        path="/admin/superadmin/contact-messages"
-        element={<ProtectedPage allowed={['superadmin']}><SuperAdminContactMessages /></ProtectedPage>}
-      />
-      <Route path="/admin/customers/:id" element={<ProtectedPage allowed={['owner']}><CustomerDetail /></ProtectedPage>} />
-
-    <Route path="/admin/invoices/:id" element={<ProtectedPage allowed={['owner']}><InvoiceView /></ProtectedPage>} />
-            <Route
-              path="/portal"
-              element={
-                <ProtectedPortal>
-                  <MyBookings />
-                </ProtectedPortal>
-              }
-            />
-            <Route
-              path="/portal/profile"
-              element={
-                <ProtectedPortal>
-                  <Profile />
-                </ProtectedPortal>
-              }
-            />
-
-            <Route
-              path="/staff"
-              element={
-                <ProtectedRoute>
-                  <StaffLayout>
-                    <StaffDashboard />
-                  </StaffLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route path="/admin/superadmin/deletion-requests" element={<DeletionRequests />} />
-            <Route
-              path="/staff/schedule"
-              element={
-                <ProtectedRoute>
-                  <StaffLayout>
-                    <StaffSchedule />
-                  </StaffLayout>
-                </ProtectedRoute>
-              }
-            />
-                   
-            <Route
-              path="/staff/bookings"
-              element={
-                <ProtectedRoute>
-                  <StaffLayout>
-                    <StaffBookings />
-                  </StaffLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/staff/profile"
-              element={
-                <ProtectedRoute>
-                  <StaffLayout>
-                    <StaffProfile />
-                  </StaffLayout>
-                </ProtectedRoute>
-              }
-            />
-
-            
-            <Route
-  path="/admin/notifications"
-  element={<ProtectedPage><Notifications /></ProtectedPage>}
-/>
-
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
 
             <Toaster 
-      position="bottom-right" 
-      toastOptions={{
-        style: {
-          background: '#333',
-          color: '#fff',
-          borderRadius: '10px',
-        },
-      }} 
-    />
-  </BrowserRouter>
+              position="bottom-right" 
+              toastOptions={{
+                style: {
+                  background: '#333',
+                  color: '#fff',
+                  borderRadius: '10px',
+                },
+              }} 
+            />
+          </BrowserRouter>
+        </PermissionsProvider>
       </CompanyProvider>
     </AuthProvider>
   );
