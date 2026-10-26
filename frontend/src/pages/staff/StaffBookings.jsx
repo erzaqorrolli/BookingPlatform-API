@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
 import { CheckCircle } from 'lucide-react';
+import { usePermissions } from '../../contexts/PermissionsContext';
 
 const STATUS_LABELS = {
   pending: 'Waiting',
@@ -25,7 +26,8 @@ export default function StaffBookings() {
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('');
   const [filterDate, setFilterDate] = useState('');
-
+  const { hasPermission } = usePermissions(); 
+  const canManage = hasPermission('staff_can_manage_bookings'); 
   const load = async () => {
     if (!activeCompany) return;
     setLoading(true);
@@ -179,29 +181,33 @@ export default function StaffBookings() {
                       )}
                     </td>
 
-                    <td className="px-5 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        {!b.staff_name && (
-                          <button
-                            onClick={() => handleClaim(b.id)}
-                            className="px-3 py-1.5 text-xs font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-lg transition"
+                                      <td className="px-5 py-4 text-right">
+                      {canManage ? (
+                        <div className="flex items-center justify-end gap-2">
+                          {!b.staff_name && (
+                            <button
+                              onClick={() => handleClaim(b.id)}
+                              className="px-3 py-1.5 text-xs font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-lg transition"
+                            >
+                              Accept
+                            </button>
+                          )}
+                          
+                          <select
+                            value={b.status}
+                            onChange={(e) => updateStatus(b.id, e.target.value)}
+                            className="text-xs border border-slate-200 rounded px-2 py-1 focus:border-orange-500 outline-none"
                           >
-                            Accept
-                          </button>
-                        )}
-                        
-                        <select
-                          value={b.status}
-                          onChange={(e) => updateStatus(b.id, e.target.value)}
-                          className="text-xs border border-slate-200 rounded px-2 py-1 focus:border-orange-500 outline-none"
-                        >
-                          <option value="pending">Waiting</option>
-                          <option value="confirmed">Confirmed</option>
-                          <option value="completed">Done</option>
-                          <option value="cancelled">Cancelled</option>
-                          <option value="no_show">Absent</option>
-                        </select>
-                      </div>
+                            <option value="pending">Waiting</option>
+                            <option value="confirmed">Confirmed</option>
+                            <option value="completed">Done</option>
+                            <option value="cancelled">Cancelled</option>
+                            <option value="no_show">Absent</option>
+                          </select>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-400 italic">View only</span>
+                      )}
                     </td>
                   </tr>
                 ))}

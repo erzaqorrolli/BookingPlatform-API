@@ -25,17 +25,22 @@ export function CompanyProvider({ children }) {
         setCompanies(list);
 
         if (list.length > 0) {
+          // LEXOJ KOMAPNINË E RUAJTUR (për të gjithë rolet)
           const savedId = localStorage.getItem('activeCompanyId');
           
-          if (user.role === 'staff') {
-            setActiveCompany(list[0]);
-            localStorage.setItem('activeCompanyId', list[0].id);
-          } else {
-            const matched = list.find(c => String(c.id) === String(savedId));
-            const chosen = matched || list[0];
-            setActiveCompany(chosen);
-            localStorage.setItem('activeCompanyId', chosen.id);
+          let chosenCompany = null;
+          if (savedId) {
+            // Gjej kompaninë që përputhet me ID-në e ruajtur
+            chosenCompany = list.find(c => String(c.id) === String(savedId));
           }
+
+          // Nëse nuk u gjet, merr të parën
+          if (!chosenCompany) {
+            chosenCompany = list[0];
+          }
+
+          setActiveCompany(chosenCompany);
+          localStorage.setItem('activeCompanyId', chosenCompany.id);
         }
       } catch (err) {
         console.error('Failed to load companies', err);
@@ -48,8 +53,6 @@ export function CompanyProvider({ children }) {
   }, [user]);
 
   const switchCompany = (id) => {
-    if (user?.role === 'staff') return;
-
     const company = companies.find(c => String(c.id) === String(id));
     if (company) {
       setActiveCompany(company);

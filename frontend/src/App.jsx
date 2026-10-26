@@ -73,6 +73,7 @@ import DeletionRequests from './pages/admin/superadmin/DeletionRequests';
 import Chat from './pages/admin/Chat';
 import Roles from './pages/admin/Roles';
 import MyRole from './pages/staff/MyRole';
+import StaffCustomers from './pages/staff/StaffCustomers';
 
 //children is a special prop that react fill it automaticlly with everything that stays between tags <x> example </x>
 
@@ -172,7 +173,7 @@ export default function App() {
               
               <Route path="/admin/chat" element={<ProtectedPage><Chat /></ProtectedPage>} />
               <Route path="/admin/notifications" element={<ProtectedPage><Notifications /></ProtectedPage>} />
-
+<Route path="/staff/customers" element={<ProtectedRoute><StaffLayout><StaffCustomers /></StaffLayout></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
 

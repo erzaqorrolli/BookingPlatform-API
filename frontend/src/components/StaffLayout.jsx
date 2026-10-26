@@ -42,11 +42,30 @@ const menuItems = [
       </svg>
     ),
   },
+    {
+    label: 'Clients',
+    path: '/staff/customers',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+    ),
+    permission: 'staff_can_manage_customers', // <-- KJO LEJE KONTROLLON SHFAQJEN
+  },
   {
     label: 'Chat',
     path: '/staff/chat',
     icon: <MessageCircle className="w-5 h-5" />,
     permission: 'staff_can_send_emails',
+  },
+  {
+    label: 'My Role',
+    path: '/staff/my-role',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+      </svg>
+    ),
   },
   {
     label: 'Profile',
@@ -57,17 +76,6 @@ const menuItems = [
       </svg>
     ),
   },
-  
-  {
-    label: 'My Role',
-    path: '/staff/my-role',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-      </svg>
-    ),
-  },
-  
 ];
 
 export default function StaffLayout({ children }) {
@@ -143,6 +151,7 @@ export default function StaffLayout({ children }) {
                           onClick={() => {
                             switchCompany(c.id);
                             setWorkspaceMenuOpen(false);
+                            window.location.reload(); 
                           }}
                           className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors ${
                             activeCompany?.id === c.id 
@@ -196,7 +205,6 @@ export default function StaffLayout({ children }) {
               <ChevronDown className="w-4 h-4 text-slate-400" />
             </button>
 
-
             {userMenuOpen && (
               <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-xl py-1 z-20 animate-in fade-in zoom-in-95 duration-100">
                 <div className="px-4 py-3 border-b border-slate-100">
@@ -216,8 +224,7 @@ export default function StaffLayout({ children }) {
                 >
                   Logout
                 </button>
-                
-              </div>      
+              </div>
             )}
           </div>
         </div>

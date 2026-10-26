@@ -4,11 +4,11 @@ import { useCompany } from '../../contexts/CompanyContext';
 import { Shield, CheckCircle2, XCircle } from 'lucide-react';
 
 const ALL_PERMISSIONS = [
-  { key: 'staff_can_send_emails', label: 'Dërgo Email-e klientëve', description: 'Mund të përgjigjesh dhe të dërgosh mesazhe nga Chat-i.' },
-  { key: 'staff_can_manage_bookings', label: 'Menaxho Booking-et', description: 'Mund të shohësh dhe të ndryshosh statusin e booking-eve.' },
-  { key: 'staff_can_view_bookings', label: 'Shiko Booking-et', description: 'Mund të shohësh listën e booking-eve.' },
-  { key: 'staff_can_manage_customers', label: 'Menaxho Klientët', description: 'Mund të shtosh dhe të ndryshosh klientë.' },
-  { key: 'staff_can_manage_invoices', label: 'Menaxho Faturat', description: 'Mund të krijosh dhe të shohësh fatura.' },
+  { key: 'staff_can_send_emails', label: 'Send email to clients', description: 'You can answer and send emails to clients through chat.' },
+  { key: 'staff_can_manage_bookings', label: 'Manage bookings', description: 'You can see and change booking statuses.' },
+  { key: 'staff_can_view_bookings', label: 'View Bookings', description: 'You can see booking list.' },
+  { key: 'staff_can_manage_customers', label: 'Manage clients', description: 'You can add and change clients.' },
+  { key: 'staff_can_manage_invoices', label: 'Manage invoices', description: 'You can view and add invoices.' },
 ];
 
 export default function MyRole() {
@@ -34,19 +34,19 @@ export default function MyRole() {
   }, [activeCompany]);
 
   if (loading) {
-    return <div className="p-12 text-center text-slate-500">Duke ngarkuar rolin...</div>;
+    return <div className="p-12 text-center text-slate-500">Updating role...</div>;
   }
 
   if (!activeCompany || !roleDetails) {
-    return <div className="p-12 text-center text-slate-500">Nuk u gjet asnjë informacion.</div>;
+    return <div className="p-12 text-center text-slate-500">No information found.</div>;
   }
 
   return (
     <div className="max-w-3xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Roli Im</h1>
+        <h1 className="text-2xl font-bold text-slate-900">My Role</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Shiko rolin dhe lejet që të ka caktuar pronari.
+         View role and allowed permissions.
         </p>
       </div>
 
@@ -55,17 +55,17 @@ export default function MyRole() {
           <Shield className="w-8 h-8" />
         </div>
         <div>
-          <p className="text-sm text-slate-500 font-medium uppercase tracking-wider">Roli Aktual</p>
+          <p className="text-sm text-slate-500 font-medium uppercase tracking-wider">Actual role</p>
           <h2 className="text-2xl font-bold text-slate-900">{roleDetails.role_name}</h2>
         </div>
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 p-6">
-        <h2 className="text-lg font-bold text-slate-900 mb-4">Lejet e tua</h2>
+        <h2 className="text-lg font-bold text-slate-900 mb-4">Your permissions</h2>
         
         {roleDetails.is_admin ? (
           <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-lg text-emerald-800">
-            Ju jeni <strong>Admin</strong> dhe keni akses të plotë në të gjitha funksionet e platformës.
+            You are <strong>Admin</strong>  and you have full access in platform functions.
           </div>
         ) : (
           <div className="space-y-3">

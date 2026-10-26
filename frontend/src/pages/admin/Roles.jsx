@@ -109,7 +109,7 @@ export default function Roles() {
       Swal.fire({
         icon: 'success',
         title: 'U fshi!',
-        text: `Roli "${roleName}" deleted successfully.`,
+        text: `Role "${roleName}" deleted successfully.`,
         timer: 2000,
         showConfirmButton: false,
       });

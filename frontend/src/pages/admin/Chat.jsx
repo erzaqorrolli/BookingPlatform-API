@@ -3,6 +3,7 @@ import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
 import { Send, User, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { usePermissions } from '../../contexts/PermissionsContext';
 
 export default function Chat() {
   const { activeCompany } = useCompany();
@@ -13,6 +14,10 @@ export default function Chat() {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [inboxSyncError, setInboxSyncError] = useState('');
+
+  // Shtojmë kontrollin e lejeve
+  const { hasPermission } = usePermissions();
+  const canSendEmail = hasPermission('staff_can_send_emails');
 
   useEffect(() => {
     if (!activeCompany) return;
@@ -77,7 +82,7 @@ export default function Chat() {
       const res = await api.get(`/companies/${activeCompany.id}/chat?email=${encodeURIComponent(selectedCustomer)}`);
       setMessages(res.data.data || []);
     } catch (err) {
-      toast.error('Dërgimi dështoi: ' + (err.response?.data?.error || err.message));
+      toast.error('Failed to send: ' + (err.response?.data?.error || err.message));
     } finally {
       setLoading(false);
     }
@@ -94,7 +99,6 @@ export default function Chat() {
         const msgRes = await api.get(`/companies/${activeCompany.id}/chat?email=${encodeURIComponent(selectedCustomer)}`);
         setMessages(msgRes.data.data || []);
       }
-      
       
       const custRes = await api.get(`/companies/${activeCompany.id}/chat-customers`);
       setCustomers(custRes.data.data || []);
@@ -204,24 +208,31 @@ export default function Chat() {
               )}
             </div>
 
+            {/* KTU E KEMI VENDOSUR KONTROLLIN E LEJES */}
             <div className="p-4 bg-white border-t border-slate-200">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Type a message..."
-                  className="flex-1 px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
-                  onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                />
-                <button
-                  onClick={handleSend}
-                  disabled={loading}
-                  className="px-5 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition shadow-sm"
-                >
-                  <Send className="w-5 h-5" />
-                </button>
-              </div>
+              {canSendEmail ? (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    placeholder="Type a message..."
+                    className="flex-1 px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                    onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+                  />
+                  <button
+                    onClick={handleSend}
+                    disabled={loading}
+                    className="px-5 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition shadow-sm"
+                  >
+                    <Send className="w-5 h-5" />
+                  </button>
+                </div>
+              ) : (
+                <div className="text-center p-3 bg-slate-50 text-slate-500 rounded-xl text-sm border border-slate-200">
+                  You don't have permissions to email client. Contact admin.
+                </div>
+              )}
             </div>
           </>
         ) : (
