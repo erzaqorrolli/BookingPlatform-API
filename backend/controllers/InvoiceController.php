@@ -42,17 +42,41 @@ class InvoiceController
 
 
     
-    public function show(array $params): void
+      public function show(array $params): void
     {
         $uid = auth_user_id();
         if (!$uid) json_err('Unauthorized', 401);
 
         $companyId = (int) $params['companyId'];
+        $id = (int) $params['id'];
+
+        error_log("SHOW INVOICE: uid=$uid, companyId=$companyId, invoiceId=$id");
+
         if (!Company::userBelongsTo($uid, $companyId)) {
+            error_log("SHOW INVOICE: userBelongsTo failed for uid=$uid, companyId=$companyId");
             json_err('Forbidden', 403);
         }
 
-        $invoice = Invoice::findById((int) $params['id']);
+        $role = Company::userRole($uid, $companyId);
+        error_log("SHOW INVOICE: role=$role");
+
+        if (!in_array($role, ['owner', 'admin', 'manager'], true)) {
+            $db = Database::pdo();
+            $stmt = $db->prepare("
+                SELECT p.permission_key FROM company_user_custom_roles cu
+                JOIN company_role_permissions p ON p.role_id = cu.custom_role_id 
+                WHERE cu.company_id = ? AND cu.user_id = ? AND p.enabled = 1
+            ");
+            $stmt->execute([$companyId, $uid]);
+            $permissions = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+            error_log("SHOW INVOICE: permissions=" . json_encode($permissions));
+
+            if (!in_array('staff_can_manage_invoices', $permissions)) {
+                json_err('You do not have permission to view invoices', 403);
+            }
+        }
+
+        $invoice = Invoice::findById($id);
         if (!$invoice || $invoice->company_id !== $companyId) {
             json_err('Invoice not found', 404);
         }
@@ -61,43 +85,54 @@ class InvoiceController
     }
 
 
-    public  static function store(array $params): void
+       public static function store(array $params): void
     {
         $uid = auth_user_id();
         if (!$uid) json_err('Unauthorized', 401);
 
         $companyId = (int) $params['companyId'];
+
         $role = Company::userRole($uid, $companyId);
         if (!in_array($role, ['owner', 'admin', 'manager'], true)) {
-            json_err('Forbidden', 403);
+            $db = Database::pdo();
+            $stmt = $db->prepare("
+                SELECT p.permission_key FROM company_user_custom_roles cu
+                JOIN company_role_permissions p ON p.role_id = cu.custom_role_id 
+                WHERE cu.company_id = ? AND cu.user_id = ? AND p.enabled = 1
+            ");
+            $stmt->execute([$companyId, $uid]);
+            $permissions = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+
+            if (!in_array('staff_can_manage_invoices', $permissions)) {
+                json_err('You do not have permission to create invoices', 403);
+            }
         }
 
-        $input     = input();
+        $input = input();
 
-        $customerId=(int) ($input['customer_id'] ?? 0);
-        if(!$customerId) json_err('Customer is required',422);
+        $customerId = (int) ($input['customer_id'] ?? 0);
+        if (!$customerId) json_err('Customer is required', 422);
 
-        $items=$input['items'] ?? [];
-        if(empty($items)){
-        json_err ('At least one item is required',422);
+        $items = $input['items'] ?? [];
+        if (empty($items)) {
+            json_err('At least one item is required', 422);
         }
 
-        $issueDate=$input['issue_date']?? date ('Y-m-d');
-        $dueDate  =$input['due_date'] ?? date('Y-m-d', strtotime ('+14 days'));
+        $issueDate = $input['issue_date'] ?? date('Y-m-d');
+        $dueDate   = $input['due_date'] ?? date('Y-m-d', strtotime('+14 days'));
         $notes = $input['notes'] ?? null;
         $discountAmount = (float) ($input['discount_amount'] ?? 0);
-        $taxAmount =(float) ($input['tax_amount'] ?? 0);
-        $bookingId = !empty($input['booking_id']) ? (int) $input ['booking_id'] : null;
-
+        $taxAmount = (float) ($input['tax_amount'] ?? 0);
+        $bookingId = !empty($input['booking_id']) ? (int) $input['booking_id'] : null;
 
         $db = Database::pdo();
-        $stmt = $db->prepare("SELECT id,name,email FROM customers WHERE id = ? AND company_id = ? LIMIT 1");
+        $stmt = $db->prepare("SELECT id, name, email FROM customers WHERE id = ? AND company_id = ? LIMIT 1");
         $stmt->execute([$customerId, $companyId]);
-        $customer=$stmt->fetch();
-        if(!$customer) json_err ('Customer not found',404);
+        $customer = $stmt->fetch();
+        if (!$customer) json_err('Customer not found', 404);
 
         $subtotal = 0;
-        foreach($items as $item){
+        foreach ($items as $item) {
             $qty = (float) ($item['quantity'] ?? 1);
             $price = (float) ($item['price'] ?? 0);
             $subtotal += $qty * $price;
@@ -105,39 +140,37 @@ class InvoiceController
 
         $total = $subtotal - $discountAmount + $taxAmount;
 
-        $reference = self ::generateReference();
+        $reference = self::generateReference();
 
-        $insert = $db->prepare ("
-        INSERT INTO invoices (
-        reference, company_id, booking_id, customer_id, issue_date, due_date, subtotal, discount_amount, tax_amount, total, status, notes,items) VALUES (?,?,?,?,?,?,?,?,?,?, 'draft', ?,?) ");
-        
+        $insert = $db->prepare("
+            INSERT INTO invoices (
+                reference, company_id, booking_id, customer_id, issue_date, due_date, 
+                subtotal, discount_amount, tax_amount, total, status, notes, items
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?)
+        ");
 
         $insert->execute([
-        $reference,
-        $companyId,
-        $bookingId,
-        $customerId,
-        $issueDate,
-        $dueDate,
-        $subtotal,
-        $discountAmount,
-        $taxAmount,
-        $total,
-        $notes,
-        !empty($items) ? json_encode($items) : null
-
+            $reference,
+            $companyId,
+            $bookingId,
+            $customerId,
+            $issueDate,
+            $dueDate,
+            $subtotal,
+            $discountAmount,
+            $taxAmount,
+            $total,
+            $notes,
+            !empty($items) ? json_encode($items) : null,
         ]);
 
         $invoiceId = (int) $db->lastInsertId();
-        
 
-        json_ok ([
-
-        'message'=> 'Invoice created',
-        'invoice' => Invoice::findById($invoiceId)->toArray(),
-
-        ],201);
-        }
+        json_ok([
+            'message' => 'Invoice created',
+            'invoice' => Invoice::findById($invoiceId)->toArray(),
+        ], 201);
+    }
 
 
        
@@ -233,79 +266,89 @@ class InvoiceController
     }
 
   
-  public function updateStatus(array $params): void
-{
-    $uid = auth_user_id();
-    if (!$uid) json_err('Unauthorized', 401);
+     public function updateStatus(array $params): void
+    {
+        $uid = auth_user_id();
+        if (!$uid) json_err('Unauthorized', 401);
 
-    $companyId = (int) $params['companyId'];
-    $invoiceId = (int) $params['id'];
+        $companyId = (int) $params['companyId'];
+        $invoiceId = (int) $params['id'];
 
-    $role = Company::userRole($uid, $companyId);
-    if (!in_array($role, ['owner', 'admin', 'manager'], true)) {
-        json_err('Forbidden', 403);
-    }
-
-    $input = input();
-    $status = $input['status'] ?? '';
-
-    $invoice = Invoice::findById($invoiceId);
-    if (!$invoice || $invoice->company_id !== $companyId) {
-        json_err('Invoice not found', 404);
-    }
-
-    $previousStatus = $invoice->status;
-
-    if (!$invoice->updateStatus($status)) {
-        json_err('Invalid status', 422);
-    }
-
-    if ($status === 'sent' && $previousStatus !== 'sent') {
-        try {
-            $db = \App\Config\Database::pdo();
+        $role = Company::userRole($uid, $companyId);
+        if (!in_array($role, ['owner', 'admin', 'manager'], true)) {
+            $db = Database::pdo();
             $stmt = $db->prepare("
-                SELECT c.name AS customer_name, c.email AS customer_email,
-                       co.name AS company_name
-                FROM invoices i
-                JOIN customers c ON c.id = i.customer_id
-                JOIN companies co ON co.id = i.company_id
-                WHERE i.id = ?
-                LIMIT 1
+                SELECT p.permission_key FROM company_user_custom_roles cu
+                JOIN company_role_permissions p ON p.role_id = cu.custom_role_id 
+                WHERE cu.company_id = ? AND cu.user_id = ? AND p.enabled = 1
             ");
-            $stmt->execute([$invoiceId]);
-            $info = $stmt->fetch();
+            $stmt->execute([$companyId, $uid]);
+            $permissions = $stmt->fetchAll(\PDO::FETCH_COLUMN);
 
-            if ($info && filter_var($info['customer_email'], FILTER_VALIDATE_EMAIL)) {
-                $fresh = Invoice::findById($invoiceId);
-
-                \App\Utils\Mailer::sendInvoice(
-                    $info['customer_email'],
-                    $info['customer_name'],
-                    array_merge($fresh->toArray(), [
-                        'company_name' => $info['company_name'],
-                    ])
-                );
+            if (!in_array('staff_can_manage_invoices', $permissions)) {
+                json_err('You do not have permission to change invoice status', 403);
             }
-        } catch (\Throwable $e) {
-            error_log('Invoice email failed: ' . $e->getMessage());
         }
-    }
 
-    if ($previousStatus !== $status) {
-        \App\Models\Notification::notifyCompanyOwners(
-            $companyId,
-            'invoice_status',
-            "Invoice {$status}",
-            "Invoice {$invoice->reference} status changed to {$status}",
-            "/admin/invoices"
-        );
-    }
+        $input = input();
+        $status = $input['status'] ?? '';
 
-    json_ok([
-        'message' => 'Status updated',
-        'invoice' => Invoice::findById($invoiceId)->toArray(),
-    ]);
-}
+        $invoice = Invoice::findById($invoiceId);
+        if (!$invoice || $invoice->company_id !== $companyId) {
+            json_err('Invoice not found', 404);
+        }
+
+        $previousStatus = $invoice->status;
+
+        if (!$invoice->updateStatus($status)) {
+            json_err('Invalid status', 422);
+        }
+
+        if ($status === 'sent' && $previousStatus !== 'sent') {
+            try {
+                $db = \App\Config\Database::pdo();
+                $stmt = $db->prepare("
+                    SELECT c.name AS customer_name, c.email AS customer_email,
+                           co.name AS company_name
+                    FROM invoices i
+                    JOIN customers c ON c.id = i.customer_id
+                    JOIN companies co ON co.id = i.company_id
+                    WHERE i.id = ?
+                    LIMIT 1
+                ");
+                $stmt->execute([$invoiceId]);
+                $info = $stmt->fetch();
+
+                if ($info && filter_var($info['customer_email'], FILTER_VALIDATE_EMAIL)) {
+                    $fresh = Invoice::findById($invoiceId);
+                    \App\Utils\Mailer::sendInvoice(
+                        $info['customer_email'],
+                        $info['customer_name'],
+                        array_merge($fresh->toArray(), [
+                            'company_name' => $info['company_name'],
+                        ])
+                    );
+                }
+            } catch (\Throwable $e) {
+                error_log('Invoice email failed: ' . $e->getMessage());
+            }
+        }
+
+        if ($previousStatus !== $status) {
+            \App\Models\Notification::notifyCompanyOwners(
+                $companyId,
+                'invoice_status',
+                "Invoice {$status}",
+                "Invoice {$invoice->reference} status changed to {$status}",
+                "/admin/invoices"
+            );
+        }
+
+        json_ok([
+            'message' => 'Status updated',
+            'invoice' => Invoice::findById($invoiceId)->toArray(),
+        ]);
+    }
 
   
     public function destroy(array $params): void

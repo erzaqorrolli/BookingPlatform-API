@@ -74,6 +74,9 @@ import Chat from './pages/admin/Chat';
 import Roles from './pages/admin/Roles';
 import MyRole from './pages/staff/MyRole';
 import StaffCustomers from './pages/staff/StaffCustomers';
+import StaffInvoices from './pages/staff/StaffInvoices';
+import StaffInvoiceView from './pages/staff/StaffInvoiceView';
+
 
 //children is a special prop that react fill it automaticlly with everything that stays between tags <x> example </x>
 
@@ -174,7 +177,9 @@ export default function App() {
               <Route path="/admin/chat" element={<ProtectedPage><Chat /></ProtectedPage>} />
               <Route path="/admin/notifications" element={<ProtectedPage><Notifications /></ProtectedPage>} />
 <Route path="/staff/customers" element={<ProtectedRoute><StaffLayout><StaffCustomers /></StaffLayout></ProtectedRoute>} />
+<Route path="/staff/invoices" element={<ProtectedRoute><StaffLayout><StaffInvoices /></StaffLayout></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
+              <Route path="/staff/invoices/:id" element={<ProtectedRoute><StaffLayout><StaffInvoiceView /></StaffLayout></ProtectedRoute>} />
             </Routes>
 
             <Toaster 

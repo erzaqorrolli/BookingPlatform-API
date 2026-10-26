@@ -113,3 +113,28 @@
 .btn-shine:hover::before {
   left: 100%;
 }
+
+/* PRINT STYLES */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  
+  .print-invoice, .print-invoice * {
+    visibility: visible;
+  }
+  
+  .print-invoice {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+  
+  .no-print {
+    display: none !important;
+  }
+}

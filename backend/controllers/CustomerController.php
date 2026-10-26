@@ -5,6 +5,7 @@ namespace App\Controllers;
 
 use App\Models\Customer;
 use App\Models\Company;
+use App\Config\Database;
 
 class CustomerController
 {
@@ -22,7 +23,7 @@ class CustomerController
         json_ok(array_map(fn($c) => $c->toArray(), $customers));
     }
 
-    public function store(array $params): void
+        public function store(array $params): void
     {
         $uid = auth_user_id();
         if (!$uid) json_err('Unauthorized', 401);
@@ -30,28 +31,39 @@ class CustomerController
         $companyId = (int) $params['companyId'];
 
         $role = Company::userRole($uid, $companyId);
-        if (!in_array($role, ['owner', 'admin', 'manager'])) {
-            json_err('Forbidden', 403);
+        if (!in_array($role, ['owner', 'admin', 'manager'], true)) {
+            $db = Database::pdo();
+            $stmt = $db->prepare("
+                SELECT p.permission_key FROM company_user_custom_roles cu
+                JOIN company_role_permissions p ON p.role_id = cu.custom_role_id 
+                WHERE cu.company_id = ? AND cu.user_id = ? AND p.enabled = 1
+            ");
+            $stmt->execute([$companyId, $uid]);
+            $permissions = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+
+            if (!in_array('staff_can_manage_customers', $permissions)) {
+                json_err('You do not have permission to manage clients', 403);
+            }
         }
 
         $input = input();
-        if (empty($input['name'])) json_err('Name is required', 422);
-        if (empty($input['email'])) json_err('Email is required', 422);
-        if (!filter_var($input['email'], FILTER_VALIDATE_EMAIL)) {
-            json_err('Invalid email', 422);
-        }
+        $name=trim($input['name'] ?? '');
+        $email=trim(strtolower($input['email'] ?? ''));
+        $phone=$input['phone'] ?? null;
 
-        $customer = Customer::findOrCreate(
-            $companyId,
-            $input['name'],
-            $input['email'],
-            $input['phone'] ?? null
-        );
+        if(!$name || !filter_var($email,FILTER_VALIDATE_EMAIL)){
+            json_err('Valid name and email are required',422);
+        }
+        $db=Database::pdo();
+        $stmt=$db->prepare("INSERT INTO customers (company_id,name,email,phone)VALUES(?,?,?,?)");
+
+        $stmt->execute([$companyId,$name,$email,$phone]);
+        $customerId=(int) $db->lastInsertId();
 
         json_ok([
-            'message'  => 'Customer created',
-            'customer' => $customer->toArray(),
-        ], 201);
+            'message'=>'Customer created successfully',
+            'customer'=>Customer::findById($customerId)->toArray(),
+        ],201);
     }
 
     public function update(array $params): void
