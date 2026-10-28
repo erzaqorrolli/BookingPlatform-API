@@ -261,3 +261,6 @@ Router::get('/api/companies/{id}/my-role-details', [CompanyController::class, 'g
 
 Router::get('/api/companies/{companyId}/winback/preview', [CompanyController::class, 'getDormantCustomers']);
 Router::post('/api/companies/{companyId}/winback/send', [CompanyController::class, 'sendWinbackEmails']);
+
+Router::post('/api/companies/{companyId}/bookings/manual', [BookingController::class, 'createManual']);
+

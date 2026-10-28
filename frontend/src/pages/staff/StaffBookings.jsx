@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
-import { CheckCircle } from 'lucide-react';
 import { usePermissions } from '../../contexts/PermissionsContext';
+import ManualBookingModal from '../../components/ManualBookingModal';
 
 const STATUS_LABELS = {
   pending: 'Waiting',
@@ -28,6 +28,10 @@ export default function StaffBookings() {
   const [filterDate, setFilterDate] = useState('');
   const { hasPermission } = usePermissions(); 
   const canManage = hasPermission('staff_can_manage_bookings'); 
+  
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [services, setServices] = useState([]);
+
   const load = async () => {
     if (!activeCompany) return;
     setLoading(true);
@@ -48,6 +52,14 @@ export default function StaffBookings() {
   useEffect(() => {
     load();
   }, [activeCompany, filterStatus, filterDate]);
+
+  useEffect(() => {
+    if (activeCompany?.id) {
+        api.get(`/companies/${activeCompany.id}/services`)
+           .then(res => setServices(res.data.data || res.data))
+           .catch(err => console.error("Error fetching services:", err));
+    }
+  }, [activeCompany?.id]);
 
   const updateStatus = async (bookingId, newStatus) => {
     try {
@@ -80,11 +92,21 @@ export default function StaffBookings() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Bookings</h1>
-        <p className="text-sm text-slate-500 mt-1">
-          {activeCompany.name} · {bookings.length} bookings
-        </p>
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Bookings</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            {activeCompany.name} · {bookings.length} bookings
+          </p>
+        </div>
+        
+        {/* Butoni për manual booking */}
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition flex items-center gap-2 text-sm font-semibold shadow-sm"
+        >
+          + Add Booking
+        </button>
       </div>
 
       <div className="flex flex-wrap gap-3">
@@ -181,7 +203,7 @@ export default function StaffBookings() {
                       )}
                     </td>
 
-                                      <td className="px-5 py-4 text-right">
+                    <td className="px-5 py-4 text-right">
                       {canManage ? (
                         <div className="flex items-center justify-end gap-2">
                           {!b.staff_name && (
@@ -215,6 +237,16 @@ export default function StaffBookings() {
             </table>
           </div>
         </div>
+      )}
+
+      {/* Manual Booking Modal */}
+      {isModalOpen && (
+        <ManualBookingModal 
+            companyId={activeCompany.id} 
+            services={services} 
+            onClose={() => setIsModalOpen(false)} 
+            onSuccess={() => load()} 
+        />
       )}
     </div>
   );

@@ -283,14 +283,50 @@ class BookingController
         }
 
         $happyHour = HappyHour::getActiveAt($companyId, $date, $startTime);
+
+        // --- FILLON KONTROLLI I KODIT TË ZBRITJES ---
         $discountCode = strtoupper(trim((string) ($input['discount_code'] ?? '')));
         $discount = null;
+        
         if ($discountCode !== '') {
             $discount = Discount::findByCode($companyId, $discountCode, $date);
+            
             if (!$discount) {
                 json_err('Invalid or expired discount code', 422);
             }
+
+            // 1. Kontrollo nëse kodi është vetëm për klientët e fjetur (Sleeping)
+            if (!empty($discount->only_for_sleeping)) {
+                $stmt = $db->prepare("
+                    SELECT MAX(b.booking_date) as last_booking
+                    FROM bookings b
+                    JOIN customers c ON c.id = b.customer_id
+                    WHERE c.company_id = ? AND c.email = ? AND b.status != 'cancelled'
+                ");
+                $stmt->execute([$companyId, $email]);
+                $lastBooking = $stmt->fetchColumn();
+
+                $isSleeping = false;
+                if (!$lastBooking) {
+                    $isSleeping = true; // Nuk ka bërë kurrë rezervim
+                } else {
+                    $daysSinceLastBooking = (time() - strtotime($lastBooking)) / (60 * 60 * 24);
+                    if ($daysSinceLastBooking > 30) {
+                        $isSleeping = true;
+                    }
+                }
+
+                if (!$isSleeping) {
+                    json_err('This code is only available for returning clients (sleeping clients)', 422);
+                }
+            }
+
+            // 2. Kontrollo limitin total (usage_limit)
+            if ($discount->usage_limit !== null && $discount->used_count >= $discount->usage_limit) {
+                json_err('This discount code has reached its total usage limit', 422);
+            }
         }
+        // --- MBARON KONTROLLI I KODIT TË ZBRITJES ---
 
         $originalPrice = (float) $service->price;
         $finalPrice    = $originalPrice;
@@ -347,7 +383,7 @@ class BookingController
             ]);
             \App\Models\Customer::updateVipStatus($customerId);
 
-              $requestedStaffId = !empty($input['staff_id']) ? (int) $input['staff_id'] : null;
+            $requestedStaffId = !empty($input['staff_id']) ? (int) $input['staff_id'] : null;
 
             if ($requestedStaffId) {
                 $db->prepare("UPDATE bookings SET staff_id = ? WHERE id = ?")
@@ -356,6 +392,11 @@ class BookingController
 
             if ($discount) {
                 $discount->incrementUsage();
+                // Regjistro përdorimin nga ky klient (nëse ke tabelë discount_usages)
+                $db->prepare("
+                    INSERT INTO discount_usages (discount_id, customer_email) 
+                    VALUES (?, ?)
+                ")->execute([$discount->id, $email]);
             }
 
             $db->commit();
@@ -371,7 +412,6 @@ class BookingController
         try {
             $googleService = new \App\Services\GoogleCalendarService();
 
-            
             $bStmt = $db->prepare("
                 SELECT b.*,
                        c.name AS customer_name,
@@ -437,61 +477,59 @@ class BookingController
         $notification = $notificationStmt->fetch();
 
         if ($notification) {
-    Mailer::sendBookingConfirmation(
-        $notification['customer_email'],
-        $notification['customer_name'],
-        $notification
-    );
-    Mailer::sendNewBookingToOwner(
-        $notification['owner_email'],
-        $notification['owner_name'],
-        $notification
-    );
-
-    \App\Models\Notification::notifyCompanyOwners(
-    $companyId,
-    'booking',
-    'New booking received',
-    "{$name} booked {$service->name} on {$date} at {$startTime}",
-    "/admin/bookings"
-
-    
-);
-
-    \App\Utils\WebSocket::notifyAll([
-        'type'    => 'booking_created',
-        'message' => "Booking i re: {$name} - {$service->name}",
-    ]);
-
-    if (!empty($input['needs_assistance'])) {
-        try {
-            $priorityMessage = "<h2 style='color:#d97706;'>Priority booking</h2>
-                <p>A client needs <strong>special assistance</strong> for this booking.</p>
-                <p><strong>Referenca:</strong> {$notification['reference']}</p>
-                <p><strong>Data:</strong> {$notification['booking_date']} në {$notification['start_time']}</p>
-                <p><strong>Klienti:</strong> {$notification['customer_name']}</p>
-                <p><strong>Email:</strong> {$notification['customer_email']}</p>
-                <p><strong>Shërbimi:</strong> {$notification['service_name']}</p>";
-
-            if (!empty($input['assistance_notes'])) {
-                $priorityMessage .= "<p><strong>Notes from client:</strong> " 
-                    . htmlspecialchars($input['assistance_notes']) . "</p>";
-            }
-
-            $priorityMessage .= "<p style='margin-top:20px;padding:10px;background:#fef3c7;border-left:4px solid #d97706;'>
-                <strong>Please treat this booking with high priority.</strong>
-            </p>";
-
-            Mailer::send(
-                $notification['owner_email'],
-                " Priority: This client needs assistance",
-                $priorityMessage
+            Mailer::sendBookingConfirmation(
+                $notification['customer_email'],
+                $notification['customer_name'],
+                $notification
             );
-        } catch (\Throwable $e) {
-            error_log('Priority email failed: ' . $e->getMessage());
+            Mailer::sendNewBookingToOwner(
+                $notification['owner_email'],
+                $notification['owner_name'],
+                $notification
+            );
+
+            \App\Models\Notification::notifyCompanyOwners(
+                $companyId,
+                'booking',
+                'New booking received',
+                "{$name} booked {$service->name} on {$date} at {$startTime}",
+                "/admin/bookings"
+            );
+
+            \App\Utils\WebSocket::notifyAll([
+                'type'    => 'booking_created',
+                'message' => "Booking i re: {$name} - {$service->name}",
+            ]);
+
+            if (!empty($input['needs_assistance'])) {
+                try {
+                    $priorityMessage = "<h2 style='color:#d97706;'>Priority booking</h2>
+                        <p>A client needs <strong>special assistance</strong> for this booking.</p>
+                        <p><strong>Referenca:</strong> {$notification['reference']}</p>
+                        <p><strong>Data:</strong> {$notification['booking_date']} në {$notification['start_time']}</p>
+                        <p><strong>Klienti:</strong> {$notification['customer_name']}</p>
+                        <p><strong>Email:</strong> {$notification['customer_email']}</p>
+                        <p><strong>Shërbimi:</strong> {$notification['service_name']}</p>";
+
+                    if (!empty($input['assistance_notes'])) {
+                        $priorityMessage .= "<p><strong>Notes from client:</strong> " 
+                            . htmlspecialchars($input['assistance_notes']) . "</p>";
+                    }
+
+                    $priorityMessage .= "<p style='margin-top:20px;padding:10px;background:#fef3c7;border-left:4px solid #d97706;'>
+                        <strong>Please treat this booking with high priority.</strong>
+                    </p>";
+
+                    Mailer::send(
+                        $notification['owner_email'],
+                        " Priority: This client needs assistance",
+                        $priorityMessage
+                    );
+                } catch (\Throwable $e) {
+                    error_log('Priority email failed: ' . $e->getMessage());
+                }
+            }
         }
-    }
-}
 
         json_ok([
             'message'          => 'Booking received',
@@ -505,83 +543,81 @@ class BookingController
         ], 201);
     }
 
-
-
     public function calendarEvents(array $params): void
-{
-    $uid = auth_user_id();
-    if (!$uid) json_err('Unauthorized', 401);
+    {
+        $uid = auth_user_id();
+        if (!$uid) json_err('Unauthorized', 401);
 
-    $companyId = (int) $params['companyId'];
-    if (!Company::userBelongsTo($uid, $companyId)) {
-        json_err('Forbidden', 403);
-    }
-
-    $start = $_GET['start'] ?? date('Y-m-01');
-    $end   = $_GET['end'] ?? date('Y-m-t');
-
-    $db = Database::pdo();
-    $stmt = $db->prepare("
-        SELECT 
-            b.id,
-            b.reference,
-            b.booking_date,
-            b.start_time,
-            b.end_time,
-            b.status,
-            b.total_price,
-            b.needs_assistance,
-            c.name AS customer_name,
-            c.email AS customer_email,
-            c.phone AS customer_phone,
-            s.name AS service_name
-        FROM bookings b
-        JOIN customers c ON c.id = b.customer_id
-        JOIN services s ON s.id = b.service_id
-        WHERE b.company_id = ?
-          AND b.booking_date BETWEEN ? AND ?
-        ORDER BY b.booking_date, b.start_time
-    ");
-    $stmt->execute([$companyId, $start, $end]);
-    $bookings = $stmt->fetchAll();
-
-    $events = array_map(function ($b) {
-      
-        $color = match ($b['status']) {
-            'pending'   => '#f59e0b', 
-            'confirmed' => '#10b981', 
-            'completed' => '#3b82f6', 
-            'cancelled' => '#ef4444', 
-            'no_show'   => '#94a3b8', 
-            default     => '#6366f1', 
-        };
-
-        if ((int) $b['needs_assistance'] === 1 && $b['status'] !== 'completed') {
-            $color = '#d97706'; 
+        $companyId = (int) $params['companyId'];
+        if (!Company::userBelongsTo($uid, $companyId)) {
+            json_err('Forbidden', 403);
         }
 
-        return [
-            'id'    => (int) $b['id'],
-            'title' => ($b['needs_assistance'] ? '⚠️ ' : '') . $b['customer_name'] . ' - ' . $b['service_name'],
-            'start' => $b['booking_date'] . 'T' . $b['start_time'],
-            'end'   => $b['booking_date'] . 'T' . $b['end_time'],
-            'backgroundColor' => $color,
-            'borderColor'     => $color,
-            'extendedProps'   => [
-                'reference'        => $b['reference'],
-                'status'           => $b['status'],
-                'customer_name'    => $b['customer_name'],
-                'customer_email'   => $b['customer_email'],
-                'customer_phone'   => $b['customer_phone'],
-                'service_name'     => $b['service_name'],
-                'total_price'      => (float) $b['total_price'],
-                'needs_assistance' => (int) $b['needs_assistance'],
-            ],
-        ];
-    }, $bookings);
+        $start = $_GET['start'] ?? date('Y-m-01');
+        $end   = $_GET['end'] ?? date('Y-m-t');
 
-    json_ok($events);
-}
+        $db = Database::pdo();
+        $stmt = $db->prepare("
+            SELECT 
+                b.id,
+                b.reference,
+                b.booking_date,
+                b.start_time,
+                b.end_time,
+                b.status,
+                b.total_price,
+                b.needs_assistance,
+                c.name AS customer_name,
+                c.email AS customer_email,
+                c.phone AS customer_phone,
+                s.name AS service_name
+            FROM bookings b
+            JOIN customers c ON c.id = b.customer_id
+            JOIN services s ON s.id = b.service_id
+            WHERE b.company_id = ?
+              AND b.booking_date BETWEEN ? AND ?
+            ORDER BY b.booking_date, b.start_time
+        ");
+        $stmt->execute([$companyId, $start, $end]);
+        $bookings = $stmt->fetchAll();
+
+        $events = array_map(function ($b) {
+            $color = match ($b['status']) {
+                'pending'   => '#f59e0b', 
+                'confirmed' => '#10b981', 
+                'completed' => '#3b82f6', 
+                'cancelled' => '#ef4444', 
+                'no_show'   => '#94a3b8', 
+                default     => '#6366f1', 
+            };
+
+            if ((int) $b['needs_assistance'] === 1 && $b['status'] !== 'completed') {
+                $color = '#d97706'; 
+            }
+
+            return [
+                'id'    => (int) $b['id'],
+                'title' => ($b['needs_assistance'] ? '⚠️ ' : '') . $b['customer_name'] . ' - ' . $b['service_name'],
+                'start' => $b['booking_date'] . 'T' . $b['start_time'],
+                'end'   => $b['booking_date'] . 'T' . $b['end_time'],
+                'backgroundColor' => $color,
+                'borderColor'     => $color,
+                'extendedProps'   => [
+                    'reference'        => $b['reference'],
+                    'status'           => $b['status'],
+                    'customer_name'    => $b['customer_name'],
+                    'customer_email'   => $b['customer_email'],
+                    'customer_phone'   => $b['customer_phone'],
+                    'service_name'     => $b['service_name'],
+                    'total_price'      => (float) $b['total_price'],
+                    'needs_assistance' => (int) $b['needs_assistance'],
+                ],
+            ];
+        }, $bookings);
+
+        json_ok($events);
+    }
+
     public function updateStatus(array $params): void
     {
         $uid = auth_user_id();
@@ -652,7 +688,6 @@ class BookingController
                 "/admin/bookings"
             );
 
-            // WebSocket Broadcast për dashboard
             \App\Utils\WebSocket::notifyAll([
                 'type'    => 'booking_status_changed',
                 'message' => "Booking {$booking->reference} → {$status}",
@@ -664,6 +699,7 @@ class BookingController
             'booking' => Booking::findById($bookingId)->toArray(),
         ]);
     }
+
     public function publicCompanyBySlug(array $params): void
     {
         $slug = trim((string) ($params['slug'] ?? ''));
@@ -719,18 +755,18 @@ class BookingController
             ];
         }, $hhStmt->fetchAll());
 
-                $discountStmt = $db->prepare("
-                        SELECT 1
-                        FROM discounts
-                        WHERE company_id = ?
-                            AND active = 1
-                            AND (valid_from IS NULL OR valid_from <= CURDATE())
-                            AND (valid_to IS NULL OR valid_to >= CURDATE())
-                            AND (usage_limit IS NULL OR used_count < usage_limit)
-                        LIMIT 1
-                ");
-                $discountStmt->execute([$company['id']]);
-                $hasActiveDiscountCodes = (bool) $discountStmt->fetchColumn();
+        $discountStmt = $db->prepare("
+            SELECT 1
+            FROM discounts
+            WHERE company_id = ?
+                AND active = 1
+                AND (valid_from IS NULL OR valid_from <= CURDATE())
+                AND (valid_to IS NULL OR valid_to >= CURDATE())
+                AND (usage_limit IS NULL OR used_count < usage_limit)
+            LIMIT 1
+        ");
+        $discountStmt->execute([$company['id']]);
+        $hasActiveDiscountCodes = (bool) $discountStmt->fetchColumn();
 
         $appUrl = $_ENV['APP_URL'] ?? 'http://localhost/booking-api';
 
@@ -774,144 +810,294 @@ class BookingController
         return $h * 60 + $m;
     }
 
+    public function exportCompanyBookings(array $params): void
+    {
+        $uid = auth_user_id();
+        if (!$uid) json_err('Unauthorized', 401);
 
-    public function exportCompanyBookings(array $params): void{
-        
-    
-    $uid=auth_user_id();
-    if(!$uid)json_err('Unauthorized',401);
+        $companyId = (int) $params['companyId'];
+        if (!Company::userBelongsTo($uid, $companyId)) {
+            json_err('Forbidden', 403);
+        }
 
-    $companyId=(int) $params['companyId'];
-    if(!Company::userBelongsTo($uid,$companyId)){
-        json_err('Forbbiedn',403);
-    }
-
-    $db=Database::pdo();
-    $stmt=$db->prepare("SELECT b.reference,cu.name AS customer_name, cu.email AS customer_email,
-    s.name AS service_name,b.booking_date,b.start_time,b.status,
-    b.total_price FROM bookings b 
-    JOIN customers cu ON cu.id = b.customer_id
-    JOIN services s ON s.id=b.service_id WHERE b.company_id=? ORDER BY b.created_at DESC");
-
-    $stmt->execute([$companyId]);
-    $rows=array_map(function($r){
-        return[
-            $r['reference'],$r['customer_name'],$r['customer_email'],
-            $r['service_name'],$r['booking_date'],$r['start_time'],
-            $r['status'],$r['total_price']
-        ];
-    },$stmt->fetchAll());
-    
-
-    $headers=['Reference','Customer','Email','Service','Date','Time','Stauts','Total'];
-    \App\Utils\CsvExporter::download('bookings-' .$companyId . '-' . date('Y-m-d') . '.csv',$headers,$rows);
-    }
-
-    public function findAvailableStaff(int $companyId,string $date,string $startTime,string $endTime): ?int{
-
-    $db = Database::pdo();
-
-    $stmt = $db->prepare("
-    SELECT u.id FROM company_user cu 
-    JOIN users u ON u.id = cu.user_id
-    JOIN roles r ON r.id=cu.role_id
-    WHERE cu.company_id=?
-    AND r.name IN ('staff','manager','admin')
-    AND u.status = 'active'
-    ");
-
-    $stmt->execute([$companyId]);
-    $staffIds=$stmt->fetchAll(\PDO::FETCH_COLUMN);
-
-    if(empty($staffIds)) return null;
-
-    foreach($staffIds as $staffId){
-        $checkStmt =$db->prepare("SELECT COUNT(*) FROM bookings WHERE company_id =? AND staff_id =? AND booking_date =? AND status IN ('pending', 'confirmed')
-        AND (start_time < ? AND end_time > ?)
+        $db = Database::pdo();
+        $stmt = $db->prepare("
+            SELECT b.reference, cu.name AS customer_name, cu.email AS customer_email,
+                   s.name AS service_name, b.booking_date, b.start_time, b.status, b.total_price 
+            FROM bookings b 
+            JOIN customers cu ON cu.id = b.customer_id
+            JOIN services s ON s.id = b.service_id 
+            WHERE b.company_id = ? 
+            ORDER BY b.created_at DESC
         ");
 
-        $checkStmt->execute([$companyId, $staffId, $date, $endTime, $startTime]);
+        $stmt->execute([$companyId]);
+        $rows = array_map(function ($r) {
+            return [
+                $r['reference'], $r['customer_name'], $r['customer_email'],
+                $r['service_name'], $r['booking_date'], $r['start_time'],
+                $r['status'], $r['total_price']
+            ];
+        }, $stmt->fetchAll());
 
-        if((int) $checkStmt->fetchColumn() === 0){
-            return (int) $staffId;
+        $headers = ['Reference', 'Customer', 'Email', 'Service', 'Date', 'Time', 'Status', 'Total'];
+        \App\Utils\CsvExporter::download('bookings-' . $companyId . '-' . date('Y-m-d') . '.csv', $headers, $rows);
+    }
+
+    public function findAvailableStaff(int $companyId, string $date, string $startTime, string $endTime): ?int
+    {
+        $db = Database::pdo();
+
+        $stmt = $db->prepare("
+            SELECT u.id FROM company_user cu 
+            JOIN users u ON u.id = cu.user_id
+            JOIN roles r ON r.id = cu.role_id
+            WHERE cu.company_id = ?
+            AND r.name IN ('staff', 'manager', 'admin')
+            AND u.status = 'active'
+        ");
+
+        $stmt->execute([$companyId]);
+        $staffIds = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+
+        if (empty($staffIds)) return null;
+
+        foreach ($staffIds as $staffId) {
+            $checkStmt = $db->prepare("
+                SELECT COUNT(*) FROM bookings 
+                WHERE company_id = ? AND staff_id = ? AND booking_date = ? 
+                AND status IN ('pending', 'confirmed')
+                AND (start_time < ? AND end_time > ?)
+            ");
+
+            $checkStmt->execute([$companyId, $staffId, $date, $endTime, $startTime]);
+
+            if ((int) $checkStmt->fetchColumn() === 0) {
+                return (int) $staffId;
+            }
+        }
+
+        return null;
+    }
+
+    public function claimBooking(array $params): void
+    {
+        $uid = auth_user_id();
+        if (!$uid) json_err('Unauthorized', 401);
+
+        $companyId = (int) $params['companyId'];
+        $bookingId = (int) $params['id'];
+
+        $role = Company::userRole($uid, $companyId);
+        if (!in_array($role, ['staff', 'manager', 'admin'], true)) {
+            json_err('Forbidden', 403);
+        }
+
+        $db = Database::pdo();
+
+        $booking = Booking::findById($bookingId);
+        if (!$booking || $booking->company_id !== $companyId) {
+            json_err('Booking not found', 404);
+        }
+
+        if (!empty($booking->staff_id) && $booking->staff_id !== $uid) {
+            json_err('This booking is already claimed by someone else', 422);
+        }
+
+        $stmt = $db->prepare("UPDATE bookings SET staff_id = ? WHERE id = ?");
+        $stmt->execute([$uid, $bookingId]);
+
+        $staffStmt = $db->prepare("SELECT name FROM users WHERE id = ?");
+        $staffStmt->execute([$uid]);
+
+        $staffName = $staffStmt->fetchColumn();
+
+        \App\Models\Notification::notifyCompanyOwners(
+            $companyId,
+            'booking_claimed',
+            'Staff claimed a booking',
+            "{$staffName} accepted booking #{$booking->reference}",
+            "/admin/bookings"
+        );
+
+        \App\Utils\WebSocket::notifyAll([
+            'type' => 'booking_claimed',
+            'message' => "{$staffName} accepted booking #{$booking->reference}",
+        ]);
+
+        json_ok([
+            'message' => 'Booking accepted successfully',
+            'booking' => Booking::findById($bookingId)->toArray()
+        ]);
+    }
+
+    public function sendEmailToClient(array $params): void
+    {
+        $uid = auth_user_id();
+        $companyId = (int) $params['companyId'];
+
+        if (!Company::userBelongsTo($uid, $companyId)) json_err('Forbidden', 403);
+
+        $input = input();
+        $to = $input['email'];
+        $subject = $input['subject'];
+        $body = $input['body'];
+
+        $sent = \App\Utils\TenantMailer::send($companyId, $to, $subject, $body);
+
+        if ($sent) {
+            json_ok(['message' => 'Email sent successfully']);
+        } else {
+            json_err('Failed to send email. Please check SMTP settings', 500);
         }
     }
 
-    return null;
+    public function checkSleepingStatus(): void
+    {
+        $companyId = (int) ($_GET['company_id'] ?? 0);
+        $email = strtolower(trim($_GET['email'] ?? ''));
+
+        if (!$companyId || !$email) {
+            json_ok(['is_sleeping' => false]);
+        }
+
+        $db = Database::pdo();
+        $stmt = $db->prepare("
+            SELECT MAX(b.booking_date) as last_booking
+            FROM bookings b
+            JOIN customers c ON c.id = b.customer_id
+            WHERE c.company_id = ? AND c.email = ? AND b.status != 'cancelled'
+        ");
+        $stmt->execute([$companyId, $email]);
+        $lastBooking = $stmt->fetchColumn();
+
+        $isSleeping = false;
+        if (!$lastBooking) {
+            $isSleeping = true;
+        } else {
+            $days = (time() - strtotime($lastBooking)) / (60 * 60 * 24);
+            if ($days > 30) $isSleeping = true;
+        }
+
+        json_ok(['is_sleeping' => $isSleeping]);
     }
 
 
-    public function claimBooking(array $params): void{
+        public function createManual(array $params): void{
+        $uid = auth_user_id();
 
-    $uid = auth_user_id();
+        if(!$uid) json_err('Unauthorized',401);
 
-    if(!$uid) json_err('Unauthorized',401);
+        $companyId=(int) $params['companyId'];
 
-    $companyId=(int) $params['companyId'];
-    $bookingId=(int) $params['id'];
+        $role=Company::userRole($uid,$companyId);
+        if(!in_array($role,['owner','admin','manager','staff'])){
+            json_err('Forbidden',403);
+        }
 
-    $role =Company::userRole($uid,$companyId);
-    if(!in_array($role,['staff','manager','admin'],true)){
-        json_err('Forbidden',403);
+        $input = input();
+
+        $serviceId=(int)($input['service_id'] ?? 0);
+        $date = trim((string)($input['booking_date'] ?? ''));
+        $startTime=trim((string) ($input['start_time'] ?? ''));
+
+        $name=trim((string)($input['name'] ?? ''));
+        $email=strtolower(trim((string) ($input['email']?? '')));
+        $phone=$input['phone']?? null;
+
+        if(!$serviceId || !$date || !$startTime || !$name){
+            json_err('Missing required fields',422);
+        }
+
+        $dt = \DateTime::createFromFormat('Y-m-d',$date);
+        if(!$dt || $dt->format('Y-m-d') !==$date){
+            json_err('Invalid date format (YYYY-MM-DD)',422);
+        }
+        if(strlen($startTime)===5) $startTime .= ':00';
+        
+        $service = Service::findById($serviceId); 
+        if(!$service || $service->company_id !== $companyId){
+            json_err('Service not found',404);
+        }
+
+        $db=Database::pdo();
+
+        try{
+            $db->beginTransaction();
+
+            $customerId = Booking::findOrCreateCustomer($companyId, $name, $email, $phone);
+            $booking = Booking::create($companyId, $customerId, $serviceId, [
+                'booking_date'=>$date,
+                'start_time'=>$startTime,
+                'total_price'=>(float)$service->price,
+                'notes'=>$input['notes'] ?? null,
+                'needs_assistance'=>0,
+                'assistance_notes'=>null,
+            ]);
+
+            $db->prepare("UPDATE bookings SET staff_id=?, status = 'confirmed' WHERE id=?")
+            ->execute([$uid,$booking->id]);
+
+            $db->commit();
+        }catch(\Throwable $e){
+            if($db->inTransaction()) $db->rollBack();
+            json_err('Booking failed: ' . $e->getMessage(),500);
+        }        
+        try {
+            $notificationStmt = $db->prepare("
+                SELECT
+                    b.id, b.reference, b.booking_date, b.start_time, b.total_price,
+                    cu.name AS customer_name, cu.email AS customer_email,
+                    s.name AS service_name,
+                    u.name AS owner_name, u.email AS owner_email
+                FROM bookings b
+                JOIN customers cu ON cu.id = b.customer_id
+                JOIN services s ON s.id = b.service_id
+                JOIN company_user companyOwner ON companyOwner.company_id = b.company_id
+                JOIN roles ownerRole ON ownerRole.id = companyOwner.role_id AND ownerRole.name = 'owner'
+                JOIN users u ON u.id = companyOwner.user_id
+                WHERE b.id = ?
+                LIMIT 1
+            ");
+            $notificationStmt->execute([$booking->id]);
+            $notification = $notificationStmt->fetch();
+
+            if ($notification) {
+                if (!empty($notification['customer_email'])) {
+                    Mailer::sendBookingConfirmation(
+                        $notification['customer_email'],
+                        $notification['customer_name'],
+                        $notification
+                    );
+                }
+                
+                Mailer::sendNewBookingToOwner(
+                    $notification['owner_email'],
+                    $notification['owner_name'],
+                    $notification
+                );
+
+                \App\Models\Notification::notifyCompanyOwners(
+                    $companyId, 'booking', 'Manual booking received',
+                    "{$name} booked {$service->name} on {$date} at {$startTime} (added by staff)",
+                    "/admin/bookings"
+                );
+
+                \App\Utils\WebSocket::notifyAll([
+                    'type' => 'booking_created',
+                    'message' => "Manual booking: {$name} - {$service->name}",
+                ]);
+            }
+        } catch (\Throwable $e) {
+            error_log('Manual booking email failed: ' . $e->getMessage());
+        }
+        
+
+        json_ok([
+            'message'=>'Manual booking created successfully',
+            'booking'=> Booking::findById($booking->id)->toArray(),
+        ],201);
     }
 
-    $db=Database::pdo();
 
-    $booking=Booking::findById($bookingId);
-    if(!$booking || $booking->company_id !==$companyId){
-        json_err('Booking not found',404);
-    }
-
-    if(!empty($booking->staff_id) && $booking->staff_id !==$uid){
-        json_err('This booking is already claimed by someone else',422);
-    }
-
-    $stmt=$db->prepare("UPDATE bookings SET staff_id=? WHERE id=?");
-    $stmt->execute([$uid,$bookingId]);
-
-    $staffStmt =$db->prepare("SELECT name FROM users WHERE id=?");
-    $staffStmt->execute([$uid]);
-
-    $staffName=$staffStmt->fetchColumn();
-
-    \App\Models\Notification::notifyCompanyOwners(
-    $companyId,
-    'booking_claimed',
-    'Staff claimed a booking',
-    "{$staffName} accepted booking #{$booking->reference},",
-    "/admin/bookings"
-    );
-
-    \App\Utils\WebSocket::notifyAll([
-        'type' => 'booking_claimed',
-        'message' => "{$staffName} accepted booking #{$booking->reference}",
-    ]);
-
-    json_ok([
-        'message' => 'Booking accepted successfully',
-        'booking'=> Booking::findById($bookingId)->toArray()
-    ]);
-
-    }
-
-    public function sendEmailToClient(array $params):void{
-
-    $uid = auth_user_id();
-    $companyId=(int) $params['companyId'];
-
-    if(!Company::userBelongsTo($uid,$companyId)) json_err('Forbidden',403);
-
-    $input=input();
-    $to=$input['email'];
-    $subject=$input['subject'];
-    $body=$input['body'];
-
-    $sent = \App\Utils\TenantMailer::send($companyId,$to,$subject,$body);
-
-    if($sent){
-        json_ok(['message' =>'Email sent successfully']);
-    } else{
-        json_err('Failed to send email.Please check SMTP settings',500);    
-    }
-    }
 }

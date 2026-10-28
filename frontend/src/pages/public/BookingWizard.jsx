@@ -10,28 +10,25 @@ export default function BookingWizard() {
   const [loading, setLoading] = useState(true);
   const [step, setStep] = useState(1);
 
-
   const [service, setService] = useState(null);
-
-
   const [date, setDate] = useState('');
-
-
   const [slots, setSlots] = useState([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [slotReason, setSlotReason] = useState('');
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [dateBlockedReason, setDateBlockedReason] = useState('');
+  const [isSleeping, setIsSleeping] = useState(false);
 
-const [form, setForm] = useState({ 
-  name: '', 
-  email: '', 
-  phone: '', 
-  notes: '', 
-  discount_code: '',
-  needs_assistance: false,
-  assistance_notes: '',
-});  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState({ 
+    name: '', 
+    email: '', 
+    phone: '', 
+    notes: '', 
+    discount_code: '',
+    needs_assistance: false,
+    assistance_notes: '',
+  });  
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
   const formatDateForInput = (date) => {
@@ -43,21 +40,18 @@ const [form, setForm] = useState({
 
   const isValidBookingDate = (value) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-
     const [year, month, day] = value.split('-').map(Number);
     if (!year || !month || !day) return false;
-
     const daysInMonth = new Date(year, month, 0).getDate();
     if (month < 1 || month > 12 || day < 1 || day > daysInMonth) return false;
-
     const selectedDate = new Date(year, month - 1, day);
     const today = new Date();
     const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
     const maxAllowedDate = new Date(2026, 11, 31);
-
     return selectedDate >= startOfToday && selectedDate <= maxAllowedDate;
   };
 
+  // 1. Merr kompaninë
   useEffect(() => {
     api.get(`/public/companies/${slug}`)
       .then((r) => setCompany(r.data.data))
@@ -65,6 +59,21 @@ const [form, setForm] = useState({
       .finally(() => setLoading(false));
   }, [slug]);
 
+  // 2. Kontrollo statusin e klientit (i fjetur apo aktiv)
+  useEffect(() => {
+    if (form.email && form.email.includes('@') && company?.id) {
+      // Përdorim një instancë të re axios (ose api pa token) për të shmangur 401
+      api.get(`/public/check-sleeping?company_id=${company.id}&email=${form.email}`)
+         .then(res => {
+             setIsSleeping(res.data.data.is_sleeping);
+         })
+         .catch(() => setIsSleeping(false));
+    } else {
+      setIsSleeping(false);
+    }
+  }, [form.email, company?.id]);
+
+  // 3. Merr orarin (slots)
   useEffect(() => {
     if (!service || !isValidBookingDate(date) || !company?.id) {
       setDateBlockedReason('');
@@ -454,54 +463,55 @@ const [form, setForm] = useState({
                     className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none"
                   />
                 </div>
-               <div>
-  <label className="block text-sm font-medium text-slate-700 mb-1.5">
-    Notes (optional)
-  </label>
-  <textarea
-    value={form.notes}
-    onChange={(e) => setForm({ ...form, notes: e.target.value })}
-    rows={2}
-    className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none resize-none"
-  />
-</div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    Notes (optional)
+                  </label>
+                  <textarea
+                    value={form.notes}
+                    onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                    rows={2}
+                    className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none resize-none"
+                  />
+                </div>
 
-<div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-  <input
-    type="checkbox"
-    id="needs_assistance"
-    checked={form.needs_assistance}
-    onChange={(e) => setForm({ ...form, needs_assistance: e.target.checked, assistance_notes: e.target.checked ? form.assistance_notes : '' })}
-    className="mt-0.5 w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 cursor-pointer"
-  />
-  <label htmlFor="needs_assistance" className="text-sm text-slate-700 cursor-pointer flex-1">
-    <span className="font-medium flex items-center gap-1.5">
-      <svg className="w-4 h-4 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
-        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-      </svg>
-      I need assistance
-    </span>
-    <p className="text-xs text-slate-500 mt-0.5">
-      If you need speacial help, or need assistance please note here. Your booking will be treated with high priority!
-    </p>
-  </label>
-</div>
+                <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                  <input
+                    type="checkbox"
+                    id="needs_assistance"
+                    checked={form.needs_assistance}
+                    onChange={(e) => setForm({ ...form, needs_assistance: e.target.checked, assistance_notes: e.target.checked ? form.assistance_notes : '' })}
+                    className="mt-0.5 w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 cursor-pointer"
+                  />
+                  <label htmlFor="needs_assistance" className="text-sm text-slate-700 cursor-pointer flex-1">
+                    <span className="font-medium flex items-center gap-1.5">
+                      <svg className="w-4 h-4 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      I need assistance
+                    </span>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      If you need speacial help, or need assistance please note here. Your booking will be treated with high priority!
+                    </p>
+                  </label>
+                </div>
 
-{form.needs_assistance && (
-  <div>
-    <label className="block text-sm font-medium text-slate-700 mb-1.5">
-      What kind of help you need? (optional)
-    </label>
-    <textarea
-      value={form.assistance_notes}
-      onChange={(e) => setForm({ ...form, assistance_notes: e.target.value })}
-      rows={2}
-      placeholder="I need an assistant..."
-      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none resize-none"
-    />
-  </div>
-)}
-                {company.has_active_discount_codes && (
+                {form.needs_assistance && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                      What kind of help you need? (optional)
+                    </label>
+                    <textarea
+                      value={form.assistance_notes}
+                      onChange={(e) => setForm({ ...form, assistance_notes: e.target.value })}
+                      rows={2}
+                      placeholder="I need an assistant..."
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none resize-none"
+                    />
+                  </div>
+                )}
+
+                {company.has_active_discount_codes && isSleeping && (
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1.5">
                       Discount code (optional)
