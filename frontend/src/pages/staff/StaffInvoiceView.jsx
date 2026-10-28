@@ -76,6 +76,8 @@ export default function StaffInvoiceView(){
             <tr className="border-b-2 border-slate-900">
               <th className="text-left py-2 text-xs font-bold text-slate-900 uppercase">Description</th>
               <th className="text-right py-2 text-xs font-bold text-slate-900 uppercase">Total</th>
+                 
+
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">

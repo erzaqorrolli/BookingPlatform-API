@@ -76,6 +76,8 @@ import MyRole from './pages/staff/MyRole';
 import StaffCustomers from './pages/staff/StaffCustomers';
 import StaffInvoices from './pages/staff/StaffInvoices';
 import StaffInvoiceView from './pages/staff/StaffInvoiceView';
+import Marketing from './pages/admin/Marketing';
+import AdminLayout from './components/AdminLayout';
 
 
 //children is a special prop that react fill it automaticlly with everything that stays between tags <x> example </x>
@@ -144,7 +146,11 @@ export default function App() {
               <Route path="/admin/holidays" element={<ProtectedPage allowed={['owner', 'admin', 'manager']}><Holidays /></ProtectedPage>} />
               <Route path="/admin/discounts" element={<ProtectedPage allowed={['owner', 'admin', 'manager']}><Discounts /></ProtectedPage>} />
               <Route path="/admin/superadmin/audit-logs" element={<ProtectedPage allowed={['superadmin']}><SuperAdminAuditLogs /></ProtectedPage>} />
-              
+            <Route path="/admin/marketing" element={
+                <ProtectedPage allowed={['owner', 'admin', 'manager']}>
+                    <Marketing />
+                </ProtectedPage>
+            } />
               <Route path="/staff/holidays" element={<ProtectedRoute><StaffLayout><StaffHolidays /></StaffLayout></ProtectedRoute>} />
               <Route path="/admin/payroll" element={<ProtectedPage allowed={['owner', 'admin']}><Payroll /></ProtectedPage>} />
               <Route path="/admin/superadmin" element={<ProtectedPage allowed={['superadmin']}><SuperAdminDashboard /></ProtectedPage>} />

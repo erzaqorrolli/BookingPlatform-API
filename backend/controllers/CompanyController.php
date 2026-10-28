@@ -822,4 +822,102 @@ class CompanyController {
             'is_admin' => false,
             'permissions' => $permissions,
         ]);
-    }}
+    }
+    
+    public function getDormantCustomers (array $params): void {
+   
+    $uid = auth_user_id();
+    $companyId = (int) $params['companyId'];
+
+    $role = Company::userRole($uid,$companyId);
+
+    if(!in_array($role,['owner','admin'])){
+        json_err('Forbidden',403);
+    }
+
+    $db=Database::pdo();
+
+    $sql="
+    
+    SELECT * FROM (
+    SELECT c.id, c.name, c.email, c.last_winback_email_sent_at,MAX(b.booking_date)as last_booking
+    FROM customers c
+    LEFT JOIN bookings b ON b.customer_id = c.id AND b.status !='cancelled'
+    WHERE c.company_id = :company_id
+    GROUP BY c.id
+    ) AS subquery
+     WHERE (last_booking IS NULL OR last_booking < DATE_SUB(NOW(),INTERVAL 30 DAY))
+     AND(last_winback_email_sent_at IS NULL OR last_winback_email_sent_at < DATE_SUB(NOW(), INTERVAL 30 DAY))
+    ";
+
+    $stmt=$db->prepare($sql);
+    $stmt->execute(['company_id'=>$companyId]);
+    $customers = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+    json_ok($customers);
+    }
+
+
+
+  public function sendWinbackEmails(array $params): void {
+      
+  $uid = auth_user_id();
+  $companyId=(int)$params['companyId'];
+
+  $role=Company::userRole($uid,$companyId);
+  if(!in_array($role,['owner','admin'])){
+  json_err('Forbidden',403);
+  }
+
+  $db=Database::pdo();
+
+  $sql="
+  
+  SELECT * FROM (
+  
+  SELECT c.id, c.name, c.email, c.last_winback_email_sent_at,MAX(b.booking_date)as last_booking
+  FROM customers c
+  LEFT JOIN bookings b ON b.customer_id = c.id AND b.status !='cancelled'
+  WHERE c.company_id = :company_id
+  GROUP BY c.id
+  ) AS subquery
+   WHERE (last_booking IS NULL OR last_booking < DATE_SUB(NOW(), INTERVAL 30 DAY))
+   AND (last_winback_email_sent_at IS NULL OR last_winback_email_sent_at < DATE_SUB(NOW(), INTERVAL 30 DAY))
+  ";
+  $stmt=$db->prepare($sql);
+  $stmt->execute(['company_id'=>$companyId]);
+  $customers = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+  $sent=0;
+
+  foreach($customers as $c){
+    if(empty($c['email'])) continue;
+    
+    
+    
+    
+    
+    $subject = "We missed you. Here's a gift for you";
+            $body = "
+                <h2>Hello {$c['name']},</h2>
+                <p> We have noticed that it has been a while since you last visited our business.</p>
+                <p>To welcome you again, we offer <strong>15% discount</strong> for your next appointment.</p>
+                <p>Use code: <strong>WELCOME15</strong></p>
+                <a href='https://bookwise.com/booking'>Book now</a>
+            ";
+
+            if (\App\Utils\TenantMailer::send($companyId, $c['email'], $subject, $body)) {
+                $updateStmt = $db->prepare("UPDATE customers SET last_winback_email_sent_at = NOW() WHERE id = :id");
+                $updateStmt->execute(['id' => $c['id']]);
+                $sent++;
+            }
+        }
+
+        json_ok([
+            'success' => true,
+            'sent' => $sent,
+            'total' => count($customers)
+        ]);
+  }
+}
+  
