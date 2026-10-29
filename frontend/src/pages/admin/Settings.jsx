@@ -62,9 +62,9 @@ export default function Settings() {
       await api.post(`/companies/${activeCompany.id}/custom-roles`, { name: newRoleName });
       setNewRoleName('');
       await loadRoles();
-      toast.success('Roli u krijua!');
+      toast.success('Created role successfully!');
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Dështoi krijimi i rolit');
+      toast.error(err.response?.data?.error || 'Failed to create role');
     } finally {
       setIsCreatingRole(false);
     }
@@ -81,9 +81,9 @@ export default function Settings() {
     try {
       await api.post(`/companies/${activeCompany.id}/custom-roles/${roleId}/permissions`, { permissions: newPerms });
       await loadRoles();
-      toast.success('Leja u përditësua');
+      toast.success('Permission updated');
     } catch (err) {
-      toast.error('Dështoi përditësimi');
+      toast.error('Update failed');
     }
   };
 
@@ -119,18 +119,18 @@ export default function Settings() {
   };
 
   const handleTestEmail = async () => {
-    const emailTo = prompt("Shkruaj email-in tënd për të marrë testin (p.sh. emailiyt@gmail.com):");
+    const emailTo = prompt(" Write your email to get test (ex: email@gmail.com):");
     if (!emailTo) return;
 
     setTestingEmail(true);
-    const toastId = toast.loading('Duke dërguar email test...');
+    const toastId = toast.loading('Sending test email...');
     
     try {
       await api.post(`/companies/${activeCompany.id}/test-smtp`, { email_to: emailTo });
       toast.success('Email test is sent! Check inbox.', { id: toastId });
     } catch (err) {
       console.error("Error from server:", err.response?.data);
-      toast.error(err.response?.data?.error || 'Dërgimi dështoi', { id: toastId });
+      toast.error(err.response?.data?.error || 'Failed to send', { id: toastId });
     } finally {
       setTestingEmail(false);
     }
@@ -352,10 +352,9 @@ export default function Settings() {
         </form>
       </div>
 
-      {/* KJO ËSHTË PJESA E RE: Roles & Permissions */}
       <div className="bg-white rounded-xl border border-slate-200 p-6">
         <h2 className="text-lg font-bold text-slate-900 mb-2">Roles & Permissions</h2>
-        <p className="text-sm text-slate-500 mb-5">Krijo role të reja dhe cakto çfarë mund të bëjnë.</p>
+        <p className="text-sm text-slate-500 mb-5">Create new roles and allow permissions.</p>
 
         <form onSubmit={handleCreateRole} className="flex gap-3 mb-6">
           <input
@@ -370,7 +369,7 @@ export default function Settings() {
             disabled={isCreatingRole}
             className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-60"
           >
-            {isCreatingRole ? 'Duke krijuar...' : 'Krijo Rol'}
+            {isCreatingRole ? 'Creating...' : 'Create role'}
           </button>
         </form>
 
@@ -390,13 +389,13 @@ export default function Settings() {
                     onChange={() => toggleRolePermission(role.id, 'staff_can_send_emails', role.permissions)}
                     className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
                   />
-                  Dërgo Email-e klientëve
+                  Send email to clients
                 </label>
               </div>
             </div>
           ))}
           {customRoles.length === 0 && (
-            <p className="text-sm text-slate-500 text-center py-4">Nuk ka role të reja. Krijo një të parë.</p>
+            <p className="text-sm text-slate-500 text-center py-4">No new roles. Create your first role.</p>
           )}
         </div>
       </div>

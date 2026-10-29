@@ -679,6 +679,10 @@ class BookingController
                     );
                 }
             }
+              
+                if ($status === 'cancelled') {
+            $this->notifyWaitlist($booking->company_id, $booking->service_id, $booking->booking_date);
+        }
 
             \App\Models\Notification::notifyCompanyOwners(
                 (int) $booking->company_id,
@@ -1099,5 +1103,68 @@ class BookingController
         ],201);
     }
 
+    public function joinWaitlist(): void{
+
+    $input=input();
+    $companyId=(int)($input['company_id'] ?? 0);
+    $serviceId=(int)($int['service_id'] ?? 0);
+    $date=trim((string)($input['booking_date'] ?? 0));
+    $name=trim((string)($input['name']?? ''));
+    $email= strtolower(trim((string)($input['email'] ?? '')));
+    $phone = $input['phone'] ?? null;
+
+    if(!$companyId || !$serviceId || !$date || !$name || !$email){
+        json_err('missing required fields',422);
+    }
+
+    $db=Database::pdo();
+
+    $stmt=$db->prepare(" SELECT id FROM waitlist WHERE company_id=? AND service_id = ? AND booking_date=? AND customer_email = ? AND status = 'waiting'");
+    $stmt->execute([$companyId,$serviceId,$date,$email]);
+    if($stmt->fetch()){
+        json_err('You are already on the waitlist for this date',422);
+    }
+
+    $stmt=$db->prepare("
+    INSERT INTO waitlist (company_id,service_id,booking_date,customer_name,customer_email,customer_phone)
+    VALUES(?,?,?,?,?,?)
+    ");
+
+    $stmt->execute([$companyId,$serviceId,$date,$name,$email,$phone]);
+
+    json_ok(['message'=>'Added to waitlist successfully'],201);
+
+
+    }
+
+    public function notifyWaitlist(int $companyId,int $serviceId,string $date): void{
+        $db=Database::pdo();
+
+        $stmt=$db->prepare("
+        
+        SELECT * FROM waitlist
+        WHERE company_id= ? AND service_id = ? AND booking_date = ?
+        AND status = 'waiting'
+        ORDER BY created_at ASC
+        LIMIT 1
+        ");
+
+        $stmt->execute([$companyId,$serviceId,$date]);
+        $waiting=$stmt->fetch();
+        if(!$waiting)return;
+
+        $subject="Good news! A slot is available";
+        $body="
+            <h2>Hello {$waiting['customer_name']},</h2>
+            <p>Good news! A slot has just opened up for the date you were waiting for.</p>
+            <p>Book now before someone else takes it!</p>
+            <a href='https://bookwise.com/book'>Book Now</a>
+        ";
+
+        if(Mailer::send($waiting['customer_email'],$subject,$body)){
+            $db->prepare("UPDATE waitlist SET status='notified',notified_at=NOW() WHERE id=?")
+            ->execute([$waiting['id']]);
+        }
+    }
 
 }

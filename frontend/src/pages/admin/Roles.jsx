@@ -101,14 +101,14 @@ export default function Roles() {
     if (!result.isConfirmed) return;
 
     try {
-      Swal.fire({ title: 'Duke fshirë...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+      Swal.fire({ title: 'Deleting...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
       
       await api.delete(`/companies/${activeCompany.id}/custom-roles/${roleId}`);
       await loadRoles();
       
       Swal.fire({
         icon: 'success',
-        title: 'U fshi!',
+        title: 'Deleted!',
         text: `Role "${roleName}" deleted successfully.`,
         timer: 2000,
         showConfirmButton: false,
@@ -167,7 +167,7 @@ export default function Roles() {
                   <button
                     onClick={() => handleDeleteRole(role.id, role.name)}
                     className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition"
-                    title="Fshi rolin"
+                    title="Delete role"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>

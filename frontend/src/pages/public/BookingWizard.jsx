@@ -19,6 +19,10 @@ export default function BookingWizard() {
   const [dateBlockedReason, setDateBlockedReason] = useState('');
   const [isSleeping, setIsSleeping] = useState(false);
 
+  const [waitlistForm, setWaitlistForm] = useState({ name: '', email: '', phone: '' });
+  const [waitlistJoined, setWaitlistJoined] = useState(false);
+  const [waitlistLoading, setWaitlistLoading] = useState(false);
+
   const [form, setForm] = useState({ 
     name: '', 
     email: '', 
@@ -51,7 +55,6 @@ export default function BookingWizard() {
     return selectedDate >= startOfToday && selectedDate <= maxAllowedDate;
   };
 
-  // 1. Merr kompaninë
   useEffect(() => {
     api.get(`/public/companies/${slug}`)
       .then((r) => setCompany(r.data.data))
@@ -59,10 +62,8 @@ export default function BookingWizard() {
       .finally(() => setLoading(false));
   }, [slug]);
 
-  // 2. Kontrollo statusin e klientit (i fjetur apo aktiv)
   useEffect(() => {
     if (form.email && form.email.includes('@') && company?.id) {
-      // Përdorim një instancë të re axios (ose api pa token) për të shmangur 401
       api.get(`/public/check-sleeping?company_id=${company.id}&email=${form.email}`)
          .then(res => {
              setIsSleeping(res.data.data.is_sleeping);
@@ -73,7 +74,6 @@ export default function BookingWizard() {
     }
   }, [form.email, company?.id]);
 
-  // 3. Merr orarin (slots)
   useEffect(() => {
     if (!service || !isValidBookingDate(date) || !company?.id) {
       setDateBlockedReason('');
@@ -88,6 +88,7 @@ export default function BookingWizard() {
     setSlotReason('');
     setSelectedSlot(null);
     setDateBlockedReason('');
+    setWaitlistJoined(false); 
 
     api.get('/public/availability', {
       params: { company_id: company.id, service_id: service.id, date },
@@ -136,6 +137,30 @@ export default function BookingWizard() {
       setError(err.response?.data?.error || 'Booking failed');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleJoinWaitlist = async () => {
+    if (!waitlistForm.name || !waitlistForm.email) {
+      setError('Please fill in your name and email for the waitlist.');
+      return;
+    }
+    setWaitlistLoading(true);
+    setError('');
+    try {
+      await api.post('/public/waitlist', {
+        company_id: company.id,
+        service_id: service.id,
+        booking_date: date,
+        name: waitlistForm.name,
+        email: waitlistForm.email,
+        phone: waitlistForm.phone,
+      });
+      setWaitlistJoined(true);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to join waitlist');
+    } finally {
+      setWaitlistLoading(false);
     }
   };
 
@@ -345,12 +370,60 @@ export default function BookingWizard() {
                      slotReason === 'fully_booked' ? 'Fully booked' :
                      'No available time slots'}
                   </p>
-                  <button
-                    onClick={() => setStep(2)}
-                    className="text-sm text-indigo-600 hover:underline"
-                  >
-                    Choose another date
-                  </button>
+
+                  {slotReason === 'fully_booked' && !waitlistJoined && (
+                    <div className="mt-6 bg-indigo-50 p-5 rounded-xl text-left max-w-md mx-auto border border-indigo-100">
+                      <h4 className="font-bold text-indigo-900 mb-1">Join Waitlist</h4>
+                      <p className="text-sm text-indigo-700 mb-4">Get notified automatically if a slot opens up for this date.</p>
+                      
+                      <div className="space-y-3">
+                        <input 
+                          type="text" 
+                          placeholder="Your Name *" 
+                          value={waitlistForm.name} 
+                          onChange={e => setWaitlistForm({...waitlistForm, name: e.target.value})} 
+                          className="w-full px-3 py-2 border border-indigo-200 rounded-lg text-sm focus:ring-indigo-500 outline-none" 
+                        />
+                        <input 
+                          type="email" 
+                          placeholder="Your Email *" 
+                          value={waitlistForm.email} 
+                          onChange={e => setWaitlistForm({...waitlistForm, email: e.target.value})} 
+                          className="w-full px-3 py-2 border border-indigo-200 rounded-lg text-sm focus:ring-indigo-500 outline-none" 
+                        />
+                        <input 
+                          type="tel" 
+                          placeholder="Phone (optional)" 
+                          value={waitlistForm.phone} 
+                          onChange={e => setWaitlistForm({...waitlistForm, phone: e.target.value})} 
+                          className="w-full px-3 py-2 border border-indigo-200 rounded-lg text-sm focus:ring-indigo-500 outline-none" 
+                        />
+                        <button 
+                          onClick={handleJoinWaitlist}
+                          disabled={waitlistLoading}
+                          className="w-full bg-indigo-600 text-white py-2.5 rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 transition"
+                        >
+                          {waitlistLoading ? 'Joining...' : 'Join Waitlist'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {waitlistJoined && (
+                    <div className="mt-6 bg-emerald-50 border border-emerald-200 text-emerald-700 p-4 rounded-xl max-w-md mx-auto">
+                      <p className="font-bold">✓ You're on the list!</p>
+                      <p className="text-sm mt-1">We will email you as soon as a slot becomes available.</p>
+                    </div>
+                  )}
+
+                  {!waitlistJoined && slotReason !== 'fully_booked' && (
+                    <button
+                      onClick={() => setStep(2)}
+                      className="text-sm text-indigo-600 hover:underline mt-4"
+                    >
+                      Choose another date
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
@@ -377,13 +450,15 @@ export default function BookingWizard() {
                 >
                   ← Back
                 </button>
-                <button
-                  onClick={() => setStep(4)}
-                  disabled={!selectedSlot}
-                  className="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 text-sm font-medium"
-                >
-                  Go
-                </button>
+                {!waitlistJoined && (
+                  <button
+                    onClick={() => setStep(4)}
+                    disabled={!selectedSlot}
+                    className="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 text-sm font-medium"
+                  >
+                    Go
+                  </button>
+                )}
               </div>
             </div>
           )}

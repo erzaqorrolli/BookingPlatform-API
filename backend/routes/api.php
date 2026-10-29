@@ -264,3 +264,4 @@ Router::post('/api/companies/{companyId}/winback/send', [CompanyController::clas
 
 Router::post('/api/companies/{companyId}/bookings/manual', [BookingController::class, 'createManual']);
 
+Router::post('/api/public/waitlist', [BookingController::class, 'joinWaitlist']);
