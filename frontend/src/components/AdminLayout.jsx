@@ -125,6 +125,16 @@ const menuItems = [
     roles: ['superadmin'],
   },
   {
+    label: 'Financials',
+    path: '/admin/superadmin/financials',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    ),
+    roles: ['superadmin'],
+  },
+  {
     label: 'Reviews',
     path: '/admin/reviews',
     icon: (
@@ -173,8 +183,7 @@ const menuItems = [
       </svg>
     ),
     roles: ['owner', 'admin'],
-  },  
- 
+  },
   {
     label: 'Marketing',
     path: '/admin/marketing',
@@ -183,17 +192,8 @@ const menuItems = [
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
       </svg>
     ),
-    roles: ['owner', 'admin', 'manager'], 
-  }, {
-    label: 'Financials',
-    path: '/admin/superadmin/financials',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-    ),
-    roles: ['superadmin'],
-},
+    roles: ['owner', 'admin', 'manager'],
+  },
   {
     label: 'Roles & Permissions',
     path: '/admin/roles',
@@ -311,37 +311,21 @@ export default function AdminLayout({ children }) {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex">
-      <aside
-        className={`${
-          sidebarOpen ? 'w-64' : 'w-20'
-        } bg-slate-900 dark:bg-slate-950 text-white transition-all duration-300 flex flex-col fixed h-screen z-30`}
-      >
+      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-slate-900 dark:bg-slate-950 text-white transition-all duration-300 flex flex-col fixed h-screen z-30`}>
         <div className="h-16 flex items-center px-4 border-b border-slate-800">
           <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
             <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
           </div>
-          {sidebarOpen && (
-            <span className="ml-3 font-bold tracking-tight">BookingPlatform</span>
-          )}
+          {sidebarOpen && <span className="ml-3 font-bold tracking-tight">BookingPlatform</span>}
         </div>
 
         {sidebarOpen && companies.length > 0 && (role !== 'staff' || companies.length > 1) && (
           <div className="px-3 py-3 border-b border-slate-800">
-            <label className="text-xs text-slate-400 uppercase tracking-wider font-semibold">
-              Company
-            </label>
-            <select
-              value={activeCompany?.id || ''}
-              onChange={(e) => switchCompany(e.target.value)}
-              className="w-full mt-1.5 bg-slate-800 text-white text-sm rounded-lg px-3 py-2 border border-slate-700 focus:border-indigo-500 outline-none"
-            >
-              {companies.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
+            <label className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Company</label>
+            <select value={activeCompany?.id || ''} onChange={(e) => switchCompany(e.target.value)} className="w-full mt-1.5 bg-slate-800 text-white text-sm rounded-lg px-3 py-2 border border-slate-700 focus:border-indigo-500 outline-none">
+              {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
         )}
@@ -352,37 +336,19 @@ export default function AdminLayout({ children }) {
               const isChildActive = item.children.some(child => child.path === location.pathname);
               return (
                 <div key={item.label} className="space-y-1">
-                  <button
-                    onClick={() => setOpenDropdown(!openDropdown)}
-                    className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
-                      isChildActive ? 'bg-slate-800 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                    }`}
-                  >
+                  <button onClick={() => setOpenDropdown(!openDropdown)} className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${isChildActive ? 'bg-slate-800 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}`}>
                     <div className="flex items-center gap-3">
                       <span className="flex-shrink-0">{item.icon}</span>
                       {sidebarOpen && <span>{item.label}</span>}
                     </div>
-                    {sidebarOpen && (
-                      <svg className={`w-4 h-4 transition-transform ${openDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    )}
+                    {sidebarOpen && <svg className={`w-4 h-4 transition-transform ${openDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>}
                   </button>
-                  
                   {openDropdown && sidebarOpen && (
                     <div className="pl-10 space-y-1">
                       {item.children.filter(child => child.roles.includes(role)).map(child => {
                         const isActive = location.pathname === child.path;
                         return (
-                          <Link
-                            key={child.path}
-                            to={child.path}
-                            className={`block px-3 py-2 rounded-lg text-sm transition ${
-                              isActive ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                            }`}
-                          >
-                            {child.label}
-                          </Link>
+                          <Link key={child.path} to={child.path} className={`block px-3 py-2 rounded-lg text-sm transition ${isActive ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>{child.label}</Link>
                         );
                       })}
                     </div>
@@ -393,15 +359,7 @@ export default function AdminLayout({ children }) {
 
             const active = location.pathname === item.path;
             return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
-                  active
-                    ? 'bg-indigo-600 text-white'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                }`}
-              >
+              <Link key={item.path} to={item.path} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${active ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}`}>
                 <span className="flex-shrink-0">{item.icon}</span>
                 {sidebarOpen && <span>{item.label}</span>}
               </Link>
@@ -409,23 +367,11 @@ export default function AdminLayout({ children }) {
           })}
 
           <div className="pt-4">
-            {sidebarOpen && (
-              <p className="px-3 pb-2 text-xs text-slate-500 uppercase tracking-wider font-semibold">
-                Settings
-              </p>
-            )}
+            {sidebarOpen && <p className="px-3 pb-2 text-xs text-slate-500 uppercase tracking-wider font-semibold">Settings</p>}
             {visibleSettingsItems.map((item) => {
               const active = location.pathname === item.path;
               return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
-                    active
-                      ? 'bg-indigo-600 text-white'
-                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                  }`}
-                >
+                <Link key={item.path} to={item.path} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${active ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}`}>
                   <span className="flex-shrink-0">{item.icon}</span>
                   {sidebarOpen && <span>{item.label}</span>}
                 </Link>
@@ -434,18 +380,8 @@ export default function AdminLayout({ children }) {
           </div>
         </nav>
 
-        <button
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="h-12 border-t border-slate-800 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 transition"
-        >
-          <svg
-            className={`w-5 h-5 transition-transform ${sidebarOpen ? '' : 'rotate-180'}`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
+        <button onClick={() => setSidebarOpen(!sidebarOpen)} className="h-12 border-t border-slate-800 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 transition">
+          <svg className={`w-5 h-5 transition-transform ${sidebarOpen ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
         </button>
       </aside>
 
@@ -453,73 +389,41 @@ export default function AdminLayout({ children }) {
         <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 sticky top-0 z-20">
           <div>
             <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-              {visibleMenuItems.flatMap(item => item.children || [item]).find((m) => m.path === location.pathname)?.label ||
-                settingsItems.find((m) => m.path === location.pathname)?.label ||
-                'Dashboard'}
+              {visibleMenuItems.flatMap(item => item.children || [item]).find((m) => m.path === location.pathname)?.label || settingsItems.find((m) => m.path === location.pathname)?.label || 'Dashboard'}
             </h2>
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-            >
+            <button onClick={toggleTheme} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition" title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
               {theme === 'dark' ? (
-                <svg className="w-5 h-5 text-slate-600 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
+                <svg className="w-5 h-5 text-slate-600 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
               ) : (
-                <svg className="w-5 h-5 text-slate-600 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                </svg>
+                <svg className="w-5 h-5 text-slate-600 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
               )}
             </button>
-            
             <GlobalSearch />
             <NotificationBell />
 
             <div className="relative">
-              <button
-                onClick={() => setUserMenuOpen(!userMenuOpen)}
-                className="flex items-center gap-3 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg px-3 py-2 transition"
-              >
-                <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-semibold">
-                  {user?.name?.charAt(0).toUpperCase()}
-                </div>
+              <button onClick={() => setUserMenuOpen(!userMenuOpen)} className="flex items-center gap-3 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg px-3 py-2 transition">
+                <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-semibold">{user?.name?.charAt(0).toUpperCase()}</div>
                 <div className="text-left hidden sm:block">
                   <p className="text-sm font-medium text-slate-900 dark:text-white">{user?.name}</p>
                   <p className="text-xs text-slate-500 dark:text-slate-400">{user?.email}</p>
                 </div>
-                <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
+                <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               </button>
 
               {userMenuOpen && (
                 <>
-                  <div
-                    className="fixed inset-0 z-10"
-                    onClick={() => setUserMenuOpen(false)}
-                  />
+                  <div className="fixed inset-0 z-10" onClick={() => setUserMenuOpen(false)} />
                   <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg py-1 z-20">
                     <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700">
                       <p className="text-sm font-medium text-slate-900 dark:text-white">{user?.name}</p>
                       <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{user?.email}</p>
                     </div>
-                    <Link
-                      to="/admin/settings"
-                      className="block px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-                      onClick={() => setUserMenuOpen(false)}
-                    >
-                      Settings
-                    </Link>
-                    <button
-                      onClick={handleLogout}
-                      className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                    >
-                      Logout
-                    </button>
+                    <Link to="/admin/settings" className="block px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700" onClick={() => setUserMenuOpen(false)}>Settings</Link>
+                    <button onClick={handleLogout} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20">Logout</button>
                   </div>
                 </>
               )}
