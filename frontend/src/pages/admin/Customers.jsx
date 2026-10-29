@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
+import EditableCell from '../../components/EditableCell';
 
 export default function Customers() {
   const { activeCompany } = useCompany();
@@ -9,19 +10,18 @@ export default function Customers() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
-  const loadCustomers = useCallback(async () => {
+const loadCustomers = useCallback(async () => {
     if (!activeCompany) return;
     setLoading(true);
     try {
-      const r = await api.get(`/companies/${activeCompany.id}/customers`);
-      setCustomers(r.data.data || []);
+        const r = await api.get(`/companies/${activeCompany.id}/customers?t=${Date.now()}`);
+        setCustomers(r.data.data || []);
     } catch (err) {
-      console.error(err);
+        console.error(err);
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
-  }, [activeCompany]);
-
+}, [activeCompany]);
   useEffect(() => {
     const refreshCustomers = () => loadCustomers();
     const initialLoad = window.setTimeout(refreshCustomers, 0);
@@ -45,6 +45,21 @@ export default function Customers() {
     );
   });
 
+   const updateCustomerField = async (customerId, field, value) => {
+    try {
+        await api.put(`/companies/${activeCompany.id}/customers/${customerId}/quick-update`, {
+            [field]: value
+        });
+        
+        setCustomers(prev => prev.map(c => 
+            c.id === customerId ? { ...c, [field]: value } : c
+        ));
+        
+    } catch (err) {
+        console.error(err);
+        alert('Failed to update customer');
+    }
+};
   if (!activeCompany) {
     return (
       <div className="bg-white border-2 border-dashed border-slate-200 rounded-xl p-12 text-center">
@@ -62,7 +77,6 @@ export default function Customers() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Clients</h1>
@@ -119,75 +133,116 @@ export default function Customers() {
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-slate-50 border-b border-slate-200">
-              <tr>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Client</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Email</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Phone</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Bookings</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Registered</th>
-                <th className="text-right px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filtered.map((c) => (
-                <tr key={c.id} className="hover:bg-slate-50">
-                  <td className="px-5 py-4">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-semibold ${
-                          Number(c.is_vip) === 1
-                            ? 'bg-gradient-to-br from-amber-400 to-amber-600'
-                            : 'bg-gradient-to-br from-indigo-500 to-purple-600'
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1000px]">
+              <thead className="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Client</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Email</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Phone</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">ADA Help</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">VIP</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Tags</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Bookings</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Notes</th>
+                  <th className="text-right px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filtered.map((c) => (
+                  <tr key={c.id} className="hover:bg-slate-50">
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-semibold ${
+                            Number(c.is_vip) === 1
+                              ? 'bg-gradient-to-br from-amber-400 to-amber-600'
+                              : 'bg-gradient-to-br from-indigo-500 to-purple-600'
+                          }`}
+                        >
+                          {c.name?.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="font-medium text-slate-900 flex items-center gap-1.5">
+                          {c.name}
+                          {Number(c.is_vip) === 1 && (
+                            <span className="inline-flex items-center" title={`VIP Client · ${c.total_bookings || 0} bookings`}>
+                              <svg className="w-4 h-4 text-amber-500" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z" />
+                              </svg>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-5 py-4 text-sm text-slate-700">{c.email}</td>
+                    <td className="px-5 py-4 text-sm text-slate-700">{c.phone || '—'}</td>
+
+                    {/* ADA Help */}
+                    <td className="px-5 py-4">
+                      <button
+                        onClick={() => updateCustomerField(c.id, 'needs_ada_help', Number(c.needs_ada_help) ? 0 : 1)}
+                        className={`px-3 py-1 rounded-full text-xs font-semibold transition ${
+                          Number(c.needs_ada_help)
+                            ? 'bg-amber-100 text-amber-700'
+                            : 'border border-dashed border-slate-300 text-slate-400 hover:border-amber-500 hover:text-amber-500'
                         }`}
                       >
-                        {c.name?.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="font-medium text-slate-900 flex items-center gap-1.5">
-                        {c.name}
-                        {Number(c.is_vip) === 1 && (
-                          <span
-                            className="inline-flex items-center"
-                            title={`VIP Client · ${c.total_bookings || 0} bookings`}
-                          >
-                            <svg
-                              className="w-4 h-4 text-amber-500"
-                              viewBox="0 0 24 24"
-                              fill="currentColor"
-                            >
-                              <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z" />
-                            </svg>
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-5 py-4 text-sm text-slate-700">{c.email}</td>
-                  <td className="px-5 py-4 text-sm text-slate-700">{c.phone || '—'}</td>
-                  <td className="px-5 py-4 text-sm">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md font-medium">
-                      {c.total_bookings ?? 0}
-                    </span>
-                  </td>
-                  <td className="px-5 py-4 text-sm text-slate-500">
-                    {c.created_at ? new Date(c.created_at).toLocaleDateString('en-GB') : '—'}
-                  </td>
-                  <td className="px-5 py-4 text-right">
-                    <Link
-                      to={`/admin/customers/${c.id}`}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-50 text-indigo-700 text-xs font-medium rounded-lg hover:bg-indigo-100 transition"
-                    >
-                      View
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                        {Number(c.needs_ada_help) ? '✓ Yes' : '+ Add'}
+                      </button>
+                    </td>
+
+                    {/* VIP */}
+                    <td className="px-5 py-4">
+                      <button
+                        onClick={() => updateCustomerField(c.id, 'is_vip', Number(c.is_vip) ? 0 : 1)}
+                        className={`px-3 py-1 rounded-full text-xs font-semibold transition ${
+                          Number(c.is_vip)
+                            ? 'bg-emerald-100 text-emerald-700'
+                            : 'border border-dashed border-slate-300 text-slate-400 hover:border-emerald-500 hover:text-emerald-500'
+                        }`}
+                      >
+                        {Number(c.is_vip) ? '✓ VIP' : '+ Add'}
+                      </button>
+                    </td>
+
+                    <td className="px-5 py-4 min-w-[150px]">
+                      <EditableCell
+                        value={c.tags}
+                        onSave={(val) => updateCustomerField(c.id, 'tags', val)}
+                        placeholder="+ Add"
+                      />
+                    </td>
+
+                    <td className="px-5 py-4 text-sm">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md font-medium">
+                        {c.total_bookings ?? 0}
+                      </span>
+                    </td>
+
+                    <td className="px-5 py-4 min-w-[200px]">
+                      <EditableCell
+                        value={c.notes}
+                        onSave={(val) => updateCustomerField(c.id, 'notes', val)}
+                        placeholder="+ Add"
+                      />
+                    </td>
+
+                    <td className="px-5 py-4 text-right">
+                      <Link
+                        to={`/admin/customers/${c.id}`}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-50 text-indigo-700 text-xs font-medium rounded-lg hover:bg-indigo-100 transition"
+                      >
+                        View
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

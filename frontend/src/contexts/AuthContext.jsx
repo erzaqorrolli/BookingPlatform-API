@@ -64,7 +64,7 @@ export function AuthProvider({ children }) {
         const data = response.data?.data || response.data;
         const normalized = normalizeUser(data);
         setUser(normalized);
-        localStorage.setItem('user', JSON.stringify(normalized)); // E ruajmë në localStorage
+        localStorage.setItem('user', JSON.stringify(normalized)); 
       })
       .catch(() => {
         setUser(null);

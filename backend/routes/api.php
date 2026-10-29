@@ -258,10 +258,13 @@ Router::delete('/api/companies/{id}/custom-roles/{roleId}', [CompanyController::
 
 Router::put('/api/companies/{id}/custom-roles/{roleId}', [CompanyController::class, 'updateCustomRole']);
 Router::get('/api/companies/{id}/my-role-details', [CompanyController::class, 'getMyRoleDetails']);
-
+    
 Router::get('/api/companies/{companyId}/winback/preview', [CompanyController::class, 'getDormantCustomers']);
 Router::post('/api/companies/{companyId}/winback/send', [CompanyController::class, 'sendWinbackEmails']);
 
 Router::post('/api/companies/{companyId}/bookings/manual', [BookingController::class, 'createManual']);
 
 Router::post('/api/public/waitlist', [BookingController::class, 'joinWaitlist']);
+
+Router::put('/api/companies/{companyId}/customers/{id}/quick-update', [CustomerController::class, 'updateQuick']);
+

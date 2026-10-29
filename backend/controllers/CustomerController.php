@@ -203,5 +203,61 @@ public function show(array $params): void
     ]);
 }
 
+public function updateQuick(array $params): void
+{
+    $uid = auth_user_id();
+    if (!$uid) json_err('Unauthorized', 401);
 
-}
+    $companyId = (int) $params['companyId'];
+    $customerId = (int) $params['id'];
+
+    $role = Company::userRole($uid, $companyId);
+    if (!in_array($role, ['owner', 'admin', 'manager', 'staff'])) { 
+        json_err('Forbidden', 403);
+    }
+
+    $db = Database::pdo();
+
+    $stmt = $db->prepare("SELECT id, is_vip, total_bookings FROM customers WHERE id = ? AND company_id = ?");
+    $stmt->execute([$customerId, $companyId]);
+    $customer = $stmt->fetch();
+
+    if (!$customer) json_err('Customer not found', 404);
+
+    $rawInput = file_get_contents('php://input');
+    $input = json_decode($rawInput, true);
+    if (!$input) {
+        $input = input();
+    }
+
+    error_log('Quick update input: ' . print_r($input, true));
+
+    $allowedFields = ['tags', 'notes', 'needs_ada_help', 'is_vip'];
+    $updates = [];
+    $values = [];
+
+    foreach ($allowedFields as $field) {
+        if (array_key_exists($field, $input)) {
+            $updates[] = "$field = ?";
+            $values[] = $input[$field]; 
+        }
+    }
+
+    if (empty($updates)) {
+        json_err('Nothing to update. Input: ' . json_encode($input), 422);
+    }
+
+    $values[] = $customerId;
+    
+    $sql = "UPDATE customers SET " . implode(', ', $updates) . " WHERE id = ?";
+
+    error_log('Quick update SQL: ' . $sql . ' | Values: ' . print_r($values, true));
+
+    $db->prepare($sql)->execute($values);
+
+    if ((int) $customer['total_bookings'] >= 30 && (int) $customer['is_vip'] === 0) {
+        $db->prepare("UPDATE customers SET is_vip = 1 WHERE id = ?")->execute([$customerId]);
+    }
+
+    json_ok(['message' => 'Customer updated successfully']);
+}}

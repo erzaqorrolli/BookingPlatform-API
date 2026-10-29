@@ -274,7 +274,7 @@ class CompanyController {
         $memberId = (int) $params['id'];
 
         $role = Company::userRole($uid, $companyId);
-        if($role !== 'owner') {
+        if($role !== 'owner') { 
             json_err('Only the owner can delete an account', 403);
         }
 
@@ -424,7 +424,7 @@ class CompanyController {
 
     public function getChatMessages(array $params): void
     {
-        $uid = auth_user_id();
+        $uid = require_auth();
         $companyId = (int) $params['id'];
         $customerEmail = $_GET['email'] ?? '';
 
@@ -449,7 +449,7 @@ class CompanyController {
 
     public function sendChatMessage(array $params): void
     {
-        $uid = auth_user_id();
+        $uid = require_auth();
         $companyId = (int) $params['id'];
         $role = Company::userRole($uid, $companyId);
 
@@ -497,7 +497,7 @@ class CompanyController {
 
     public function getChatCustomers(array $params): void
     {
-        $uid = auth_user_id();
+        $uid = require_auth();
         $companyId = (int) $params['id'];
         
         if(!Company::userBelongsTo($uid, $companyId)){
@@ -518,7 +518,7 @@ class CompanyController {
 
     public function getCompanyCustomers(array $params): void
     {
-        $uid = auth_user_id();
+        $uid = require_auth();
         $companyId = (int) $params['id'];
 
         if (!Company::userBelongsTo($uid, $companyId)) {
@@ -534,7 +534,7 @@ class CompanyController {
 
     public function syncInbox(array $params): void
     {
-        $uid = auth_user_id();
+        $uid = require_auth();
         $companyId = (int) $params['id'];
 
         if(!Company::userBelongsTo($uid, $companyId)){
@@ -919,5 +919,7 @@ class CompanyController {
             'total' => count($customers)
         ]);
   }
+
+     
 }
   

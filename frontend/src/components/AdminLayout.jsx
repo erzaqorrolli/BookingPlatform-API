@@ -19,14 +19,20 @@ const menuItems = [
     roles: ['owner', 'admin', 'manager', 'staff'],
   },
   {
-    label: 'Invoices',
-    path: '/admin/invoices',
+    label: 'Operations',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
       </svg>
     ),
-    roles: ['owner', 'admin', 'manager'],
+    roles: ['owner', 'admin', 'manager', 'staff'],
+    isDropdown: true,
+    children: [
+      { label: 'Bookings', path: '/admin/bookings', roles: ['owner', 'admin', 'manager', 'staff'] },
+      { label: 'Invoices', path: '/admin/invoices', roles: ['owner', 'admin', 'manager'] },
+      { label: 'Services', path: '/admin/services', roles: ['owner', 'admin', 'manager'] },
+      { label: 'Products', path: '/admin/products', roles: ['owner', 'admin', 'manager'] },
+    ]
   },
   {
     label: 'Gallery',
@@ -98,7 +104,7 @@ const menuItems = [
     ),
     roles: ['superadmin'],
   },
-    {
+  {
     label: 'Chat',
     path: '/admin/chat',
     icon: (
@@ -108,7 +114,6 @@ const menuItems = [
     ),
     roles: ['owner', 'admin', 'manager', 'staff'],
   },
-    
   {
     label: 'Super Admin',
     path: '/admin/superadmin',
@@ -140,46 +145,6 @@ const menuItems = [
     roles: ['owner', 'admin'],
   },
   {
-    label: 'Bookings',
-    path: '/admin/bookings',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-      </svg>
-    ),
-    roles: ['owner', 'admin', 'manager', 'staff'],
-  },
-  {
-    label: 'Calendar',
-    path: '/admin/calendar',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-      </svg>
-    ),
-    roles: ['owner', 'admin', 'manager', 'staff'],
-  },
-  {
-    label: 'Services',
-    path: '/admin/services',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-      </svg>
-    ),
-    roles: ['owner', 'admin', 'manager'],
-  },
-  {
-    label: 'Products',
-    path: '/admin/products',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-      </svg>
-    ),
-    roles: ['owner', 'admin', 'manager'],
-  },
-  {
     label: 'Payroll',
     path: '/admin/payroll',
     icon: (
@@ -208,7 +173,8 @@ const menuItems = [
       </svg>
     ),
     roles: ['owner', 'admin'],
-  },  {
+  },  
+  {
     label: 'Marketing',
     path: '/admin/marketing',
     icon: (
@@ -317,6 +283,7 @@ const settingsItems = [
 export default function AdminLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState(false);
   const { user, logout } = useAuth();
   const { companies, activeCompany, switchCompany } = useCompany();
   const location = useLocation();
@@ -350,7 +317,6 @@ export default function AdminLayout({ children }) {
           )}
         </div>
 
-        {/* KUSHTI I RREGULLUAR PËR DROPDOWN-IN E KOMPANIVE */}
         {sidebarOpen && companies.length > 0 && (role !== 'staff' || companies.length > 1) && (
           <div className="px-3 py-3 border-b border-slate-800">
             <label className="text-xs text-slate-400 uppercase tracking-wider font-semibold">
@@ -372,6 +338,49 @@ export default function AdminLayout({ children }) {
 
         <nav className="flex-1 overflow-y-auto p-3 space-y-1">
           {visibleMenuItems.map((item) => {
+            if (item.isDropdown) {
+              const isChildActive = item.children.some(child => child.path === location.pathname);
+              return (
+                <div key={item.label} className="space-y-1">
+                  <button
+                    onClick={() => setOpenDropdown(!openDropdown)}
+                    className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
+                      isChildActive ? 'bg-slate-800 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="flex-shrink-0">{item.icon}</span>
+                      {sidebarOpen && <span>{item.label}</span>}
+                    </div>
+                    {sidebarOpen && (
+                      <svg className={`w-4 h-4 transition-transform ${openDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    )}
+                  </button>
+                  
+                  {openDropdown && sidebarOpen && (
+                    <div className="pl-10 space-y-1">
+                      {item.children.filter(child => child.roles.includes(role)).map(child => {
+                        const isActive = location.pathname === child.path;
+                        return (
+                          <Link
+                            key={child.path}
+                            to={child.path}
+                            className={`block px-3 py-2 rounded-lg text-sm transition ${
+                              isActive ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                            }`}
+                          >
+                            {child.label}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
             const active = location.pathname === item.path;
             return (
               <Link
@@ -434,7 +443,7 @@ export default function AdminLayout({ children }) {
         <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 sticky top-0 z-20">
           <div>
             <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-              {visibleMenuItems.find((m) => m.path === location.pathname)?.label ||
+              {visibleMenuItems.flatMap(item => item.children || [item]).find((m) => m.path === location.pathname)?.label ||
                 settingsItems.find((m) => m.path === location.pathname)?.label ||
                 'Dashboard'}
             </h2>
@@ -458,7 +467,6 @@ export default function AdminLayout({ children }) {
             </button>
             
             <GlobalSearch />
-
             <NotificationBell />
 
             <div className="relative">
