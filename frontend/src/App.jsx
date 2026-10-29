@@ -78,6 +78,7 @@ import StaffInvoices from './pages/staff/StaffInvoices';
 import StaffInvoiceView from './pages/staff/StaffInvoiceView';
 import Marketing from './pages/admin/Marketing';
 import AdminLayout from './components/AdminLayout';
+import Financials from './pages/admin/superadmin/Financials';
 
 
 //children is a special prop that react fill it automaticlly with everything that stays between tags <x> example </x>
@@ -186,6 +187,7 @@ export default function App() {
 <Route path="/staff/invoices" element={<ProtectedRoute><StaffLayout><StaffInvoices /></StaffLayout></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
               <Route path="/staff/invoices/:id" element={<ProtectedRoute><StaffLayout><StaffInvoiceView /></StaffLayout></ProtectedRoute>} />
+              <Route path="/admin/superadmin/financials" element={<ProtectedPage allowed={['superadmin']}><Financials /></ProtectedPage>} />
             </Routes>
 
             <Toaster 

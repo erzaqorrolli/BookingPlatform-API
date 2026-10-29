@@ -6,6 +6,7 @@ namespace App\Controllers;
 use App\Config\Database;
 use App\Models\AuditLog;
 use App\Models\Company;
+use Google\Service\Dfareporting\CompanionClickThroughOverride;
 
 class SuperAdminController
 {
@@ -1097,6 +1098,58 @@ class SuperAdminController
         
         
         json_ok($stmt->fetchAll());
+    }
+
+
+    public function financialStats():void{
+
+
+    $uid=auth_user_id();
+
+    if(!$uid) json_err('Unauthorized',401);
+
+    $role=Company::userRole($uid,1);
+
+    $db=Database::pdo();
+
+    $totalRevenue = (float) $db->query(" SELECT SUM(total) FROM invoices WHERE status = 'paid'")->fetchColumn();
+
+    $currentMonthRevenue=(float) $db->query("SELECT SUM(total) FROM invoices WHERE status = 'paid'
+    AND MONTH(created_at)=MONTH(CURDATE())
+    AND YEAR(created_at)=YEAR(CURDATE())
+    ")->fetchColumn();
+
+    $pendingAmount = (float) $db->query(" SELECT SUM(total) FROM invoices WHERE status = 'pending'")->fetchColumn();
+
+    $totalInvoices=(int) $db->query("SELECT COUNT(*) FROM invoices")->fetchColumn();
+
+    $monthlyRevenue=$db->query(" SELECT DATE_FORMAT(created_at, '%Y-%m') as month, 
+    SUM(total) as revenue 
+    FROM invoices 
+    WHERE status = 'paid'
+    AND created_at >= DATE_SUB(CURDATE(),INTERVAL 6 MONTH)
+    GROUP BY DATE_FORMAT(created_at,'%Y-%m')
+    ORDER BY month ASC
+    ")->fetchAll(\PDO::FETCH_ASSOC);
+
+    $topDebtors =$db->query(" SELECT c.name as company_name,SUM(i.total) as debt
+    FROM invoices i
+    JOIN companies c ON c.id=i.company_id
+    WHERE i.status = 'pending'
+    GROUP BY c.id
+    ORDER BY debt DESC
+    LIMIT 5")->fetchAll(\PDO::FETCH_ASSOC);
+    
+    json_ok([
+        'total_revenue' => $totalRevenue,
+        'current_month_revenue'=> $currentMonthRevenue,
+        'pending_amount'=> $pendingAmount,
+        'total_invoices'=> $totalInvoices,
+        'monthly_revenue'=>$monthlyRevenue,
+        'top_debtors'=> $topDebtors,
+    ]);
+    
+    
     }
     
 }

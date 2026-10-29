@@ -268,3 +268,4 @@ Router::post('/api/public/waitlist', [BookingController::class, 'joinWaitlist'])
 
 Router::put('/api/companies/{companyId}/customers/{id}/quick-update', [CustomerController::class, 'updateQuick']);
 
+Router::get('/api/superadmin/financial-stats', [SuperAdminController::class, 'financialStats']);
