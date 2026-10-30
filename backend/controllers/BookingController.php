@@ -15,7 +15,7 @@ use App\Models\Invoice;
 class BookingController
 {
     
-    public function index(array $params): void
+        public function index(array $params): void
     {
         $uid = auth_user_id();
         if (!$uid) json_err('Unauthorized', 401);
@@ -26,10 +26,40 @@ class BookingController
             json_err('Forbidden', 403);
         }
 
-        $bookings = Booking::forCompany($companyId, [
-            'status' => $_GET['status'] ?? null,
-            'date'   => $_GET['date'] ?? null,
-        ]);
+        $db = Database::pdo();
+
+        $sql = "
+            SELECT 
+                b.*, 
+                c.name AS customer_name, 
+                c.email AS customer_email, 
+                c.phone AS customer_phone,
+                c.is_vip, 
+                c.needs_ada_help,
+                s.name AS service_name
+            FROM bookings b
+            JOIN customers c ON c.id = b.customer_id
+            JOIN services s ON s.id = b.service_id
+            WHERE b.company_id = ?
+        ";
+
+        $paramsSql = [$companyId];
+
+        if (!empty($_GET['status'])) {
+            $sql .= " AND b.status = ?"; 
+            $paramsSql[] = $_GET['status'];
+        }
+
+        if (!empty($_GET['date'])) {
+            $sql .= " AND b.booking_date = ?"; 
+            $paramsSql[] = $_GET['date']; 
+        }
+
+        $sql .= " ORDER BY b.booking_date DESC, b.start_time DESC"; 
+
+        $stmt = $db->prepare($sql);
+        $stmt->execute($paramsSql);
+        $bookings = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
         json_ok($bookings);
     }

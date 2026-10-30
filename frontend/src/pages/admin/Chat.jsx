@@ -15,7 +15,6 @@ export default function Chat() {
   const [search, setSearch] = useState('');
   const [inboxSyncError, setInboxSyncError] = useState('');
 
-  // Shtojmë kontrollin e lejeve
   const { hasPermission } = usePermissions();
   const canSendEmail = hasPermission('staff_can_send_emails');
 
@@ -185,30 +184,33 @@ export default function Chat() {
                   No messages with this client
                 </div>
               ) : (
-                messages.map((msg) => (
-                  <div key={msg.id} className={`flex ${msg.direction === 'outbound' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[70%] p-3 rounded-2xl text-sm shadow-sm ${
-                      msg.direction === 'outbound' 
-                        ? 'bg-indigo-600 text-white rounded-br-sm' 
-                        : 'bg-white border border-slate-200 text-slate-800 rounded-bl-sm'
-                    }`}>
-                      <div className={`text-[10px] font-semibold mb-1 ${
-                        msg.direction === 'outbound' ? 'text-indigo-200' : 'text-slate-500'
+                messages.map((msg) => {
+            const isOutbound = msg.direction === 'outbound' || 
+                              (msg.from_email && msg.from_email === activeCompany?.email);
+                  return (
+                    <div key={msg.id} className={`flex ${isOutbound ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-[70%] p-3 rounded-2xl text-sm shadow-sm ${
+                        isOutbound 
+                          ? 'bg-indigo-600 text-white rounded-br-sm' 
+                          : 'bg-white border border-slate-200 text-slate-800 rounded-bl-sm'
                       }`}>
-                        {msg.direction === 'outbound' ? activeCompany?.name || 'You' : 'Client'}
-                      </div>
-                      {msg.subject && <div className="font-semibold mb-1">{msg.subject}</div>}
-                      {msg.body}
-                      <div className={`text-[10px] mt-1 ${msg.direction === 'outbound' ? 'text-indigo-200' : 'text-slate-400'}`}>
-                        {new Date(msg.created_at).toLocaleString('sq-AL')}
+                        <div className={`text-[10px] font-semibold mb-1 ${
+                          isOutbound ? 'text-indigo-200' : 'text-slate-500'
+                        }`}>
+                          {isOutbound ? activeCompany?.name || 'You' : 'Client'}
+                        </div>
+                        {msg.subject && <div className="font-semibold mb-1">{msg.subject}</div>}
+                        {msg.body}
+                        <div className={`text-[10px] mt-1 ${isOutbound ? 'text-indigo-200' : 'text-slate-400'}`}>
+                          {new Date(msg.created_at).toLocaleString('sq-AL')}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
 
-            {/* KTU E KEMI VENDOSUR KONTROLLIN E LEJES */}
             <div className="p-4 bg-white border-t border-slate-200">
               {canSendEmail ? (
                 <div className="flex gap-2">

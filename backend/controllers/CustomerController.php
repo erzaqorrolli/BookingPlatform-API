@@ -130,7 +130,6 @@ public function show(array $params): void
 
     $db = \App\Config\Database::pdo();
 
-    // Merr klientin
     $stmt = $db->prepare("SELECT * FROM customers WHERE id = ? AND company_id = ? LIMIT 1");
     $stmt->execute([$customerId, $companyId]);
     $customer = $stmt->fetch();
@@ -260,4 +259,51 @@ public function updateQuick(array $params): void
     }
 
     json_ok(['message' => 'Customer updated successfully']);
-}}
+}
+
+    public function exportVCard(array $params): void
+    {
+        $uid = auth_user_id();
+        if (!$uid) json_err('Unauthorized', 401);
+
+        $companyId = (int) $params['companyId'];
+        $role = Company::userRole($uid, $companyId);
+        
+        if (!in_array($role, ['owner', 'admin', 'manager', 'staff'])) {
+            json_err('Forbidden', 403);
+        }
+
+        $db = Database::pdo();
+        $stmt = $db->prepare("SELECT name, email, phone FROM customers WHERE company_id = ? AND phone IS NOT NULL AND phone != ''");
+        $stmt->execute([$companyId]);
+        $customers = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        if (empty($customers)) {
+            json_err('No customers with phone numbers to export', 422);
+        }
+
+        $vcard = "";
+        foreach ($customers as $c) {
+            $vcard .= "BEGIN:VCARD\r\n";
+            $vcard .= "VERSION:3.0\r\n"; 
+            $vcard .= "FN:" . $c['name'] . "\r\n";
+            $vcard .= "N:" . $c['name'] . ";;;;\r\n";
+            
+            if (!empty($c['phone'])) {
+                $vcard .= "TEL;TYPE=CELL:" . $c['phone'] . "\r\n";
+            }
+            
+            if (!empty($c['email'])) {
+                $vcard .= "EMAIL;TYPE=WORK:" . $c['email'] . "\r\n";
+            }
+            
+            $vcard .= "END:VCARD\r\n";
+        }
+
+        header('Content-Type: text/vcard; charset=utf-8');
+        header('Content-Disposition: attachment; filename="clients-' . $companyId . '-' . date('Y-m-d') . '.vcf"');
+        echo $vcard;
+        exit;
+    }
+
+}

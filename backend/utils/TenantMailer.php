@@ -47,9 +47,10 @@ class TenantMailer
 
             $mail->send();
 
-            $db->prepare("INSERT INTO email_messages (company_id, customer_email, subject, body, direction) VALUES (?, ?, ?, ?, 'outbound')")
-               ->execute([$companyId, $toEmail, $subject, $body]);
-
+            $db->prepare("
+                INSERT INTO email_messages (company_id, customer_email, subject, body, direction, from_email) 
+                VALUES (?, ?, ?, ?, 'outbound', ?)
+            ")->execute([$companyId, $toEmail, $subject, $body, $senderEmail]);
             return true;
         } catch (Exception $e) {
             throw new \Exception("SMTP Error: " . $mail->ErrorInfo);

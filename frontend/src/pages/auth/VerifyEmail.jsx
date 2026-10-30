@@ -74,7 +74,7 @@ export default function VerifyEmail() {
   return (
     <AuthLayout
       title="Verification failed"
-      subtitle="Token expired"
+      subtitle="We couldn't verify your email"
     >
       <div className="text-center py-6">
         <div className="w-20 h-20 mx-auto mb-5 bg-red-100 rounded-full flex items-center justify-center">

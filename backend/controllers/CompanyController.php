@@ -424,27 +424,29 @@ class CompanyController {
 
     public function getChatMessages(array $params): void
     {
-        $uid = require_auth();
-        $companyId = (int) $params['id'];
-        $customerEmail = $_GET['email'] ?? '';
+        $uid=auth_user_id();
 
-        if (!Company::userBelongsTo($uid, $companyId)) {
-            json_err('Forbidden', 403);
+        if(!$uid) json_err('Unauthorized',401);
+
+        $companyId=(int)$params['id'];
+        $customerEmail=$_GET['email'] ?? '';
+
+        if(!Company::userBelongsTo($uid,$companyId)){
+            json_err('Forbidden',403);
         }
 
-        if (!$customerEmail) {
-            json_err('Customer email required', 422);
+        if(!$customerEmail){
+            json_err('Customer email required',422);
         }
 
-        $db = Database::pdo();
-        $stmt = $db->prepare("
-            SELECT * FROM email_messages 
-            WHERE company_id = ? AND customer_email = ? 
-            ORDER BY created_at ASC
-        ");
-        $stmt->execute([$companyId, $customerEmail]);
-        
-        json_ok($stmt->fetchAll());
+        $db=Database::pdo();
+
+        $stmt=$db->prepare(" SELECT id,company_id,customer_email,subject,body,direction,from_email,created_at FROM email_messages WHERE company_id = ? AND customer_email = ?
+        ORDER BY created_at ASC");
+
+        $stmt->execute([$companyId,$customerEmail]);
+
+        json_ok($stmt->fetchAll(\PDO::FETCH_ASSOC));
     }
 
     public function sendChatMessage(array $params): void

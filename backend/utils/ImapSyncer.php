@@ -44,10 +44,13 @@ class ImapSyncer
                 WHERE company_id = ? AND LOWER(email) = ?
                 LIMIT 1
             ");
+            
             $insertStmt = $db->prepare("
-                INSERT INTO email_messages (company_id, customer_email, subject, body, direction)
-                VALUES (?, ?, ?, ?, 'inbound')
+                INSERT INTO email_messages (company_id, customer_email, subject, body, direction, from_email)
+                VALUES (?, ?, ?, ?, 'inbound', ?)
             ");
+
+            $companyEmail = strtolower($settings['from_email'] ?? $settings['smtp_user']);
 
             foreach ($emails as $messageNumber) {
                 $messageNumber = (int) $messageNumber;
@@ -58,6 +61,11 @@ class ImapSyncer
 
                 $fromEmail = strtolower(trim($header->from[0]->mailbox . '@' . $header->from[0]->host));
                 if (!filter_var($fromEmail, FILTER_VALIDATE_EMAIL)) {
+                    continue;
+                }
+
+                if ($fromEmail === $companyEmail) {
+                    imap_setflag_full($inbox, (string) $messageNumber, '\\Seen');
                     continue;
                 }
 
@@ -73,7 +81,8 @@ class ImapSyncer
                 }
 
                 $subject = isset($header->subject) ? imap_utf8($header->subject) : '(No subject)';
-                $insertStmt->execute([$companyId, $fromEmail, $subject, mb_substr($body, 0, 5000)]);
+                
+                $insertStmt->execute([$companyId, $fromEmail, $subject, mb_substr($body, 0, 5000), $fromEmail]);
                 imap_setflag_full($inbox, (string) $messageNumber, '\\Seen');
                 $count++;
             }
