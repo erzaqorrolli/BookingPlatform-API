@@ -75,11 +75,21 @@ export default function SupportTickets() {
                         >
                             <div className="flex justify-between items-start mb-1">
                                 <span className="font-medium text-slate-900 text-sm truncate pr-2">{t.subject}</span>
-                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
-                                    t.status === 'open' ? 'bg-amber-100 text-amber-700' :
-                                    t.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
-                                    t.status === 'resolved' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
-                                }`}>{t.status}</span>
+                                <div className="flex gap-1 items-center">
+                                    {/* Badge për prioritetin */}
+                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase ${
+                                        t.priority === 'urgent' ? 'bg-red-100 text-red-700' :
+                                        t.priority === 'high' ? 'bg-orange-100 text-orange-700' :
+                                        t.priority === 'normal' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
+                                    }`}>{t.priority}</span>
+                                    
+                                    {/* Badge për statusin */}
+                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+                                        t.status === 'open' ? 'bg-amber-100 text-amber-700' :
+                                        t.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
+                                        t.status === 'resolved' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                                    }`}>{t.status}</span>
+                                </div>
                             </div>
                             <div className="text-xs text-slate-500">{t.company_name}</div>
                         </div>
@@ -92,7 +102,14 @@ export default function SupportTickets() {
                     <>
                         <div className="p-4 border-b border-slate-200 bg-white flex justify-between items-center">
                             <div>
-                                <h3 className="font-bold text-slate-900">{selectedTicket.subject}</h3>
+                                <div className="flex items-center gap-2">
+                                    <h3 className="font-bold text-slate-900">{selectedTicket.subject}</h3>
+                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase ${
+                                        selectedTicket.priority === 'urgent' ? 'bg-red-100 text-red-700' :
+                                        selectedTicket.priority === 'high' ? 'bg-orange-100 text-orange-700' :
+                                        selectedTicket.priority === 'normal' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
+                                    }`}>{selectedTicket.priority}</span>
+                                </div>
                                 <p className="text-xs text-slate-500">From: {selectedTicket.company_name} ({selectedTicket.user_name})</p>
                             </div>
                             <select
@@ -108,23 +125,34 @@ export default function SupportTickets() {
                         </div>
 
                         <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                                <div className="text-xs font-semibold text-slate-500 mb-1">
-                                    {selectedTicket.user_name} · {new Date(selectedTicket.created_at).toLocaleString()}
+                            <div className="flex justify-start">
+                                <div className="max-w-[80%] p-4 rounded-xl shadow-sm bg-white border border-slate-200 text-slate-800 rounded-bl-sm">
+                                    <div className="text-[10px] font-semibold text-slate-500 mb-1">
+                                        {selectedTicket.user_name} ({selectedTicket.company_name}) · {new Date(selectedTicket.created_at).toLocaleString()}
+                                    </div>
+                                    <p className="text-sm">{selectedTicket.message}</p>
                                 </div>
-                                <p className="text-sm text-slate-800">{selectedTicket.message}</p>
                             </div>
 
-                            {replies.map(r => (
-                                <div key={r.id} className={`p-4 rounded-xl shadow-sm border ${
-                                    r.is_admin_reply ? 'bg-indigo-50 border-indigo-100 ml-8' : 'bg-white border-slate-200 mr-8'
-                                }`}>
-                                    <div className="text-xs font-semibold text-slate-500 mb-1">
-                                        {r.is_admin_reply ? 'Super Admin' : r.user_name} · {new Date(r.created_at).toLocaleString()}
+                            {replies.map(r => {
+                                const isAdmin = Number(r.is_admin_reply) === 1;
+                                return (
+                                    <div key={r.id} className={`flex ${isAdmin ? 'justify-end' : 'justify-start'}`}>
+                                        <div className={`max-w-[80%] p-4 rounded-xl shadow-sm ${
+                                            isAdmin 
+                                                ? 'bg-indigo-600 text-white rounded-br-sm' 
+                                                : 'bg-white border border-slate-200 text-slate-800 rounded-bl-sm'
+                                        }`}>
+                                            <div className={`text-[10px] font-semibold mb-1 ${
+                                                isAdmin ? 'text-indigo-200' : 'text-slate-500'
+                                            }`}>
+                                                {isAdmin ? 'You (Super Admin)' : `${r.user_name}`} · {new Date(r.created_at).toLocaleString()}
+                                            </div>
+                                            <p className="text-sm">{r.message}</p>
+                                        </div>
                                     </div>
-                                    <p className="text-sm text-slate-800">{r.message}</p>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
 
                         <div className="p-4 bg-white border-t border-slate-200">

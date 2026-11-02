@@ -22,6 +22,8 @@ use App\Controllers\SuperAdminController;
 use App\Controllers\GoogleCalendarController;
 use App\Controllers\PayrollController;
 use App\Controllers\NotificationController;
+use App\Controllers\SupportController;
+
 
 Router::get('/api/health', function() {
     return [

@@ -79,7 +79,9 @@ import StaffInvoiceView from './pages/staff/StaffInvoiceView';
 import Marketing from './pages/admin/Marketing';
 import AdminLayout from './components/AdminLayout';
 import Financials from './pages/admin/superadmin/Financials';
-
+import SupportTickets from './pages/admin/superadmin/SupportTickets';
+import SupportForm from './pages/admin/SupportForm';
+import MyTickets from './pages/admin/MyTickets';
 
 //children is a special prop that react fill it automaticlly with everything that stays between tags <x> example </x>
 
@@ -183,13 +185,14 @@ export default function App() {
               
               <Route path="/admin/chat" element={<ProtectedPage><Chat /></ProtectedPage>} />
               <Route path="/admin/notifications" element={<ProtectedPage><Notifications /></ProtectedPage>} />
-<Route path="/staff/customers" element={<ProtectedRoute><StaffLayout><StaffCustomers /></StaffLayout></ProtectedRoute>} />
-<Route path="/staff/invoices" element={<ProtectedRoute><StaffLayout><StaffInvoices /></StaffLayout></ProtectedRoute>} />
+              <Route path="/staff/customers" element={<ProtectedRoute><StaffLayout><StaffCustomers /></StaffLayout></ProtectedRoute>} />
+              <Route path="/staff/invoices" element={<ProtectedRoute><StaffLayout><StaffInvoices /></StaffLayout></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
               <Route path="/staff/invoices/:id" element={<ProtectedRoute><StaffLayout><StaffInvoiceView /></StaffLayout></ProtectedRoute>} />
               <Route path="/admin/superadmin/financials" element={<ProtectedPage allowed={['superadmin']}><Financials /></ProtectedPage>} />
-            </Routes>
-
+              <Route path="/admin/superadmin/support" element={<ProtectedPage allowed={['superadmin']}><SupportTickets /></ProtectedPage>} />
+            <Route path="/admin/support" element={<ProtectedPage allowed={['owner', 'admin', 'manager', 'staff']}><MyTickets /></ProtectedPage>} />
+              <Route path="/admin/superadmin/support-tickets" element={<ProtectedPage allowed={['superadmin']}><SupportTickets /></ProtectedPage>} /> </Routes>
             <Toaster 
               position="bottom-right" 
               toastOptions={{

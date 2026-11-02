@@ -17,7 +17,7 @@ class SupportController
         $companyId = (int) ($input['company_id'] ?? 0);
         $subject = trim($input['subject'] ?? '');
         $message = trim($input['message'] ?? '');
-        $priority = $input['priority'] ?? 'normal'; // RREGULLIMI: string, jo int
+        $priority = $input['priority'] ?? 'normal'; 
 
         if (!$companyId || !$subject || !$message) {
             json_err('Company, subject and message are required', 422);
@@ -25,32 +25,39 @@ class SupportController
 
         $db = Database::pdo();
         
-        // RREGULLIMI: support_tickets (jo suppoert_ticekts)
+        
         $stmt = $db->prepare("
             INSERT INTO support_tickets (company_id, user_id, subject, message, priority)
             VALUES (?, ?, ?, ?, ?)
         ");
         
-        // RREGULLIMI: Mungonte execute
+        
         $stmt->execute([$companyId, $uid, $subject, $message, $priority]);
 
-        // RREGULLIMI: lastInsertId me "I" të madhe
+        
         json_ok(['message' => 'Ticket created successfully', 'id' => (int) $db->lastInsertId()], 201);
     }
 
-    public function index(): void
+      public function index(): void
     {
         $uid = auth_user_id();
         if (!$uid) json_err('Unauthorized', 401);
 
-        $role = Company::userRole($uid, 1); // Supozojmë superadmin në kompaninë 1
+        $db = Database::pdo();
 
-        if ($role !== 'superadmin') {
+        $stmt = $db->prepare("
+            SELECT r.name 
+            FROM company_user cu 
+            JOIN roles r ON r.id = cu.role_id 
+            WHERE cu.user_id = ? AND r.name = 'superadmin'
+            LIMIT 1
+        ");
+        $stmt->execute([$uid]);
+        $isSuperAdmin = $stmt->fetchColumn();
+
+        if (!$isSuperAdmin) {
             $companyId = (int) ($_GET['company_id'] ?? 0);
             if (!$companyId) json_err('Company ID is required', 422);
-
-            // RREGULLIMI: Database (jo Dataabse)
-            $db = Database::pdo();
 
             $stmt = $db->prepare("
                 SELECT t.*, c.name as company_name, u.name as user_name 
@@ -65,8 +72,6 @@ class SupportController
             json_ok($stmt->fetchAll(\PDO::FETCH_ASSOC));
             return;
         }
-
-        $db = Database::pdo();
 
         $stmt = $db->query("
             SELECT t.*, c.name as company_name, u.name as user_name 
@@ -124,6 +129,8 @@ class SupportController
         $input = input();
         $message = trim($input['message'] ?? '');
         $isAdminReply = !empty($input['is_admin_reply']) ? 1 : 0;
+        error_log('REPLY DEBUG: ticketId=' . $ticketId . ' | userId=' . $uid . ' | message=' . $message . ' | isAdminReply=' . $isAdminReply);
+
 
         if (!$message) json_err('Message is required', 422);
 
@@ -143,23 +150,51 @@ class SupportController
         json_ok(['message' => 'Reply added successfully'], 201);
     }
 
+
     public function updateStatus(array $params): void
-    {
-        $uid = auth_user_id();
-        if (!$uid) json_err('Unauthorized', 401);
+{
+    $uid = auth_user_id();
+    if (!$uid) json_err('Unauthorized', 401);
 
-        $ticketId = (int) $params['id'];
-        $input = input();
-        $status = $input['status'] ?? '';
+    $ticketId = (int) $params['id'];
+    $input = input();
+    $status = $input['status'] ?? '';
 
-        if (!in_array($status, ['open', 'in_progress', 'resolved', 'closed'])) {
-            json_err('Invalid status', 422);
-        }
-
-        $db = Database::pdo();
-        $stmt = $db->prepare("UPDATE support_tickets SET status = ? WHERE id = ?");
-        $stmt->execute([$status, $ticketId]);
-
-        json_ok(['message' => 'Status updated successfully']);
+    $validStatuses = ['open', 'in_progress', 'resolved', 'closed'];
+    if (!in_array($status, $validStatuses)) {
+        json_err('Invalid status', 422);
     }
+
+    $db = Database::pdo();
+    
+    $stmt = $db->prepare("SELECT status FROM support_tickets WHERE id = ?");
+    $stmt->execute([$ticketId]);
+    $oldStatus = $stmt->fetchColumn();
+
+    if ($oldStatus === $status) {
+        json_ok(['message' => 'Status is already ' . $status]);
+        return;
+    }
+
+    $stmt = $db->prepare("UPDATE support_tickets SET status = ? WHERE id = ?");
+    $stmt->execute([$status, $ticketId]);
+
+    $statusMessages = [
+        'open' => 'Ticket has been reopened. We will look into it shortly.',
+        'in_progress' => 'Your ticket is now being reviewed by our team.',
+        'resolved' => 'Your ticket has been marked as resolved. If you have further questions, feel free to reply.',
+        'closed' => 'This ticket has been closed. Thank you for contacting us!',
+    ];
+
+    $autoMessage = $statusMessages[$status] ?? 'Status changed to ' . $status;
+
+    $stmt = $db->prepare("
+        INSERT INTO support_ticket_replies (ticket_id, user_id, message, is_admin_reply) 
+        VALUES (?, ?, ?, 1)
+    ");
+    $stmt->execute([$ticketId, $uid, $autoMessage]);
+
+    json_ok(['message' => 'Status updated and client notified']);
 }
+
+    }
