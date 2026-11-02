@@ -922,6 +922,59 @@ class CompanyController {
         ]);
   }
 
+ 
+     public function sendEmailToTaggedCustomers(array $params): void
+    {
+        $uid = auth_user_id();
+        if (!$uid) json_err('Unauthorized', 401);
+
+        $companyId = (int) $params['companyId'];
+
+        $role = Company::userRole($uid, $companyId);
+        if (!in_array($role, ['owner', 'admin'])) {
+            json_err('Forbidden', 403);
+        }
+
+        $input = input();
+        $tag = trim($input['tag'] ?? '');
+        $subject = trim($input['subject'] ?? '');
+        $body = trim($input['body'] ?? '');
+
+        if (!$tag || !$subject || !$body) {
+            json_err('Tag, subject and body are required', 422);
+        }
+
+        $db = Database::pdo();
+
+        $stmt = $db->prepare("
+            SELECT email, name FROM customers 
+            WHERE company_id = ? AND tags LIKE ? AND email IS NOT NULL AND email != ''
+        ");
+        $stmt->execute([$companyId, '%' . $tag . '%']);
+        $customers = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        if (empty($customers)) {
+            json_err('No customers found with this tag', 404);
+        }
+
+        $sent = 0;
+        foreach ($customers as $c) {
+            try {
+                if (\App\Utils\TenantMailer::send($companyId, $c['email'], $subject, $body)) {
+                    $sent++;
+                }
+            } catch (\Throwable $e) {
+                error_log('Failed to send email to ' . $c['email'] . ': ' . $e->getMessage());
+            }
+        }
+
+        json_ok([
+            'success' => true,
+            'sent' => $sent,
+            'total' => count($customers),
+        ]);
+    }
+
      
 }
   

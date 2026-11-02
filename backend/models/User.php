@@ -75,8 +75,8 @@ class User
         $stmt = $db->prepare("
             INSERT INTO users (name, email, password, verification_token)
             VALUES (?, ?, ?, ?)
-        "); // we use ???? in VALUES because we don't know the values that user will type into
-        $stmt->execute([ // we use trim to remove spaces around 
+        "); 
+        $stmt->execute([  
             trim($name),
             strtolower(trim($email)),
             password_hash($password, PASSWORD_BCRYPT),
@@ -86,11 +86,11 @@ class User
         return self::findById((int) $db->lastInsertId());
     }
 
-    public function markEmailAsVerified(): bool // doesn't accept parameter, returns boolean
+    public function markEmailAsVerified(): bool 
     {
-        if ($this->id === null) return false; // if id is null return false
+        if ($this->id === null) return false; 
 
-        $db = Database::pdo(); // using method pdo from Database class
+        $db = Database::pdo(); 
         $stmt = $db->prepare("
             UPDATE users
             SET email_verified_at = NOW(), verification_token = NULL
@@ -98,7 +98,7 @@ class User
         ");
         $stmt->execute([$this->id]);
 
-        return $stmt->rowCount() > 0; // rowCount, counts how many rows have changed, if changes are > 0 , then return true or false
+        return $stmt->rowCount() > 0; 
     }
 
     public function updatePassword(string $newPassword): bool
@@ -159,7 +159,7 @@ class User
         return $this->status === 'blocked';
     }
 
-    public function toArray(): array //converets object user in array, so that it can be returned like JSON in API
+    public function toArray(): array 
     {
         return [
             'id'                => $this->id,
@@ -170,8 +170,8 @@ class User
         ];
     }
 
-    private static function fromRow(array $row): self // database returns array, but we ned objects so we can work with methods
-    { //created null objects and it fills them with data from array
+    private static function fromRow(array $row): self 
+    { 
         $user = new self();
         $user->id                 = (int) $row['id'];
         $user->name               = $row['name'];

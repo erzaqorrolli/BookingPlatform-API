@@ -273,3 +273,16 @@ Router::get('/api/superadmin/financial-stats', [SuperAdminController::class, 'fi
 Router::get('/api/companies/{companyId}/customers/export-vcard', [CustomerController::class, 'exportVCard']);
 
 Router::get('/api/companies/{companyId}/customers/{id}', [CustomerController::class, 'show']);
+
+Router::post('/api/companies/{companyId}/send-email-by-tag', [CompanyController::class, 'sendEmailToTaggedCustomers']);
+
+Router::post('/api/support-tickets', [SupportController::class, 'create']);
+
+Router::get('/api/support-tickets', [SupportController::class, 'index']);
+
+Router::get('/api/support-tickets/{id}', [SupportController::class, 'show']);
+
+Router::post('/api/support-tickets/{id}/reply', [SupportController::class, 'reply']);
+
+Router::put('/api/support-tickets/{id}/status', [SupportController::class, 'updateStatus']);
+
