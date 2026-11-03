@@ -288,3 +288,5 @@ Router::post('/api/support-tickets/{id}/reply', [SupportController::class, 'repl
 
 Router::put('/api/support-tickets/{id}/status', [SupportController::class, 'updateStatus']);
 
+Router::post('/api/superadmin/impersonate/{companyId}', [SuperAdminController::class, 'impersonate']);
+

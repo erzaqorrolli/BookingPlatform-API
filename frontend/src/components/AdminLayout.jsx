@@ -8,6 +8,7 @@ import NotificationBell from './NotificationBell';
 import GlobalSearch from './GlobalSearch';
 
 const menuItems = [
+  // ... (të gjitha menuItems mbeten të njëjta)
   {
     label: 'Dashboard',
     path: '/admin',
@@ -53,8 +54,8 @@ const menuItems = [
       </svg>
     ),
     roles: ['superadmin'],
-},
-{
+  },
+  {
     label: 'Support',
     path: '/admin/support',
     icon: (
@@ -63,8 +64,8 @@ const menuItems = [
       </svg>
     ),
     roles: ['owner', 'admin', 'manager', 'staff'],
-},
-    {
+  },
+  {
     label: 'Calendar',
     path: '/admin/calendar',
     icon: (
@@ -237,6 +238,7 @@ const menuItems = [
 ];
 
 const settingsItems = [
+  // ... (të gjitha settingsItems mbeten të njëjta)
   {
     label: 'Working Hours',
     path: '/admin/working-hours',
@@ -331,12 +333,23 @@ export default function AdminLayout({ children }) {
   const { theme, toggleTheme } = useTheme();
   const role = useRole();
 
+  // KONTROLLI PËR IMPERSONATION
+  const isImpersonating = localStorage.getItem('is_impersonating') === 'true';
+
   const visibleMenuItems = menuItems.filter((item) => item.roles.includes(role));
   const visibleSettingsItems = settingsItems.filter((item) => item.roles.includes(role));
 
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+
+  const handleReturnToSuperAdmin = () => {
+    localStorage.removeItem('is_impersonating');
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('user');
+    window.location.href = '/login';
   };
 
   return (
@@ -452,6 +465,14 @@ export default function AdminLayout({ children }) {
                       <p className="text-sm font-medium text-slate-900 dark:text-white">{user?.name}</p>
                       <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{user?.email}</p>
                     </div>
+
+                    {/* BUTONI PËR T'U KTHYER SI SUPER ADMIN */}
+                    {isImpersonating && (
+                      <button onClick={handleReturnToSuperAdmin} className="w-full text-left px-4 py-2 text-sm text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20">
+                        Return to Super Admin
+                      </button>
+                    )}
+
                     <Link to="/admin/settings" className="block px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700" onClick={() => setUserMenuOpen(false)}>Settings</Link>
                     <button onClick={handleLogout} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20">Logout</button>
                   </div>

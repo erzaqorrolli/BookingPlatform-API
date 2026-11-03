@@ -25,7 +25,7 @@ export function AuthProvider({ children }) {
   const clearAuthSession = () => {
     sessionStorage.removeItem('activeCompanyId');
     localStorage.removeItem('activeCompanyId');
-    localStorage.removeItem('user'); // Fshijmë user-in nga localStorage
+    localStorage.removeItem('user'); 
     setUser(null);
   };
 
@@ -51,12 +51,16 @@ export function AuthProvider({ children }) {
       return;
     }
 
-    // Nëse e kemi user-in e ruajtur, e vendosim menjëherë (për shpejtësi)
     const savedUser = localStorage.getItem('user');
     if (savedUser) {
       try {
         setUser(JSON.parse(savedUser));
       } catch (e) {}
+    }
+
+    if (localStorage.getItem('is_impersonating') === 'true') {
+      setLoading(false);
+      return;
     }
 
     api.get('/auth/me')

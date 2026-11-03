@@ -162,20 +162,20 @@ if (!function_exists('get_auth_token')) {
 }
 
 if (!function_exists('auth_user_id')) {
-    function auth_user_id(): ?int
-    {
-        $token = get_auth_token();
-        if (!$token) {
-            return null;
-        }
+   function auth_user_id(): ?int
+{
+    $token = get_bearer_token();
+    if (!$token) return null;
 
-        $payload = jwt_decode($token);
-        if (!$payload) {
-            return null;
-        }
+    $payload = jwt_decode($token);
+    if (!$payload || empty($payload['uid'])) return null;
 
-        return isset($payload['uid']) ? (int) $payload['uid'] : null;
+    if (!empty($payload['is_impersonating'])) {
+        return (int) $payload['uid'];
     }
+
+    return (int) $payload['uid'];
+}
 }
 
 if (!function_exists('auth_payload')) {

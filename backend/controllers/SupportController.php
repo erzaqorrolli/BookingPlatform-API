@@ -197,4 +197,59 @@ class SupportController
     json_ok(['message' => 'Status updated and client notified']);
 }
 
+          public function impersonate (array $params): void{
+
+
+            $uid=auth_user_id();
+            if(!$uid)json_err('Unauthorized',401);
+            
+            $db=Database::pdo();
+
+            $stmt=$db->prepare("
+            SELECT r.name
+            FROM company_user cu 
+            JOIN roles r ON r.id = cu.role_id
+            WHERE cu.user_id=? AND r.name ='superadmin'
+            LIMIT 1
+
+            ");
+
+            $stmt->execute([$uid]);
+            if(!$stmt->fetchColumn()) {
+                json_err('Forbidden: Only superadmin can impersonate',403);
+
+            }
+            $companyId=(int) $params['companyId'];
+            $stmt=$db->prepare("SELECT u.* FROM users u 
+            JOIN company_user cu ON cu.user_id = u.id
+            JOIN roles r ON r.id = cu.role_id
+            WHERE cu.company_id = ? AND r.name = 'owner' LIMIT 1");
+
+            $stmt->execute([$companyId]);
+
+            $owner=$stmt->fetch();
+
+            if(!$owner){
+                json_err('Company owner not found',404);
+            }
+
+            $accessExpiresIn=3600;
+            $accessToken = jwt_encode(['uid' => (int) $owner['id'],'exp' => time() + $accessExpiresIn]);
+
+            $refreshToken = \App\Models\RefreshToken::create((int) $owner['id']);
+
+            json_ok([
+            'user' => [
+                'id' => (int) $owner['id'],
+                'name'=> $owner['name'],
+                'email'=> $owner['email'],
+            ],
+            'access_token'=>$accessToken,
+            'refresh_token'=>$refreshToken,
+            'expires_in'=>$accessExpiresIn,
+
+            ]);
+
+            }
+
     }

@@ -97,13 +97,29 @@ class Company
 
     public static function userBelongsTo(int $userId, int $companyId): bool
     {
-        $db = Database::pdo();
-        $stmt = $db->prepare("
-            SELECT 1 FROM company_user
-            WHERE user_id = ? AND company_id = ?
-        ");
-        $stmt->execute([$userId, $companyId]);
-        return (bool) $stmt->fetch();
+        $db=Database::pdo();
+
+        $stmt=$db->prepare(" SELECT 1 FROM company_user
+        WHERE user_id = ? AND company_id = ?
+        LIMIT 1");
+
+        $stmt->execute([$userId,$companyId]);
+
+            if($stmt->fetchColumn()){
+                return true;
+            }
+
+            $stmt = $db->prepare(" SELECT 1 FROM company_user cu 
+            JOIN roles r ON r.id = cu.role_id
+            WHERE cu.user_id = ? AND LOWER(r.name) = 'superadmin' 
+            LIMIT 1");
+
+            $stmt->execute([$userId]);
+            if($stmt->fetchColumn()){
+                return true;
+            }
+            return false;
+        
     }
 
     public static function userRole(int $userId, int $companyId): ?string

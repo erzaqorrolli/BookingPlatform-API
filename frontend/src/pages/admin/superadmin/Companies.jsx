@@ -25,6 +25,48 @@ export default function Companies() {
     loadCompanies();
   }, []);
 
+   const handleImpersonate = async (company) => {
+    const { value: reason } = await Swal.fire({
+      title: 'Login as Company?',
+      text: `You are about to login as "${company.name}". You will be able to see and manage their data.`,
+      input: 'textarea',
+      inputLabel: 'Reason for impersonating (optional)',
+      inputPlaceholder: 'Type the reason here...',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, login as',
+      confirmButtonColor: '#d97706',
+      cancelButtonText: 'Cancel',
+    });
+
+    if (!reason) return; 
+
+    try {
+      Swal.fire({
+        title: 'Logging in...',
+        text: 'Please wait',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading(),
+      });
+
+      const res = await api.post(`/superadmin/impersonate/${company.id}`, { reason });
+      const data = res.data.data || res.data;
+
+      localStorage.setItem('auth_token', data.access_token);
+      localStorage.setItem('refresh_token', data.refresh_token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      localStorage.setItem('is_impersonating', 'true');
+
+      window.location.href = '/admin';
+      window.location.reload();
+    } catch (err) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: err.response?.data?.error || 'Failed to impersonate',
+      });
+    }
+  };
   const handleToggleStatus = async (company) => {
     const newStatus = company.status === 'blocked' ? 'active' : 'blocked';
 
@@ -108,7 +150,6 @@ export default function Companies() {
   };
 
   const handleDelete = async (company) => {
-    
     const result = await Swal.fire({
       title: 'Delete company?',
       html: `Are you sure you want to delete <b>"${company.name}"</b>?<br/><span class="text-sm text-gray-500">This action can't be undone and it will delete all data.</span>`,
@@ -174,7 +215,6 @@ export default function Companies() {
 
   return (
     <div className="space-y-6">
-      
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
@@ -298,13 +338,23 @@ export default function Companies() {
                       )}
                     </td>
                     <td className="px-5 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-3">
                         <Link
                           to={`/admin/superadmin/companies/${c.id}`}
                           className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
                         >
                           View
                         </Link>
+                        
+                        {c.slug !== 'platform-admin' && (
+                          <button
+                            onClick={() => handleImpersonate(c)}
+                            className="text-xs font-medium text-amber-600 dark:text-amber-400 hover:underline"
+                          >
+                            Login as
+                          </button>
+                        )}
+
                         <button
                           onClick={() => handleToggleStatus(c)}
                           className={`text-xs font-medium ${
