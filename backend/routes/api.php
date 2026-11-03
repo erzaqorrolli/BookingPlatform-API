@@ -23,6 +23,7 @@ use App\Controllers\GoogleCalendarController;
 use App\Controllers\PayrollController;
 use App\Controllers\NotificationController;
 use App\Controllers\SupportController;
+use App\Controllers\BillingController;
 
 
 Router::get('/api/health', function() {
@@ -289,4 +290,14 @@ Router::post('/api/support-tickets/{id}/reply', [SupportController::class, 'repl
 Router::put('/api/support-tickets/{id}/status', [SupportController::class, 'updateStatus']);
 
 Router::post('/api/superadmin/impersonate/{companyId}', [SuperAdminController::class, 'impersonate']);
+
+Router::get('/api/superadmin/platform-invoices', [BillingController::class, 'index']);
+
+Router::post('/api/superadmin/platform-invoices', [BillingController::class, 'store']);
+
+Router::put('/api/superadmin/platform-invoices/{id}/paid', [BillingController::class, 'markPaid']);
+
+Router::get('/api/companies/{companyId}/platform-invoices', [BillingController::class, 'myInvoices']);
+
+Router::get('/api/superadmin/companies', [SuperAdminController::class, 'companies']);
 

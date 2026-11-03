@@ -82,6 +82,10 @@ import Financials from './pages/admin/superadmin/Financials';
 import SupportTickets from './pages/admin/superadmin/SupportTickets';
 import SupportForm from './pages/admin/SupportForm';
 import MyTickets from './pages/admin/MyTickets';
+import Billing from './pages/admin/superadmin/Billing';
+import MyBilling from './pages/admin/MyBilling';
+
+
 
 //children is a special prop that react fill it automaticlly with everything that stays between tags <x> example </x>
 
@@ -192,7 +196,11 @@ export default function App() {
               <Route path="/admin/superadmin/financials" element={<ProtectedPage allowed={['superadmin']}><Financials /></ProtectedPage>} />
               <Route path="/admin/superadmin/support" element={<ProtectedPage allowed={['superadmin']}><SupportTickets /></ProtectedPage>} />
             <Route path="/admin/support" element={<ProtectedPage allowed={['owner', 'admin', 'manager', 'staff']}><MyTickets /></ProtectedPage>} />
-              <Route path="/admin/superadmin/support-tickets" element={<ProtectedPage allowed={['superadmin']}><SupportTickets /></ProtectedPage>} /> </Routes>
+              <Route path="/admin/superadmin/support-tickets" element={<ProtectedPage allowed={['superadmin']}><SupportTickets /></ProtectedPage>} /> 
+              <Route path="/admin/superadmin/billing" element={<ProtectedPage allowed={['superadmin']}><Billing /></ProtectedPage>} />
+              <Route path="/admin/billing" element={<ProtectedPage allowed={['owner', 'admin']}><MyBilling /></ProtectedPage>} />
+        
+              </Routes>
             <Toaster 
               position="bottom-right" 
               toastOptions={{
