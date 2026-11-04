@@ -145,6 +145,7 @@ Router::post('/api/companies/{companyId}/bookings/{bookingId}/invoice', [Invoice
 Router::put('/api/companies/{companyId}/invoices/{id}/status', [InvoiceController::class, 'updateStatus']);
 Router::delete('/api/companies/{companyId}/invoices/{id}', [InvoiceController::class, 'destroy']);
 
+Router::get('/api/companies/{companyId}/customers/export-vcard', [CustomerController::class, 'exportVCard']);
 Router::get('/api/companies/{companyId}/customers/{id}', [CustomerController::class, 'show']);
 
 Router::post('/api/contact', [ContactController::class, 'store']);
@@ -273,10 +274,6 @@ Router::put('/api/companies/{companyId}/customers/{id}/quick-update', [CustomerC
 
 Router::get('/api/superadmin/financial-stats', [SuperAdminController::class, 'financialStats']);
 
-Router::get('/api/companies/{companyId}/customers/export-vcard', [CustomerController::class, 'exportVCard']);
-
-Router::get('/api/companies/{companyId}/customers/{id}', [CustomerController::class, 'show']);
-
 Router::post('/api/companies/{companyId}/send-email-by-tag', [CompanyController::class, 'sendEmailToTaggedCustomers']);
 
 Router::post('/api/support-tickets', [SupportController::class, 'create']);
@@ -302,5 +299,4 @@ Router::get('/api/companies/{companyId}/platform-invoices', [BillingController::
 Router::get('/api/superadmin/companies', [SuperAdminController::class, 'companies']);
 
 Router::get('/api/companies/{companyId}/audit-logs', [CompanyController::class, 'companyLogs']);
-
 

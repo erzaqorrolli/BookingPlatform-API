@@ -129,7 +129,6 @@ export default function App() {
               <Route path="/book/:slug" element={<BookingWizard />} />
               <Route path="/booking-success/:id" element={<BookingSuccess />} />  
 
-              {/* auth routes */}
               <Route path="/login" element={<Login />} />
               <Route path="/register" element ={<Register />} />
               <Route path="/register-business" element={<RegisterBusiness />} />
@@ -196,7 +195,7 @@ export default function App() {
               <Route path="/staff/invoices/:id" element={<ProtectedRoute><StaffLayout><StaffInvoiceView /></StaffLayout></ProtectedRoute>} />
               <Route path="/admin/superadmin/financials" element={<ProtectedPage allowed={['superadmin']}><Financials /></ProtectedPage>} />
               <Route path="/admin/superadmin/support" element={<ProtectedPage allowed={['superadmin']}><SupportTickets /></ProtectedPage>} />
-            <Route path="/admin/support" element={<ProtectedPage allowed={['owner', 'admin', 'manager', 'staff']}><MyTickets /></ProtectedPage>} />
+              <Route path="/admin/support" element={<ProtectedPage allowed={['owner', 'admin', 'manager', 'staff']}><MyTickets /></ProtectedPage>} />
               <Route path="/admin/superadmin/support-tickets" element={<ProtectedPage allowed={['superadmin']}><SupportTickets /></ProtectedPage>} /> 
               <Route path="/admin/superadmin/billing" element={<ProtectedPage allowed={['superadmin']}><Billing /></ProtectedPage>} />
               <Route path="/admin/billing" element={<ProtectedPage allowed={['owner', 'admin']}><MyBilling /></ProtectedPage>} />

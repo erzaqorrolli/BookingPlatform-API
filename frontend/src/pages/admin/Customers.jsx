@@ -46,25 +46,24 @@ export default function Customers() {
     );
   });
 
-  const handleExportContacts = () => {
-    const token = localStorage.getItem('auth_token');
-    const url = `${import.meta.env.VITE_API_URL}/api/companies/${activeCompany.id}/customers/export-vcard`;
-    
-    fetch(url, {
-        headers: { 'Authorization': `Bearer ${token}` }
-    })
-    .then(res => {
-        if (!res.ok) throw new Error('Export failed');
-        return res.blob();
-    })
-    .then(blob => {
+const handleExportContacts = async () => {
+    try {
+        const res = await api.get(`/companies/${activeCompany.id}/customers/export-vcard`, {
+            responseType: 'blob' 
+        });
+
+        const url = window.URL.createObjectURL(new Blob([res.data]));
         const link = document.createElement('a');
-        link.href = window.URL.createObjectURL(blob);
-        link.download = `clients-${activeCompany.id}-${new Date().toISOString().split('T')[0]}.vcf`;
+        link.href = url;
+        link.setAttribute('download', `clients-${activeCompany.id}.vcf`);
+        document.body.appendChild(link);
         link.click();
-    })
-    .catch(err => alert('Failed to export contacts: ' + err.message));
-  };
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+    } catch (err) {
+        alert('Failed to export contacts: ' + (err.response?.data?.error || err.message));
+    }
+};
 
   const updateCustomerField = async (customerId, field, value) => {
     try {

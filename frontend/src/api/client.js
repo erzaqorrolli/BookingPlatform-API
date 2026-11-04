@@ -15,8 +15,12 @@ export const getCookie = (name) => {
   return match ? decodeURIComponent(match[1]) : ''; 
 };
 
+const apiBaseUrl = import.meta.env.VITE_API_URL
+  .replace(/\/+$/, '')
+  .replace(/\/api$/i, '');
+
 const api = axios.create({ 
-baseURL: `${import.meta.env.VITE_API_URL}/api`,
+baseURL: `${apiBaseUrl}/api`,
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
