@@ -100,7 +100,6 @@ export default function StaffBookings() {
           </p>
         </div>
         
-        {/* Butoni për manual booking */}
         <button 
           onClick={() => setIsModalOpen(true)}
           className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition flex items-center gap-2 text-sm font-semibold shadow-sm"
@@ -206,7 +205,7 @@ export default function StaffBookings() {
                     <td className="px-5 py-4 text-right">
                       {canManage ? (
                         <div className="flex items-center justify-end gap-2">
-                          {!b.staff_name && (
+                          {!b.staff_id && (
                             <button
                               onClick={() => handleClaim(b.id)}
                               className="px-3 py-1.5 text-xs font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-lg transition"
@@ -239,7 +238,6 @@ export default function StaffBookings() {
         </div>
       )}
 
-      {/* Manual Booking Modal */}
       {isModalOpen && (
         <ManualBookingModal 
             companyId={activeCompany.id} 

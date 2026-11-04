@@ -301,3 +301,6 @@ Router::get('/api/companies/{companyId}/platform-invoices', [BillingController::
 
 Router::get('/api/superadmin/companies', [SuperAdminController::class, 'companies']);
 
+Router::get('/api/companies/{companyId}/audit-logs', [CompanyController::class, 'companyLogs']);
+
+

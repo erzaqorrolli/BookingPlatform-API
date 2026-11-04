@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
+import Swal from 'sweetalert2';
 
 const BOOKING_STATUS = {
   pending:   { label: 'Waiting',   color: 'bg-amber-100 text-amber-700' },
@@ -32,6 +33,50 @@ export default function CustomerDetail() {
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));
   }, [activeCompany, id]);
+  const handleDelete = async () => {
+    if (!data?.customer?.name) return;
+
+    const result = await Swal.fire({
+      title: 'Delete client?',
+      text: `Are you sure you want to delete "${data.customer.name}"? This action cannot be undone.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: 'Yes, delete!',
+      cancelButtonText: 'Cancel',
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      Swal.fire({
+        title: 'Deleting...',
+        text: 'Please wait',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading(),
+      });
+
+      await api.delete(`/companies/${activeCompany.id}/customers/${id}`);
+      
+      Swal.fire({
+        icon: 'success',
+        title: 'Deleted!',
+        text: 'Client deleted successfully.',
+        timer: 1500,
+        showConfirmButton: false,
+      }).then(() => {
+        window.location.href = '/admin/customers';
+      });
+      
+    } catch (err) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: err.response?.data?.error || 'Failed to delete customer',
+      });
+    }
+  };
 
   if (loading) {
     return (
@@ -66,22 +111,33 @@ export default function CustomerDetail() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </Link>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            {customer.name}
-            {Number(customer.is_vip) === 1 && (
-              <span className="inline-flex items-center" title={`VIP · ${customer.total_bookings} bookings`}>
-                <svg className="w-5 h-5 text-amber-500" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z" />
-                </svg>
-              </span>
-            )}
-          </h1>
-          <p className="text-sm text-slate-500">Client details and history</p>
+        <div className="flex-1 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+              {customer.name}
+              {Number(customer.is_vip) === 1 && (
+                <span className="inline-flex items-center" title={`VIP · ${customer.total_bookings} bookings`}>
+                  <svg className="w-5 h-5 text-amber-500" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z" />
+                  </svg>
+                </span>
+              )}
+            </h1>
+            <p className="text-sm text-slate-500">Client details and history</p>
+          </div>
+          
+          <button
+            onClick={handleDelete}
+            className="px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition text-sm font-medium flex items-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            Delete Client
+          </button>
         </div>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white rounded-xl border border-slate-200 p-5">
           <p className="text-sm text-slate-500 mb-1">Total Bookings</p>
@@ -97,7 +153,6 @@ export default function CustomerDetail() {
         </div>
       </div>
 
-      {/* Info + Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Client info */}
         <div className="lg:col-span-1 bg-white rounded-xl border border-slate-200 p-6">
@@ -127,7 +182,6 @@ export default function CustomerDetail() {
           </div>
         </div>
 
-        {/* Bookings */}
         <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-200">
             <h2 className="text-lg font-semibold text-slate-900">Bookings</h2>
@@ -178,7 +232,6 @@ export default function CustomerDetail() {
         </div>
       </div>
 
-      {/* Invoices */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-slate-900">Invoices</h2>

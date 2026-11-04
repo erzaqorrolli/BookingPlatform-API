@@ -975,6 +975,34 @@ class CompanyController {
         ]);
     }
 
+    public function companyLogs(array $params): void{
+
+    $uid=auth_user_id();
+    if(!$uid) json_err('Unauthorized',401);
+
+    $companyId=(int) $params['companyId'];
+
+    if(!Company::userBelongsTo($uid,$companyId)){
+        json_err('Forbidden',403);
+    }
+
+    $role=Company::userRole($uid,$companyId);
+    if(!in_array($role,['owner','admin'])){
+        json_err('Forbidden',403);
+    }
+
+    $db=Database::pdo();
+    $stmt=$db->prepare(" SELECT al.*, u.name AS user_name ,u.email AS user_email
+    FROM audit_logs al 
+    LEFT JOIN users u ON u.id = al.user_id
+    WHERE al.company_id=? 
+    ORDER BY al.created_at DESC
+    LIMIT 100");
+
+    $stmt->execute([$companyId]);
+
+    json_ok($stmt->fetchAll(\PDO::FETCH_ASSOC));
+    }
      
 }
   

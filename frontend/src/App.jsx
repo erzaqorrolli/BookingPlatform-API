@@ -84,6 +84,7 @@ import SupportForm from './pages/admin/SupportForm';
 import MyTickets from './pages/admin/MyTickets';
 import Billing from './pages/admin/superadmin/Billing';
 import MyBilling from './pages/admin/MyBilling';
+import CompanyAuditLogs from './pages/admin/CompanyAuditLogs';
 
 
 
@@ -199,6 +200,7 @@ export default function App() {
               <Route path="/admin/superadmin/support-tickets" element={<ProtectedPage allowed={['superadmin']}><SupportTickets /></ProtectedPage>} /> 
               <Route path="/admin/superadmin/billing" element={<ProtectedPage allowed={['superadmin']}><Billing /></ProtectedPage>} />
               <Route path="/admin/billing" element={<ProtectedPage allowed={['owner', 'admin']}><MyBilling /></ProtectedPage>} />
+              <Route path="/admin/activity-log" element={<ProtectedPage allowed={['owner', 'admin']}><CompanyAuditLogs /></ProtectedPage>} />
         
               </Routes>
             <Toaster 

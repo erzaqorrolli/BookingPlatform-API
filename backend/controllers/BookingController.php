@@ -11,6 +11,8 @@ use App\Models\Discount;
 use App\Config\Database;
 use App\Utils\Mailer;
 use App\Models\Invoice;
+use App\Models\AuditLog;
+
 
 class BookingController
 {
@@ -36,10 +38,12 @@ class BookingController
                 c.phone AS customer_phone,
                 c.is_vip, 
                 c.needs_ada_help,
-                s.name AS service_name
+                s.name AS service_name,
+                staff.name AS staff_name
             FROM bookings b
             JOIN customers c ON c.id = b.customer_id
             JOIN services s ON s.id = b.service_id
+            LEFT JOIN users staff ON staff.id = b.staff_id
             WHERE b.company_id = ?
         ";
 
@@ -709,7 +713,14 @@ class BookingController
                     );
                 }
             }
-              
+                 AuditLog::log(
+            $uid, 
+            'booking.status_update', 
+            'booking', 
+            $bookingId, 
+            ['company_id' => $companyId, 'status' => $status]
+        );
+
                 if ($status === 'cancelled') {
             $this->notifyWaitlist($booking->company_id, $booking->service_id, $booking->booking_date);
         }
@@ -916,53 +927,55 @@ class BookingController
 
     public function claimBooking(array $params): void
     {
-        $uid = auth_user_id();
-        if (!$uid) json_err('Unauthorized', 401);
+       $uid = auth_user_id();
 
-        $companyId = (int) $params['companyId'];
-        $bookingId = (int) $params['id'];
+       if(!$uid) json_err('Unauthorized',401);
 
-        $role = Company::userRole($uid, $companyId);
-        if (!in_array($role, ['staff', 'manager', 'admin'], true)) {
-            json_err('Forbidden', 403);
-        }
+       $companyId=(int) $params['companyId'];
+       $bookingId=(int) $params['id'];
 
-        $db = Database::pdo();
+       $role=Company::userRole($uid,$companyId);
+       if(!in_array($role,['staff','manager','admin'], true)){
+        json_err('Forbidden',403);
+       }
 
-        $booking = Booking::findById($bookingId);
-        if (!$booking || $booking->company_id !== $companyId) {
-            json_err('Booking not found', 404);
-        }
+       $db=Database::pdo();
 
-        if (!empty($booking->staff_id) && $booking->staff_id !== $uid) {
-            json_err('This booking is already claimed by someone else', 422);
-        }
+       $booking=Booking::findById($bookingId);
 
-        $stmt = $db->prepare("UPDATE bookings SET staff_id = ? WHERE id = ?");
-        $stmt->execute([$uid, $bookingId]);
+       if(!$booking || $booking->company_id !==$companyId){
+        json_err('Booking not found',404);
+       }
 
-        $staffStmt = $db->prepare("SELECT name FROM users WHERE id = ?");
-        $staffStmt->execute([$uid]);
+       if(!empty($booking->staff_id) && $booking->staff_id !==$uid){
+        json_err ('This booking is already claimed by someone else',422);
+       }
 
-        $staffName = $staffStmt->fetchColumn();
+       $stmt=$db->prepare("UPDATE bookings SET staff_id=?, status = 'confirmed' WHERE id=?");
+       $stmt->execute([$uid,$bookingId]);
 
-        \App\Models\Notification::notifyCompanyOwners(
-            $companyId,
-            'booking_claimed',
-            'Staff claimed a booking',
-            "{$staffName} accepted booking #{$booking->reference}",
-            "/admin/bookings"
-        );
+       $staffStmt=$db->prepare("SELECT name FROM users WHERE id =? ");
+       $staffStmt->execute([$uid]);
+       $staffName = $staffStmt->fetchColumn();
 
-        \App\Utils\WebSocket::notifyAll([
-            'type' => 'booking_claimed',
-            'message' => "{$staffName} accepted booking #{$booking->reference}",
-        ]);
 
-        json_ok([
-            'message' => 'Booking accepted successfully',
-            'booking' => Booking::findById($bookingId)->toArray()
-        ]);
+       \App\Models\Notification::notifyCompanyOwners(
+        $companyId,
+        'booking_claimed',
+        'Staff claimed a booking',
+        "{$staffName} accept booking #{$booking->reference}",
+        "/admin/bookings"
+       );
+
+       \App\Utils\WebSocket::notifyAll([
+        'type' => 'booking_claimed',
+        'message' => "{$staffName} accepted booking #{$booking->reference}",
+       ]);
+
+       json_ok([
+        'message'=>'Booking accepted successfully',
+        'booking'=> Booking::findById($bookingId)->toArray()
+       ]);
     }
 
     public function sendEmailToClient(array $params): void

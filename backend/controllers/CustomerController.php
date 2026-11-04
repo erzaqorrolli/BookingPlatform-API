@@ -95,22 +95,39 @@ class CustomerController
     public function destroy(array $params): void
     {
         $uid = auth_user_id();
-        if (!$uid) json_err('Unauthorized', 401);
 
-        $companyId = (int) $params['companyId'];
-        $id = (int) $params['id'];
+        if(!$uid) json_err('Unauthorized',401);
 
-        $role = Company::userRole($uid, $companyId);
-        if (!in_array($role, ['owner', 'admin'])) {
-            json_err('Forbidden', 403);
+        $companyId=(int) $params['companyId'];
+        $id=(int) $params['id'];
+
+        $role = Company::userRole($uid,$companyId);
+
+        if(!in_array($role,['owner','admin'])) {
+            json_err('Forbidden',403);
         }
 
-        $customer = Customer::findById($id);
-        if (!$customer || $customer->company_id !== $companyId) {
-            json_err('Customer not found', 404);
+        $customer=Customer::findById($id);
+
+        if(!$customer || $customer->company_id !== $companyId){
+            json_err('Customer not found',404);
+
         }
+
+        \App\Models\AuditLog::log(
+            $uid,
+            'customer.deleted',
+            'customer',
+            $id,
+            [
+                'company_id' => $companyId,
+                'name'=> $customer->name,
+                'email'=> $customer->email,
+            ]
+        );
 
         $customer->delete();
+
         json_ok(['message' => 'Customer deleted']);
     }
 
