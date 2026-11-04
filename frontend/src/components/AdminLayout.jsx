@@ -8,7 +8,6 @@ import NotificationBell from './NotificationBell';
 import GlobalSearch from './GlobalSearch';
 
 const menuItems = [
-  // ... (të gjitha menuItems mbeten të njëjta)
   {
     label: 'Dashboard',
     path: '/admin',
@@ -134,7 +133,7 @@ const menuItems = [
       </svg>
     ),
     roles: ['superadmin'],
-},
+  },
   {
     label: 'Companies',
     path: '/admin/superadmin/companies',
@@ -234,7 +233,7 @@ const menuItems = [
       </svg>
     ),
     roles: ['owner', 'admin'],
-},
+  },
   {
     label: 'Marketing',
     path: '/admin/marketing',
@@ -264,7 +263,7 @@ const menuItems = [
       </svg>
     ),
     roles: ['owner', 'admin'],
-},
+  },
 ];
 
 const settingsItems = [
@@ -362,7 +361,6 @@ export default function AdminLayout({ children }) {
   const { theme, toggleTheme } = useTheme();
   const role = useRole();
 
-  // KONTROLLI PËR IMPERSONATION
   const isImpersonating = localStorage.getItem('is_impersonating') === 'true';
 
   const visibleMenuItems = menuItems.filter((item) => item.roles.includes(role));
@@ -374,11 +372,31 @@ export default function AdminLayout({ children }) {
   };
 
   const handleReturnToSuperAdmin = () => {
-    localStorage.removeItem('is_impersonating');
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem('user');
-    window.location.href = '/login';
+    const originalToken = localStorage.getItem('superadmin_token');
+    const originalRefresh = localStorage.getItem('superadmin_refresh');
+    const originalUser = localStorage.getItem('superadmin_user');
+    const originalCompanyId = localStorage.getItem('superadmin_company_id'); 
+
+    if (originalToken && originalUser) {
+      localStorage.setItem('auth_token', originalToken);
+      localStorage.setItem('refresh_token', originalRefresh);
+      localStorage.setItem('user', originalUser);
+      if (originalCompanyId) {
+        localStorage.setItem('activeCompanyId', originalCompanyId); 
+      }
+      
+      localStorage.removeItem('is_impersonating');
+      localStorage.removeItem('superadmin_token');
+      localStorage.removeItem('superadmin_refresh');
+      localStorage.removeItem('superadmin_user');
+      localStorage.removeItem('superadmin_company_id'); 
+
+      window.location.href = '/admin/superadmin';
+      window.location.reload();
+    } else {
+      logout();
+      navigate('/login');
+    }
   };
 
   return (

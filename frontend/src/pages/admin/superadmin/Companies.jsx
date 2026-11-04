@@ -25,7 +25,7 @@ export default function Companies() {
     loadCompanies();
   }, []);
 
-   const handleImpersonate = async (company) => {
+  const handleImpersonate = async (company) => {
     const { value: reason } = await Swal.fire({
       title: 'Login as Company?',
       text: `You are about to login as "${company.name}". You will be able to see and manage their data.`,
@@ -39,15 +39,18 @@ export default function Companies() {
       cancelButtonText: 'Cancel',
     });
 
-    if (!reason) return; 
+    if (!reason) return;
 
     try {
-      Swal.fire({
-        title: 'Logging in...',
-        text: 'Please wait',
-        allowOutsideClick: false,
-        didOpen: () => Swal.showLoading(),
-      });
+      const originalToken = localStorage.getItem('auth_token');
+      const originalRefresh = localStorage.getItem('refresh_token');
+      const originalUser = localStorage.getItem('user');
+      const originalCompanyId = localStorage.getItem('activeCompanyId'); 
+
+      localStorage.setItem('superadmin_token', originalToken);
+      localStorage.setItem('superadmin_refresh', originalRefresh);
+      localStorage.setItem('superadmin_user', originalUser);
+      localStorage.setItem('superadmin_company_id', originalCompanyId); 
 
       const res = await api.post(`/superadmin/impersonate/${company.id}`, { reason });
       const data = res.data.data || res.data;
@@ -55,6 +58,7 @@ export default function Companies() {
       localStorage.setItem('auth_token', data.access_token);
       localStorage.setItem('refresh_token', data.refresh_token);
       localStorage.setItem('user', JSON.stringify(data.user));
+      localStorage.setItem('activeCompanyId', company.id); 
       localStorage.setItem('is_impersonating', 'true');
 
       window.location.href = '/admin';
