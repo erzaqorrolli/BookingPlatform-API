@@ -23,16 +23,18 @@ class SupportController
             json_err('Company, subject and message are required', 422);
         }
 
+        $role=Company::userRole($uid,$companyId);
+        
         $db = Database::pdo();
         
         
         $stmt = $db->prepare("
-            INSERT INTO support_tickets (company_id, user_id, subject, message, priority)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO support_tickets (company_id, user_id, subject, message, priority,created_by_role)
+            VALUES (?, ?, ?, ?, ?, ?)
         ");
         
         
-        $stmt->execute([$companyId, $uid, $subject, $message, $priority]);
+        $stmt->execute([$companyId, $uid, $subject, $message, $priority,$role]);
 
         
         json_ok(['message' => 'Ticket created successfully', 'id' => (int) $db->lastInsertId()], 201);
@@ -59,9 +61,9 @@ class SupportController
             $companyId = (int) ($_GET['company_id'] ?? 0);
             if (!$companyId) json_err('Company ID is required', 422);
 
-            $stmt = $db->prepare("
-                SELECT t.*, c.name as company_name, u.name as user_name 
-                FROM support_tickets t 
+                $stmt = $db->prepare("
+                SELECT t.*, c.name AS company_name, u.name AS user_name, u.email AS user_email
+                FROM support_tickets t
                 JOIN companies c ON c.id = t.company_id
                 JOIN users u ON u.id = t.user_id
                 WHERE t.company_id = ?
@@ -73,17 +75,16 @@ class SupportController
             return;
         }
 
-        $stmt = $db->query("
-            SELECT t.*, c.name as company_name, u.name as user_name 
-            FROM support_tickets t
-            JOIN companies c ON c.id = t.company_id
-            JOIN users u ON u.id = t.user_id
-            ORDER BY 
-                FIELD(t.status, 'open', 'in_progress', 'resolved', 'closed'),
-                FIELD(t.priority, 'urgent', 'high', 'normal', 'low'),
-                t.created_at DESC
-        ");
-
+                 $stmt = $db->query("
+                SELECT t.*, c.name AS company_name, u.name AS user_name, u.email AS user_email
+                FROM support_tickets t
+                JOIN companies c ON c.id = t.company_id
+                JOIN users u ON u.id = t.user_id
+                ORDER BY 
+                    FIELD(t.status, 'open', 'in_progress', 'resolved', 'closed'),
+                    FIELD(t.priority, 'urgent', 'high', 'normal', 'low'),
+                    t.created_at DESC
+            ");
         json_ok($stmt->fetchAll(\PDO::FETCH_ASSOC));
     }
 

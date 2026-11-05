@@ -54,6 +54,12 @@ export default function SupportTickets() {
         }
     };
 
+    const getCreatorLabel = (role) => {
+        if (role === 'owner') return '👑 Owner';
+        if (role === 'staff') return '👤 Staff';
+        return 'Admin';
+    };
+
     if (loading) return <div className="p-12 text-center text-slate-500">Loading tickets...</div>;
 
     return (
@@ -83,7 +89,6 @@ export default function SupportTickets() {
                                         t.priority === 'normal' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
                                     }`}>{t.priority}</span>
                                     
-                                    {/* Badge për statusin */}
                                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
                                         t.status === 'open' ? 'bg-amber-100 text-amber-700' :
                                         t.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
@@ -91,7 +96,13 @@ export default function SupportTickets() {
                                     }`}>{t.status}</span>
                                 </div>
                             </div>
-                            <div className="text-xs text-slate-500">{t.company_name}</div>
+                            
+                            <div className="flex items-center justify-between text-xs text-slate-500 mt-1">
+                                <span>{t.company_name}</span>
+                                <span className="text-[10px] px-1.5 py-0.5 bg-slate-100 rounded text-slate-600">
+                                    {getCreatorLabel(t.created_by_role)}
+                                </span>
+                            </div>
                         </div>
                     ))}
                 </div>
@@ -110,7 +121,15 @@ export default function SupportTickets() {
                                         selectedTicket.priority === 'normal' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
                                     }`}>{selectedTicket.priority}</span>
                                 </div>
-                                <p className="text-xs text-slate-500">From: {selectedTicket.company_name} ({selectedTicket.user_name})</p>
+                                
+                                <p className="text-xs text-slate-500 mt-1">
+                                    From: {selectedTicket.company_name} 
+                                    <span className="mx-1">·</span> 
+                                    {selectedTicket.user_name} ({selectedTicket.user_email})
+                                    <span className="ml-2 text-[10px] px-1.5 py-0.5 bg-indigo-50 text-indigo-600 rounded">
+                                        {getCreatorLabel(selectedTicket.created_by_role)}
+                                    </span>
+                                </p>
                             </div>
                             <select
                                 value={selectedTicket.status}

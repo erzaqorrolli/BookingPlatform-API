@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { X, Check, Plus, Minus } from 'lucide-react';
+import Swal from 'sweetalert2';
 
 const AVAILABLE_PERMISSIONS = [
   {
     category: 'Communications & Chat',
     items: [
       { key: 'staff_can_send_emails', label: 'Send email to client', description: 'Allow staff to send emails to clients.' },
+      { key: 'staff_can_contact_support', label: 'Contact platform support', description: 'Allow staff to open support tickets and chat with platform support.' }, 
     ]
   },
   {
@@ -33,7 +35,7 @@ export default function CreateRoleModal({ isOpen, onClose, onCreate }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [selectedPermissions, setSelectedPermissions] = useState([]);
-  const [expandedCategories, setExpandedCategories] = useState({});
+  const [expandedCategories, setExpandedCategories] = useState({ 'Communications & Chat': true });
   const [search, setSearch] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -49,8 +51,17 @@ export default function CreateRoleModal({ isOpen, onClose, onCreate }) {
     setExpandedCategories(prev => ({ ...prev, [categoryName]: !prev[categoryName] }));
   };
 
-  const handleSubmit = async () => {
-    if (!name.trim()) return alert('Role name is required');
+    const handleSubmit = async () => {
+    if (!name.trim()) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Role name is required',
+        text: 'Please enter a name for the role before creating it.',
+        confirmButtonColor: '#4f46e5',
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await onCreate(name, description, selectedPermissions);
@@ -59,6 +70,12 @@ export default function CreateRoleModal({ isOpen, onClose, onCreate }) {
       setSelectedPermissions([]);
       onClose();
     } catch (error) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: error.response?.data?.error || 'Failed to create role.',
+        confirmButtonColor: '#4f46e5',
+      });
     } finally {
       setIsSubmitting(false);
     }
