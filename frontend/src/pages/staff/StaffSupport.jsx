@@ -159,7 +159,7 @@ export default function StaffSupport() {
                                         type="text"
                                         value={replyMessage}
                                         onChange={(e) => setReplyMessage(e.target.value)}
-                                        placeholder="Shkruaj një përgjigje..."
+                                        placeholder="Write an answer..."
                                         className="flex-1 px-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                         onKeyPress={(e) => e.key === 'Enter' && sendReply()}
                                     />

@@ -1030,73 +1030,109 @@ class BookingController
     }
 
 
-        public function createManual(array $params): void{
+    public function createManual(array $params): void
+    {
         $uid = auth_user_id();
 
-        if(!$uid) json_err('Unauthorized',401);
+        if (!$uid) {
+            json_err('Unauthorized', 401);
+        }
 
-        $companyId=(int) $params['companyId'];
+        $companyId = (int) $params['companyId'];
 
-        $role=Company::userRole($uid,$companyId);
-        if(!in_array($role,['owner','admin','manager','staff'])){
-            json_err('Forbidden',403);
+        $role = Company::userRole($uid, $companyId);
+
+        if (!in_array($role, ['owner', 'admin', 'manager', 'staff'], true)) {
+            json_err('Forbidden', 403);
         }
 
         $input = input();
 
-        $serviceId=(int)($input['service_id'] ?? 0);
-        $date = trim((string)($input['booking_date'] ?? ''));
-        $startTime=trim((string) ($input['start_time'] ?? ''));
+        $serviceId = (int) ($input['service_id'] ?? 0);
+        $date = trim((string) ($input['booking_date'] ?? ''));
+        $startTime = trim((string) ($input['start_time'] ?? ''));
 
-        $name=trim((string)($input['name'] ?? ''));
-        $email=strtolower(trim((string) ($input['email']?? '')));
-        $phone=$input['phone']?? null;
+        $name = trim((string) ($input['name'] ?? ''));
+        $email = strtolower(trim((string) ($input['email'] ?? '')));
+        $phone = $input['phone'] ?? null;
 
-        if(!$serviceId || !$date || !$startTime || !$name){
-            json_err('Missing required fields',422);
+        if (!$serviceId || !$date || !$startTime || !$name) {
+            json_err('Missing required fields', 422);
         }
 
-        $dt = \DateTime::createFromFormat('Y-m-d',$date);
-        if(!$dt || $dt->format('Y-m-d') !==$date){
-            json_err('Invalid date format (YYYY-MM-DD)',422);
-        }
-        if(strlen($startTime)===5) $startTime .= ':00';
-        
-        $service = Service::findById($serviceId); 
-        if(!$service || $service->company_id !== $companyId){
-            json_err('Service not found',404);
+        $dt = \DateTime::createFromFormat('Y-m-d', $date);
+        if (!$dt || $dt->format('Y-m-d') !== $date) {
+            json_err('Invalid date format (YYYY-MM-DD)', 422);
         }
 
-        $db=Database::pdo();
+        if (strlen($startTime) === 5) {
+            $startTime .= ':00';
+        }
 
-        try{
+        $service = Service::findById($serviceId);
+
+        if (!$service || $service->company_id !== $companyId) {
+            json_err('Service not found', 404);
+        }
+
+        $db = Database::pdo();
+        $booking = null;
+
+        try {
             $db->beginTransaction();
 
             $customerId = Booking::findOrCreateCustomer($companyId, $name, $email, $phone);
             $booking = Booking::create($companyId, $customerId, $serviceId, [
-                'booking_date'=>$date,
-                'start_time'=>$startTime,
-                'total_price'=>(float)$service->price,
-                'notes'=>$input['notes'] ?? null,
-                'needs_assistance'=>0,
-                'assistance_notes'=>null,
+                'booking_date' => $date,
+                'start_time' => $startTime,
+                'total_price' => (float) $service->price,
+                'notes' => $input['notes'] ?? null,
+                'assistance_notes' => null,
             ]);
 
-            $db->prepare("UPDATE bookings SET staff_id=?, status = 'confirmed' WHERE id=?")
-            ->execute([$uid,$booking->id]);
+            $db->prepare("UPDATE bookings SET staff_id=?, status='confirmed' WHERE id=?")
+                ->execute([$uid, $booking->id]);
 
             $db->commit();
-        }catch(\Throwable $e){
-            if($db->inTransaction()) $db->rollBack();
-            json_err('Booking failed: ' . $e->getMessage(),500);
-        }        
+        } catch (\Throwable $e) {
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
+            json_err('Booking failed: ' . $e->getMessage(), 500);
+        }
+
+        try {
+            $inv = \App\Models\Invoice::createFromBooking($booking->id);
+
+            if ($inv) {
+                error_log('Manual booking invoice created:' . $inv->reference);
+            } else {
+                error_log('Manual booking invoice creation returned null');
+            }
+        } catch (\Throwable $e) {
+            error_log('Manual booking invoice failed:' . $e->getMessage());
+        }
+
+        AuditLog::log(
+            $uid,
+            'booking.created_manual',
+            'booking',
+            $booking->id,
+            [
+                'company_id' => $companyId,
+                'customer_name' => $name,
+                'service_name' => $service->name,
+                'date' => $date,
+                'time' => $startTime,
+            ]
+        );
+
         try {
             $notificationStmt = $db->prepare("
-                SELECT
-                    b.id, b.reference, b.booking_date, b.start_time, b.total_price,
-                    cu.name AS customer_name, cu.email AS customer_email,
-                    s.name AS service_name,
-                    u.name AS owner_name, u.email AS owner_email
+                SELECT b.id, b.reference, b.booking_date, b.start_time, b.total_price,
+                       cu.name AS customer_name, cu.email AS customer_email,
+                       s.name AS service_name,
+                       u.name AS owner_name, u.email AS owner_email
                 FROM bookings b
                 JOIN customers cu ON cu.id = b.customer_id
                 JOIN services s ON s.id = b.service_id
@@ -1106,6 +1142,7 @@ class BookingController
                 WHERE b.id = ?
                 LIMIT 1
             ");
+
             $notificationStmt->execute([$booking->id]);
             $notification = $notificationStmt->fetch();
 
@@ -1117,7 +1154,7 @@ class BookingController
                         $notification
                     );
                 }
-                
+
                 Mailer::sendNewBookingToOwner(
                     $notification['owner_email'],
                     $notification['owner_name'],
@@ -1125,9 +1162,11 @@ class BookingController
                 );
 
                 \App\Models\Notification::notifyCompanyOwners(
-                    $companyId, 'booking', 'Manual booking received',
+                    $companyId,
+                    'booking',
+                    'Manual booking received',
                     "{$name} booked {$service->name} on {$date} at {$startTime} (added by staff)",
-                    "/admin/bookings"
+                    '/admin/bookings'
                 );
 
                 \App\Utils\WebSocket::notifyAll([
@@ -1136,48 +1175,48 @@ class BookingController
                 ]);
             }
         } catch (\Throwable $e) {
-            error_log('Manual booking email failed: ' . $e->getMessage());
+            error_log('Manual booking email failed:' . $e->getMessage());
         }
-        
 
         json_ok([
-            'message'=>'Manual booking created successfully',
-            'booking'=> Booking::findById($booking->id)->toArray(),
-        ],201);
+            'message' => 'Manual booking created successfully',
+            'booking' => Booking::findById($booking->id)->toArray(),
+        ], 201);
     }
+       
 
-    public function joinWaitlist(): void{
+    public function joinWaitlist(): void
+    {
+        $input = input();
+        $companyId = (int) ($input['company_id'] ?? 0);
+        $serviceId = (int) ($input['service_id'] ?? 0);
+        $date = trim((string) ($input['booking_date'] ?? ''));
+        $name = trim((string) ($input['name'] ?? ''));
+        $email = strtolower(trim((string) ($input['email'] ?? '')));
+        $phone = $input['phone'] ?? null;
 
-    $input=input();
-    $companyId=(int)($input['company_id'] ?? 0);
-    $serviceId=(int)($int['service_id'] ?? 0);
-    $date=trim((string)($input['booking_date'] ?? 0));
-    $name=trim((string)($input['name']?? ''));
-    $email= strtolower(trim((string)($input['email'] ?? '')));
-    $phone = $input['phone'] ?? null;
+        if (!$companyId || !$serviceId || !$date || !$name || !$email) {
+            json_err('missing required fields', 422);
+        }
 
-    if(!$companyId || !$serviceId || !$date || !$name || !$email){
-        json_err('missing required fields',422);
-    }
+        $db = Database::pdo();
 
-    $db=Database::pdo();
+        $stmt = $db->prepare(
+            "SELECT id FROM waitlist WHERE company_id = ? AND service_id = ? AND booking_date = ? AND customer_email = ? AND status = 'waiting'"
+        );
+        $stmt->execute([$companyId, $serviceId, $date, $email]);
+        if ($stmt->fetch()) {
+            json_err('You are already on the waitlist for this date', 422);
+        }
 
-    $stmt=$db->prepare(" SELECT id FROM waitlist WHERE company_id=? AND service_id = ? AND booking_date=? AND customer_email = ? AND status = 'waiting'");
-    $stmt->execute([$companyId,$serviceId,$date,$email]);
-    if($stmt->fetch()){
-        json_err('You are already on the waitlist for this date',422);
-    }
+        $stmt = $db->prepare("
+            INSERT INTO waitlist (company_id, service_id, booking_date, customer_name, customer_email, customer_phone)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ");
 
-    $stmt=$db->prepare("
-    INSERT INTO waitlist (company_id,service_id,booking_date,customer_name,customer_email,customer_phone)
-    VALUES(?,?,?,?,?,?)
-    ");
+        $stmt->execute([$companyId, $serviceId, $date, $name, $email, $phone]);
 
-    $stmt->execute([$companyId,$serviceId,$date,$name,$email,$phone]);
-
-    json_ok(['message'=>'Added to waitlist successfully'],201);
-
-
+        json_ok(['message' => 'Added to waitlist successfully'], 201);
     }
 
     public function notifyWaitlist(int $companyId,int $serviceId,string $date): void{
