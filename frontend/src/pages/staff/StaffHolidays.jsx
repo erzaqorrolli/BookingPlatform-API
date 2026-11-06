@@ -55,7 +55,7 @@ export default function StaffHolidays() {
           </p>
         </div>
         <div className="bg-white border-2 border-dashed border-slate-200 rounded-xl p-12 text-center">
-          <div className="text-5xl mb-3">🏖️</div>
+          <div className="text-5xl mb-3">📅</div>
           <h3 className="text-lg font-semibold text-slate-900 mb-1">
             No upcoming holidays
           </h3>
@@ -88,31 +88,26 @@ export default function StaffHolidays() {
 function HolidayCard({ holiday }) {
   const daysLeft = holiday.days_left;
 
-  let colorClasses, badgeText, icon;
+  let colorClasses, badgeText;
+  const icon = '📅';
   if (daysLeft === 0) {
     colorClasses = 'border-red-300 bg-gradient-to-br from-red-50 to-orange-50';
     badgeText = 'Today!';
-    icon = '🎉';
   } else if (daysLeft === 1) {
     colorClasses = 'border-orange-300 bg-gradient-to-br from-orange-50 to-yellow-50';
     badgeText = 'Tomorrow';
-    icon = '🎊';
   } else if (daysLeft <= 3) {
     colorClasses = 'border-orange-200 bg-gradient-to-br from-orange-50 to-white';
     badgeText = `${daysLeft} days left`;
-    icon = '🎈';
   } else if (daysLeft <= 14) {
     colorClasses = 'border-amber-200 bg-gradient-to-br from-amber-50 to-white';
     badgeText = `${daysLeft} days left`;
-    icon = '📅';
   } else if (daysLeft <= 30) {
     colorClasses = 'border-emerald-200 bg-gradient-to-br from-emerald-50 to-white';
     badgeText = `${daysLeft} days left`;
-    icon = '🌴';
   } else {
     colorClasses = 'border-slate-200 bg-white';
     badgeText = `${daysLeft} days left`;
-    icon = '🏖️';
   }
 
   const formattedDate = new Date(holiday.date).toLocaleDateString('en-GB', {

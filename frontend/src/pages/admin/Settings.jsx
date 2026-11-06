@@ -27,7 +27,6 @@ export default function Settings() {
   const [smtpSaving, setSmtpSaving] = useState(false);
   const [testingEmail, setTestingEmail] = useState(false);
 
-  // States për Rolet e Reja
   const [customRoles, setCustomRoles] = useState([]);
   const [newRoleName, setNewRoleName] = useState('');
   const [isCreatingRole, setIsCreatingRole] = useState(false);
@@ -171,7 +170,6 @@ export default function Settings() {
         </p>
       </div>
 
-      {/* Company Info */}
       <div className="bg-white rounded-xl border border-slate-200 p-6">
         <h2 className="text-lg font-bold text-slate-900 mb-5">
           Company information
@@ -271,7 +269,6 @@ export default function Settings() {
         </form>
       </div>
 
-      {/* SMTP Settings */}
       <div className="bg-white rounded-xl border border-slate-200 p-6">
         <h2 className="text-lg font-bold text-slate-900 mb-2">
           Email Settings (SMTP)
@@ -361,7 +358,7 @@ export default function Settings() {
             type="text"
             value={newRoleName}
             onChange={(e) => setNewRoleName(e.target.value)}
-            placeholder="Emri i rolit të re (p.sh. Email Manager)"
+            placeholder="Role name(eg. Email Manager)"
             className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-indigo-500"
           />
           <button
@@ -378,7 +375,7 @@ export default function Settings() {
             <div key={role.id} className="p-4 border border-slate-200 rounded-lg bg-slate-50">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-bold text-slate-900">{role.name}</h3>
-                <span className="text-xs text-slate-500">{role.permissions.length} leje</span>
+                <span className="text-xs text-slate-500">{role.permissions.length} permissions</span>
               </div>
               
               <div className="flex items-center gap-4">
@@ -487,7 +484,6 @@ export default function Settings() {
         </form>
       </div>
 
-      {/* Danger Zone */}
       <div className="bg-white rounded-xl border-2 border-red-100 p-6">
         <h2 className="text-lg font-bold text-red-700 mb-2">Danger Zone</h2>
         <p className="text-sm text-slate-500 mb-4">
