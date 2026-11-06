@@ -48,13 +48,19 @@ public function destroy (array $params): void{
     $companyId = (int) $params['companyId'];
     $id = (int) $params['id'];
 
-    $role = Company::userRole($uid,$companyId); 
-    if(!in_array($role, ['owner', 'admin'])){
+    $role = Company::userRole($uid, $companyId);
+    if (!in_array($role, ['owner', 'admin', 'manager'], true)) {
         json_err('Forbidden',403);
     }
 
-    $holiday = new Holiday();
-    $holiday->delete($companyId, $id);
+    $holiday = Holiday::findById($id);
+    if (!$holiday || $holiday->company_id !== $companyId) {
+        json_err('Holiday not found', 404);
+    }
+
+    if (!$holiday->delete()) {
+        json_err('Failed to delete holiday', 500);
+    }
 
     json_ok(['message'=> 'Holiday deleted']);
 }

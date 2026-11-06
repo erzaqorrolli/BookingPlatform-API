@@ -318,7 +318,6 @@ class BookingController
 
         $happyHour = HappyHour::getActiveAt($companyId, $date, $startTime);
 
-        // --- FILLON KONTROLLI I KODIT TË ZBRITJES ---
         $discountCode = strtoupper(trim((string) ($input['discount_code'] ?? '')));
         $discount = null;
         
@@ -329,7 +328,6 @@ class BookingController
                 json_err('Invalid or expired discount code', 422);
             }
 
-            // 1. Kontrollo nëse kodi është vetëm për klientët e fjetur (Sleeping)
             if (!empty($discount->only_for_sleeping)) {
                 $stmt = $db->prepare("
                     SELECT MAX(b.booking_date) as last_booking
@@ -342,7 +340,7 @@ class BookingController
 
                 $isSleeping = false;
                 if (!$lastBooking) {
-                    $isSleeping = true; // Nuk ka bërë kurrë rezervim
+                    $isSleeping = true; 
                 } else {
                     $daysSinceLastBooking = (time() - strtotime($lastBooking)) / (60 * 60 * 24);
                     if ($daysSinceLastBooking > 30) {
@@ -355,12 +353,10 @@ class BookingController
                 }
             }
 
-            // 2. Kontrollo limitin total (usage_limit)
             if ($discount->usage_limit !== null && $discount->used_count >= $discount->usage_limit) {
                 json_err('This discount code has reached its total usage limit', 422);
             }
         }
-        // --- MBARON KONTROLLI I KODIT TË ZBRITJES ---
 
         $originalPrice = (float) $service->price;
         $finalPrice    = $originalPrice;
@@ -426,7 +422,6 @@ class BookingController
 
             if ($discount) {
                 $discount->incrementUsage();
-                // Regjistro përdorimin nga ky klient (nëse ke tabelë discount_usages)
                 $db->prepare("
                     INSERT INTO discount_usages (discount_id, customer_email) 
                     VALUES (?, ?)

@@ -130,11 +130,7 @@ export default function Holidays() {
                   </td>
                   <td className="px-5 py-4">
                     <button
-                      onClick={() => {
-                        console.log('🔵 deleteTarget:', h);
-                        console.log('🔵 id:', h.id);
-                        setDeleteTarget(h);
-                      }}
+                      onClick={() => setDeleteTarget(h)}
                       className="text-xs font-medium text-red-600 hover:bg-red-50 px-3 py-1.5 rounded transition"
                     >
                       Delete
