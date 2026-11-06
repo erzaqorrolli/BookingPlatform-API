@@ -109,13 +109,24 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     const refreshToken = localStorage.getItem('refresh_token');
-    try {
-      await api.post('/auth/logout', { refresh_token: refreshToken });
-    } catch {}
+    const csrfToken = getCsrfToken();
+
     clearAuthSession();
     localStorage.removeItem('auth_token');
     localStorage.removeItem('refresh_token');
     document.cookie = 'csrf_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+
+    if (refreshToken) {
+      try {
+        await api.post(
+          '/auth/logout',
+          { refresh_token: refreshToken },
+          { headers: csrfToken ? { 'X-CSRF-Token': csrfToken } : {} }
+        );
+      } catch (error) {
+        console.error('Failed to revoke refresh token during logout:', error);
+      }
+    }
   };
 
   return (

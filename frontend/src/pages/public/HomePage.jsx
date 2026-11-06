@@ -4,7 +4,7 @@ import api from '../../api/client';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function HomePage() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -15,11 +15,7 @@ export default function HomePage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const handleLogout = () => {
-    sessionStorage.removeItem('token');
-    sessionStorage.removeItem('activeCompanyId');
-    window.location.reload();
-  };
+  const handleLogout = () => logout();
 
   return (
     <div className="min-h-screen bg-slate-50">

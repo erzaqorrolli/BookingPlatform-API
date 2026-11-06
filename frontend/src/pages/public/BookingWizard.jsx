@@ -586,7 +586,7 @@ export default function BookingWizard() {
                   </div>
                 )}
 
-                {company.has_active_discount_codes && isSleeping && (
+                {company.has_active_discount_codes && (
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1.5">
                       Discount code (optional)
@@ -595,7 +595,7 @@ export default function BookingWizard() {
                       type="text"
                       value={form.discount_code}
                       onChange={(e) => setForm({ ...form, discount_code: e.target.value.toUpperCase() })}
-                      placeholder="DISCOUNTCODE"
+                      placeholder={isSleeping ? 'Enter the code sent to you by email' : 'Enter discount code'}
                       className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm font-mono focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none"
                     />
                   </div>
