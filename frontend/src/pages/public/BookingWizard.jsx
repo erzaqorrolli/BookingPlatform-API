@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../../api/client';
+import { createStripeCheckout } from '../../api/payments';
 
 export default function BookingWizard() {
   const { slug } = useParams();
@@ -109,7 +110,8 @@ export default function BookingWizard() {
       .finally(() => setLoadingSlots(false));
   }, [service, date, company?.id]);
 
-  const handleSubmit = async () => {
+  // --- FUNKSIONI I PËRDITËSUAR PËR PAGESËN (CASH ose CARD) ---
+  const processBooking = async (method) => {
     setError('');
     if (!isValidBookingDate(date)) {
       setError('Please choose a valid date');
@@ -118,6 +120,7 @@ export default function BookingWizard() {
 
     setSubmitting(true);
     try {
+      // 1. Krijo rezervimin në backend
       const r = await api.post('/public/bookings', {
         company_id: company.id,
         service_id: service.id,
@@ -130,13 +133,39 @@ export default function BookingWizard() {
         discount_code: form.discount_code,
         needs_assistance: form.needs_assistance ? 1 : 0,
         assistance_notes: form.assistance_notes || '',
+        payment_method: method, // <-- SHTUAR: 'cash' ose 'card'
       });
 
-      navigate(`/booking-success/${r.data.data.booking.id}`);
+      // Kontrollojmë strukturën e përgjigjes për të shmangur gabimin "undefined"
+      const responseData = r.data?.data || r.data;
+      const booking = responseData?.booking;
+
+      if (!booking || !booking.id) {
+        console.error("Përgjigja e backend-it:", r.data);
+        throw new Error("Rezervimi u krijua, por ID nuk u kthye nga serveri.");
+      }
+
+      const bookingId = booking.id;
+
+      // 2. Nëse zgjodhi CASH, ridrejto direkt te faqja e suksesit
+      if (method === 'cash') {
+        navigate(`/booking-success/${bookingId}`);
+        return;
+      }
+
+      // 3. Nëse zgjodhi CARD, krijo sesionin e Stripe dhe ridrejto
+      if (method === 'card') {
+        const paymentData = await createStripeCheckout(bookingId);
+        if (paymentData.checkout_url) {
+          window.location.href = paymentData.checkout_url;
+        } else {
+          throw new Error("Payment URL was not returned");
+        }
+      }
+
     } catch (err) {
-      setError(err.response?.data?.error || 'Booking failed');
-    } finally {
-      setSubmitting(false);
+      setError(err.response?.data?.error || err.message || 'Booking failed');
+      setSubmitting(false); 
     }
   };
 
@@ -251,6 +280,7 @@ export default function BookingWizard() {
             </div>
           )}
 
+          {/* HAPI 1: Zgjedhja e Shërbimit */}
           {step === 1 && (
             <div>
               <h2 className="text-lg font-bold text-slate-900 mb-4">
@@ -296,6 +326,7 @@ export default function BookingWizard() {
             </div>
           )}
 
+          {/* HAPI 2: Zgjedhja e Datës */}
           {step === 2 && service && (
             <div>
               <h2 className="text-lg font-bold text-slate-900 mb-4">
@@ -351,6 +382,7 @@ export default function BookingWizard() {
             </div>
           )}
 
+          {/* HAPI 3: Zgjedhja e Orarit */}
           {step === 3 && service && date && (
             <div>
               <h2 className="text-lg font-bold text-slate-900 mb-4">
@@ -463,6 +495,7 @@ export default function BookingWizard() {
             </div>
           )}
 
+          {/* HAPI 4: Informacioni dhe Butonat e Pagesës */}
           {step === 4 && selectedSlot && (
             <div>
               <h2 className="text-lg font-bold text-slate-900 mb-4">
@@ -602,20 +635,37 @@ export default function BookingWizard() {
                 )}
               </div>
 
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => setStep(3)}
-                  className="px-4 py-2.5 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 text-sm font-medium"
-                >
-                  ← Back
-                </button>
-                <button
-                  onClick={handleSubmit}
-                  disabled={submitting || !form.name || !form.email}
-                  className="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 text-sm font-medium"
-                >
-                  {submitting ? 'Sending...' : 'Confirm booking'}
-                </button>
+              <div className="mt-8 border-t border-slate-200 pt-6">
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button
+                    onClick={() => setStep(3)}
+                    className="px-5 py-3 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 text-sm font-medium transition"
+                  >
+                    ← Back
+                  </button>
+
+                  <button
+                    onClick={() => processBooking('cash')}
+                    disabled={submitting || !form.name || !form.email}
+                    className="flex-1 px-5 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 text-sm font-semibold transition flex items-center justify-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    {submitting ? 'Processing...' : 'Pay with Cash'}
+                  </button>
+
+                  <button
+                    onClick={() => processBooking('card')}
+                    disabled={submitting || !form.name || !form.email}
+                    className="flex-1 px-5 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 text-sm font-semibold transition flex items-center justify-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                    </svg>
+                    {submitting ? 'Processing...' : 'Pay with Card'}
+                  </button>
+                </div>
               </div>
             </div>
           )}

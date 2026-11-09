@@ -26,7 +26,8 @@ class Booking
     public ?string $cancelled_at = null;
     public ?string $cancelled_by = null;
     public ?string $cancellation_reason = null;
-
+    public ?string $payment_method = 'cash';
+    public ?string $stripe_payment_intent = null;
 
 
 
@@ -114,41 +115,47 @@ class Booking
         return $reference;
     }
 
-    public static function create(int $companyId, int $customerId, int $serviceId, array $data): self
-    {
-        $db = Database::pdo();
+   public static function create(int $companyId, int $customerId, int $serviceId, array $data): self
+{
+    $db = Database::pdo();
+    $service = Service::findById($serviceId);
 
-        $service = Service::findById($serviceId);
-        if (!$service) throw new \RuntimeException('Service not found');
+    if (!$service) throw new \RuntimeException('Service not found');
 
-        $endTime = $data['end_time'] ?? date(
-            'H:i:s',
-            strtotime($data['start_time']) + $service->duration_minutes * 60
-        );
+    $endTime = $data['end_time'] ?? date(
+        'H:i:s',
+        strtotime($data['start_time']) + $service->duration_minutes * 60
+    );
 
-        $reference = self::generateReference();
+    $reference = self::generateReference();
 
-        $stmt = $db->prepare("
-            INSERT INTO bookings
-                (reference, company_id, customer_id, service_id, booking_date, start_time, end_time, total_price, notes, needs_assistance, assistance_notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?,?,?)
-        ");
-        $stmt->execute([
-            $reference,
-            $companyId,
-            $customerId,
-            $serviceId,
-            $data['booking_date'],
-            $data['start_time'],
-            $endTime,
-            $data['total_price'] ?? $service->price,
-            $data['notes'] ?? null,
-            !empty($data['needs_assistance']) ? 1:0,
-            $data['assistance_notes'] ?? null,
-        ]);
+    $status        = $data['status'] ?? 'pending';
+    $paymentMethod = $data['payment_method'] ?? 'cash';
 
-        return self::findById((int) $db->lastInsertId());
-    }
+    $stmt = $db->prepare("
+        INSERT INTO bookings 
+            (reference, company_id, customer_id, service_id, booking_date, start_time, end_time, status, total_price, notes, needs_assistance, assistance_notes, payment_method)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ");
+
+    $stmt->execute([
+        $reference,
+        $companyId,
+        $customerId,
+        $serviceId,
+        $data['booking_date'],
+        $data['start_time'],
+        $endTime,
+        $status,
+        $data['total_price'] ?? $service->price,
+        $data['notes'] ?? null,
+        !empty($data['needs_assistance']) ? 1 : 0,
+        $data['assistance_notes'] ?? null,
+        $paymentMethod,
+    ]);
+
+    return self::findById((int) $db->lastInsertId());
+}
 
     public function cancelByCustomer(string $reason): bool
 {
@@ -173,6 +180,13 @@ class Booking
 
         $allowed = ['pending', 'confirmed', 'cancelled', 'completed', 'no_show'];
         if (!in_array($status, $allowed)) return false;
+        if (
+            $this->payment_method === 'card'
+            && !$this->stripe_payment_intent
+            && !in_array($status, ['pending', 'cancelled'], true)
+        ) {
+            return false;
+        }
 
         $db = Database::pdo();
         $stmt = $db->prepare("UPDATE bookings SET status = ? WHERE id = ?");
@@ -227,6 +241,7 @@ class Booking
             'cancelled_at' => $this->cancelled_at, 
             'cancelled_by' => $this->cancelled_by,
             'cancellation_reason' => $this->cancellation_reason,
+            'payment_method' => $this->payment_method,
         ];
     }
 
@@ -250,6 +265,37 @@ class Booking
         $b->cancelled_at=$row['cancelled_at'] ?? null;
         $b->cancelled_by=$row['cancelled_by'] ?? null;
         $b->cancellation_reason=$row['cancellation_reason'] ?? null;
+        $b->payment_method = $row['payment_method'] ?? 'cash';
+        $b->stripe_payment_intent = $row['stripe_payment_intent'] ?? null;
         return $b;
     }
+
+   public function setStripeSession(string $sessionId): bool {
+
+   if($this->id === null) return false;;
+   $db=Database::pdo();
+   $stmt=$db->prepare("UPDATE bookings SET stripe_session_id = ? WHERE id= ?");
+   return $stmt->execute([$sessionId,$this->id]);
+
+   }
+
+   public function confirmPayment(string $paymentIntentId): bool{
+
+    if($this->id === null)return false;
+    $db=Database::pdo();
+    $stmt = $db->prepare("UPDATE bookings SET status = 'confirmed', stripe_payment_intent= ? WHERE id =?");
+
+    return $stmt->execute([$paymentIntentId,$this->id]);
+   }
+
+   public static function findBySessionId(string $sessionId): ?self{
+
+   $db=Database::pdo();
+   $stmt=$db->prepare("SELECT * FROM bookings WHERE stripe_session_id = ? LIMIT 1");
+   $stmt->execute([$sessionId]);
+   $row=$stmt->fetch();
+   return $row ? self::fromRow($row): null;
+   }
+
+
 }

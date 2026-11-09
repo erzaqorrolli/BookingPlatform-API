@@ -24,6 +24,7 @@ use App\Controllers\PayrollController;
 use App\Controllers\NotificationController;
 use App\Controllers\SupportController;
 use App\Controllers\BillingController;
+use App\Controllers\PaymentController;
 
 
 Router::get('/api/health', function() {
@@ -299,4 +300,8 @@ Router::get('/api/companies/{companyId}/platform-invoices', [BillingController::
 Router::get('/api/superadmin/companies', [SuperAdminController::class, 'companies']);
 
 Router::get('/api/companies/{companyId}/audit-logs', [CompanyController::class, 'companyLogs']);
+
+Router::post('/api/payments/checkout', [PaymentController::class, 'createCheckout']);
+
+Router::post('/api/payments/webhook',  [PaymentController::class, 'webhook']);
 

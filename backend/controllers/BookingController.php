@@ -182,7 +182,10 @@ class BookingController
             SELECT start_time, end_time
             FROM bookings
             WHERE company_id = ? AND service_id = ? AND booking_date = ?
-              AND status IN ('pending', 'confirmed')
+              AND (
+                    (status = 'pending' AND COALESCE(payment_method, 'cash') <> 'card')
+                 OR (status = 'confirmed' AND (COALESCE(payment_method, 'cash') <> 'card' OR stripe_payment_intent IS NOT NULL))
+              )
         ");
         $stmt->execute([$companyId, $serviceId, $date]);
         $existing = $stmt->fetchAll();
@@ -241,337 +244,351 @@ class BookingController
     }
 
     public function createPublic(): void
-    {
-        $input = input();
+{
+    $input = input();
 
-        $companyId = (int) ($input['company_id'] ?? 0);
-        $serviceId = (int) ($input['service_id'] ?? 0);
-        $date      = trim((string) ($input['booking_date'] ?? ''));
-        $startTime = trim((string) ($input['start_time'] ?? ''));
+    $companyId = (int) ($input['company_id'] ?? 0);
+    $serviceId = (int) ($input['service_id'] ?? 0);
+    $date      = trim((string) ($input['booking_date'] ?? ''));
+    $startTime = trim((string) ($input['start_time'] ?? ''));
 
-        $name  = trim((string) ($input['name'] ?? ''));
-        $email = strtolower(trim((string) ($input['email'] ?? '')));
-        $phone = $input['phone'] ?? null;
+    $name  = trim((string) ($input['name'] ?? ''));
+    $email = strtolower(trim((string) ($input['email'] ?? '')));
+    $phone = $input['phone'] ?? null;
 
-        if (!$companyId || !$serviceId || !$date || !$startTime) {
-            json_err('Missing required fields', 422);
-        }
-        if (!$name || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            json_err('Valid name and email required', 422);
-        }
+    // --- MËNYRA E PAGESËS (CASH ose CARD) ---
+    $paymentMethod = strtolower(trim((string) ($input['payment_method'] ?? 'cash')));
+    if (!in_array($paymentMethod, ['cash', 'card'], true)) {
+        $paymentMethod = 'cash';
+    }
+    // -----------------------------------------
 
-        $dt = \DateTime::createFromFormat('Y-m-d', $date);
-        if (!$dt || $dt->format('Y-m-d') !== $date) {
-            json_err('Invalid date format (YYYY-MM-DD)', 422);
-        }
+    if (!$companyId || !$serviceId || !$date || !$startTime) {
+        json_err('Missing required fields', 422);
+    }
+    if (!$name || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        json_err('Valid name and email required', 422);
+    }
 
-        if (!preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $startTime)) {
-            json_err('Invalid start_time format (HH:MM)', 422);
-        }
-        if (strlen($startTime) === 5) {
-            $startTime .= ':00';
-        }
+    $dt = \DateTime::createFromFormat('Y-m-d', $date);
+    if (!$dt || $dt->format('Y-m-d') !== $date) {
+        json_err('Invalid date format (YYYY-MM-DD)', 422);
+    }
 
-        $service = Service::findById($serviceId);
-        if (!$service || $service->company_id !== $companyId || !$service->active) {
-            json_err('Service not found', 404);
-        }
+    if (!preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $startTime)) {
+        json_err('Invalid start_time format (HH:MM)', 422);
+    }
+    if (strlen($startTime) === 5) {
+        $startTime .= ':00';
+    }
 
-        $dur = max(1, (int) $service->duration_minutes);
-        $cap = max(1, (int) $service->capacity);
+    $service = Service::findById($serviceId);
+    if (!$service || $service->company_id !== $companyId || !$service->active) {
+        json_err('Service not found', 404);
+    }
 
-        $db = Database::pdo();
+    $dur = max(1, (int) $service->duration_minutes);
+    $cap = max(1, (int) $service->capacity);
 
-        if ($dt < new \DateTime('today')) {
-            json_err('Booking date cannot be in the past', 422);
-        }
+    $db = Database::pdo();
 
-        $dow = (int) $dt->format('w');
-        $hoursStmt = $db->prepare("SELECT open_time, close_time, is_closed FROM working_hours WHERE company_id = ? AND day_of_week = ? LIMIT 1");
-        $hoursStmt->execute([$companyId, $dow]);
-        $hours = $hoursStmt->fetch();
-        if (!$hours || (int) $hours['is_closed'] === 1 || empty($hours['open_time']) || empty($hours['close_time'])) {
-            json_err('Company is closed on this date', 422);
-        }
+    if ($dt < new \DateTime('today')) {
+        json_err('Booking date cannot be in the past', 422);
+    }
 
-        $holidayStmt = $db->prepare("
-            SELECT 1 FROM holidays
-            WHERE company_id = ?
-              AND (date = ? OR (is_recurring = 1 AND DATE_FORMAT(date, '%m-%d') = DATE_FORMAT(?, '%m-%d')))
-            LIMIT 1
-        ");
-        $holidayStmt->execute([$companyId, $date, $date]);
-        if ($holidayStmt->fetchColumn()) {
-            json_err('Company is closed on this date', 422);
-        }
+    $dow = (int) $dt->format('w');
+    $hoursStmt = $db->prepare("SELECT open_time, close_time, is_closed FROM working_hours WHERE company_id = ? AND day_of_week = ? LIMIT 1");
+    $hoursStmt->execute([$companyId, $dow]);
+    $hours = $hoursStmt->fetch();
+    if (!$hours || (int) $hours['is_closed'] === 1 || empty($hours['open_time']) || empty($hours['close_time'])) {
+        json_err('Company is closed on this date', 422);
+    }
 
-        $startTs = strtotime("$date $startTime");
-        $endTs = $startTs + $dur * 60;
-        $openTs = strtotime("$date {$hours['open_time']}");
-        $closeTs = strtotime("$date {$hours['close_time']}");
-        if ($startTs === false || $openTs === false || $closeTs === false || $startTs < $openTs || $endTs > $closeTs) {
-            json_err('Selected time is outside working hours', 422);
-        }
-        if (($startTs - $openTs) % (15 * 60) !== 0) {
-            json_err('Selected time is not an available slot', 422);
-        }
+    $holidayStmt = $db->prepare("
+        SELECT 1 FROM holidays
+        WHERE company_id = ?
+          AND (date = ? OR (is_recurring = 1 AND DATE_FORMAT(date, '%m-%d') = DATE_FORMAT(?, '%m-%d')))
+        LIMIT 1
+    ");
+    $holidayStmt->execute([$companyId, $date, $date]);
+    if ($holidayStmt->fetchColumn()) {
+        json_err('Company is closed on this date', 422);
+    }
 
-        $happyHour = HappyHour::getActiveAt($companyId, $date, $startTime);
+    $startTs = strtotime("$date $startTime");
+    $endTs = $startTs + $dur * 60;
+    $openTs = strtotime("$date {$hours['open_time']}");
+    $closeTs = strtotime("$date {$hours['close_time']}");
+    if ($startTs === false || $openTs === false || $closeTs === false || $startTs < $openTs || $endTs > $closeTs) {
+        json_err('Selected time is outside working hours', 422);
+    }
+    if (($startTs - $openTs) % (15 * 60) !== 0) {
+        json_err('Selected time is not an available slot', 422);
+    }
 
-        $discountCode = strtoupper(trim((string) ($input['discount_code'] ?? '')));
-        $discount = null;
+    $happyHour = HappyHour::getActiveAt($companyId, $date, $startTime);
+
+    $discountCode = strtoupper(trim((string) ($input['discount_code'] ?? '')));
+    $discount = null;
+    
+    if ($discountCode !== '') {
+        $discount = Discount::findByCode($companyId, $discountCode, $date);
         
-        if ($discountCode !== '') {
-            $discount = Discount::findByCode($companyId, $discountCode, $date);
-            
-            if (!$discount) {
-                json_err('Invalid or expired discount code', 422);
-            }
-
-            if (!empty($discount->only_for_sleeping)) {
-                $stmt = $db->prepare("
-                    SELECT MAX(b.booking_date) as last_booking
-                    FROM bookings b
-                    JOIN customers c ON c.id = b.customer_id
-                    WHERE c.company_id = ? AND c.email = ? AND b.status != 'cancelled'
-                ");
-                $stmt->execute([$companyId, $email]);
-                $lastBooking = $stmt->fetchColumn();
-
-                $isSleeping = false;
-                if (!$lastBooking) {
-                    $isSleeping = true; 
-                } else {
-                    $daysSinceLastBooking = (time() - strtotime($lastBooking)) / (60 * 60 * 24);
-                    if ($daysSinceLastBooking > 30) {
-                        $isSleeping = true;
-                    }
-                }
-
-                if (!$isSleeping) {
-                    json_err('This code is only available for returning clients (sleeping clients)', 422);
-                }
-            }
-
-            if ($discount->usage_limit !== null && $discount->used_count >= $discount->usage_limit) {
-                json_err('This discount code has reached its total usage limit', 422);
-            }
+        if (!$discount) {
+            json_err('Invalid or expired discount code', 422);
         }
 
-        $originalPrice = (float) $service->price;
-        $finalPrice    = $originalPrice;
-        $discountPct   = 0;
-
-        if ($happyHour) {
-            $discountPct = (int) $happyHour->discount_percent;
-            $finalPrice  = round($originalPrice * (1 - $discountPct / 100), 2);
-        }
-
-        $discountAmount = 0;
-        if ($discount) {
-            $priceBeforeCode = $finalPrice;
-            $finalPrice = round($discount->applyTo($finalPrice), 2);
-            $discountAmount = round($priceBeforeCode - $finalPrice, 2);
-        }
-
-        $lockName = "booking:$companyId:$serviceId:$date";
-        $lockStmt = $db->prepare('SELECT GET_LOCK(?, 5)');
-        $lockStmt->execute([$lockName]);
-        if ((int) $lockStmt->fetchColumn() !== 1) {
-            json_err('Could not reserve the selected slot', 409);
-        }
-
-        $endTime = date('H:i:s', strtotime($startTime) + $dur * 60);
-
-        $stmt = $db->prepare("
-            SELECT COUNT(*) FROM bookings
-            WHERE company_id = ? AND service_id = ? AND booking_date = ?
-              AND status IN ('pending', 'confirmed')
-              AND start_time < ? AND end_time > ?
-        ");
-
-        try {
-            $db->beginTransaction();
-            $stmt->execute([$companyId, $serviceId, $date, $endTime, $startTime]);
-            $overlap = (int) $stmt->fetchColumn();
-
-            if ($overlap >= $cap) {
-                $db->rollBack();
-                $db->prepare('SELECT RELEASE_LOCK(?)')->execute([$lockName]);
-                json_err('Slot no longer available', 409);
-            }
-
-            $customerId = Booking::findOrCreateCustomer($companyId, $name, $email, $phone);
-
-            $booking = Booking::create($companyId, $customerId, $serviceId, [
-                'booking_date' => $date,
-                'start_time'   => $startTime,
-                'total_price'  => $finalPrice,
-                'notes'        => $input['notes'] ?? null,
-                'needs_assistance' => !empty($input['needs_assistance']) ? 1 : 0,
-                'assistance_notes' => $input['assistance_notes'] ?? null,
-            ]);
-            \App\Models\Customer::updateVipStatus($customerId);
-
-            $requestedStaffId = !empty($input['staff_id']) ? (int) $input['staff_id'] : null;
-
-            if ($requestedStaffId) {
-                $db->prepare("UPDATE bookings SET staff_id = ? WHERE id = ?")
-                   ->execute([$requestedStaffId, $booking->id]);
-            }
-
-            if ($discount) {
-                $discount->incrementUsage();
-                $db->prepare("
-                    INSERT INTO discount_usages (discount_id, customer_email) 
-                    VALUES (?, ?)
-                ")->execute([$discount->id, $email]);
-            }
-
-            $db->commit();
-        } catch (\Throwable $e) {
-            if ($db->inTransaction()) {
-                $db->rollBack();
-            }
-            throw $e;
-       } finally {
-            $db->prepare('SELECT RELEASE_LOCK(?)')->execute([$lockName]);
-        }
-
-        try {
-            $googleService = new \App\Services\GoogleCalendarService();
-
-            $bStmt = $db->prepare("
-                SELECT b.*,
-                       c.name AS customer_name,
-                       c.email AS customer_email,
-                       c.phone AS customer_phone,
-                       s.name AS service_name
+        if (!empty($discount->only_for_sleeping)) {
+            $stmt = $db->prepare("
+                SELECT MAX(b.booking_date) as last_booking
                 FROM bookings b
                 JOIN customers c ON c.id = b.customer_id
-                JOIN services s ON s.id = b.service_id
-                WHERE b.id = ?
-                LIMIT 1
+                WHERE c.company_id = ? AND c.email = ? AND b.status != 'cancelled'
             ");
-            $bStmt->execute([$booking->id]);
-            $fullBooking = $bStmt->fetch();
+            $stmt->execute([$companyId, $email]);
+            $lastBooking = $stmt->fetchColumn();
 
-            if ($fullBooking) {
-                $eventId = $googleService->createEvent($companyId, $fullBooking);
-                if ($eventId) {
-                    $db->prepare("UPDATE bookings SET google_event_id = ? WHERE id = ?")
-                       ->execute([$eventId, $booking->id]);
-                    error_log('Google Calendar: event created ' . $eventId . ' for ' . $booking->reference);
-                } else {
-                    error_log('Google Calendar: createEvent returned null for ' . $booking->reference);
+            $isSleeping = false;
+            if (!$lastBooking) {
+                $isSleeping = true; 
+            } else {
+                $daysSinceLastBooking = (time() - strtotime($lastBooking)) / (60 * 60 * 24);
+                if ($daysSinceLastBooking > 30) {
+                    $isSleeping = true;
                 }
             }
-        } catch (\Throwable $e) {
-            error_log('Google Calendar sync failed: ' . $e->getMessage());
-        }
 
-        try {
-            $inv = \App\Models\Invoice::createFromBooking($booking->id);
-            if ($inv) {
-                error_log('DEBUG: Invoice created: ' . $inv->reference);
-            } else {
-                error_log('DEBUG: createFromBooking returns NULL');
+            if (!$isSleeping) {
+                json_err('This code is only available for returning clients (sleeping clients)', 422);
             }
-        } catch (\Throwable $e) {
-            error_log('DEBUG: Exception: ' . $e->getMessage() . ' ne ' . $e->getFile() . ':' . $e->getLine());
         }
 
-        $notificationStmt = $db->prepare("
-            SELECT
-                b.id,
-                b.reference,
-                b.booking_date,
-                b.start_time,
-                b.total_price,
-                cu.name AS customer_name,
-                cu.email AS customer_email,
-                s.name AS service_name,
-                u.name AS owner_name,
-                u.email AS owner_email
+        if ($discount->usage_limit !== null && $discount->used_count >= $discount->usage_limit) {
+            json_err('This discount code has reached its total usage limit', 422);
+        }
+    }
+
+    $originalPrice = (float) $service->price;
+    $finalPrice    = $originalPrice;
+    $discountPct   = 0;
+
+    if ($happyHour) {
+        $discountPct = (int) $happyHour->discount_percent;
+        $finalPrice  = round($originalPrice * (1 - $discountPct / 100), 2);
+    }
+
+    $discountAmount = 0;
+    if ($discount) {
+        $priceBeforeCode = $finalPrice;
+        $finalPrice = round($discount->applyTo($finalPrice), 2);
+        $discountAmount = round($priceBeforeCode - $finalPrice, 2);
+    }
+
+    $lockName = "booking:$companyId:$serviceId:$date";
+    $lockStmt = $db->prepare('SELECT GET_LOCK(?, 5)');
+    $lockStmt->execute([$lockName]);
+    if ((int) $lockStmt->fetchColumn() !== 1) {
+        json_err('Could not reserve the selected slot', 409);
+    }
+
+    $endTime = date('H:i:s', strtotime($startTime) + $dur * 60);
+
+    $stmt = $db->prepare("
+        SELECT COUNT(*) FROM bookings
+        WHERE company_id = ? AND service_id = ? AND booking_date = ?
+          AND (
+                (status = 'pending' AND COALESCE(payment_method, 'cash') <> 'card')
+             OR (status = 'confirmed' AND (COALESCE(payment_method, 'cash') <> 'card' OR stripe_payment_intent IS NOT NULL))
+          )
+          AND start_time < ? AND end_time > ?
+    ");
+
+    try {
+        $db->beginTransaction();
+        $stmt->execute([$companyId, $serviceId, $date, $endTime, $startTime]);
+        $overlap = (int) $stmt->fetchColumn();
+
+        if ($overlap >= $cap) {
+            $db->rollBack();
+            $db->prepare('SELECT RELEASE_LOCK(?)')->execute([$lockName]);
+            json_err('Slot no longer available', 409);
+        }
+
+        $customerId = Booking::findOrCreateCustomer($companyId, $name, $email, $phone);
+
+        $initialStatus = ($paymentMethod === 'cash') ? 'confirmed' : 'pending';
+
+        $booking = Booking::create($companyId, $customerId, $serviceId, [
+            'booking_date' => $date,
+            'start_time'   => $startTime,
+            'total_price'  => $finalPrice,
+            'notes'        => $input['notes'] ?? null,
+            'needs_assistance' => !empty($input['needs_assistance']) ? 1 : 0,
+            'assistance_notes' => $input['assistance_notes'] ?? null,
+            'payment_method' => $paymentMethod,   
+            'status' => $initialStatus,            
+        ]);
+        
+        \App\Models\Customer::updateVipStatus($customerId);
+
+        $requestedStaffId = !empty($input['staff_id']) ? (int) $input['staff_id'] : null;
+
+        if ($requestedStaffId) {
+            $db->prepare("UPDATE bookings SET staff_id = ? WHERE id = ?")
+               ->execute([$requestedStaffId, $booking->id]);
+        }
+
+        if ($discount) {
+            $discount->incrementUsage();
+            $db->prepare("
+                INSERT INTO discount_usages (discount_id, customer_email) 
+                VALUES (?, ?)
+            ")->execute([$discount->id, $email]);
+        }
+
+        $db->commit();
+    } catch (\Throwable $e) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+        throw $e;
+   } finally {
+        $db->prepare('SELECT RELEASE_LOCK(?)')->execute([$lockName]);
+    }
+
+    try {
+        $googleService = new \App\Services\GoogleCalendarService();
+
+        $bStmt = $db->prepare("
+            SELECT b.*,
+                   c.name AS customer_name,
+                   c.email AS customer_email,
+                   c.phone AS customer_phone,
+                   s.name AS service_name
             FROM bookings b
-            JOIN customers cu ON cu.id = b.customer_id
+            JOIN customers c ON c.id = b.customer_id
             JOIN services s ON s.id = b.service_id
-            JOIN company_user companyOwner ON companyOwner.company_id = b.company_id
-            JOIN roles ownerRole ON ownerRole.id = companyOwner.role_id AND ownerRole.name = 'owner'
-            JOIN users u ON u.id = companyOwner.user_id
             WHERE b.id = ?
             LIMIT 1
         ");
-        $notificationStmt->execute([$booking->id]);
-        $notification = $notificationStmt->fetch();
+        $bStmt->execute([$booking->id]);
+        $fullBooking = $bStmt->fetch();
 
-        if ($notification) {
-            Mailer::sendBookingConfirmation(
-                $notification['customer_email'],
-                $notification['customer_name'],
-                $notification
-            );
-            Mailer::sendNewBookingToOwner(
-                $notification['owner_email'],
-                $notification['owner_name'],
-                $notification
-            );
-
-            \App\Models\Notification::notifyCompanyOwners(
-                $companyId,
-                'booking',
-                'New booking received',
-                "{$name} booked {$service->name} on {$date} at {$startTime}",
-                "/admin/bookings"
-            );
-
-            \App\Utils\WebSocket::notifyAll([
-                'type'    => 'booking_created',
-                'message' => "Booking i re: {$name} - {$service->name}",
-            ]);
-
-            if (!empty($input['needs_assistance'])) {
-                try {
-                    $priorityMessage = "<h2 style='color:#d97706;'>Priority booking</h2>
-                        <p>A client needs <strong>special assistance</strong> for this booking.</p>
-                        <p><strong>Referenca:</strong> {$notification['reference']}</p>
-                        <p><strong>Data:</strong> {$notification['booking_date']} në {$notification['start_time']}</p>
-                        <p><strong>Klienti:</strong> {$notification['customer_name']}</p>
-                        <p><strong>Email:</strong> {$notification['customer_email']}</p>
-                        <p><strong>Shërbimi:</strong> {$notification['service_name']}</p>";
-
-                    if (!empty($input['assistance_notes'])) {
-                        $priorityMessage .= "<p><strong>Notes from client:</strong> " 
-                            . htmlspecialchars($input['assistance_notes']) . "</p>";
-                    }
-
-                    $priorityMessage .= "<p style='margin-top:20px;padding:10px;background:#fef3c7;border-left:4px solid #d97706;'>
-                        <strong>Please treat this booking with high priority.</strong>
-                    </p>";
-
-                    Mailer::send(
-                        $notification['owner_email'],
-                        " Priority: This client needs assistance",
-                        $priorityMessage
-                    );
-                } catch (\Throwable $e) {
-                    error_log('Priority email failed: ' . $e->getMessage());
-                }
+        if ($fullBooking) {
+            $eventId = $googleService->createEvent($companyId, $fullBooking);
+            if ($eventId) {
+                $db->prepare("UPDATE bookings SET google_event_id = ? WHERE id = ?")
+                   ->execute([$eventId, $booking->id]);
+                error_log('Google Calendar: event created ' . $eventId . ' for ' . $booking->reference);
+            } else {
+                error_log('Google Calendar: createEvent returned null for ' . $booking->reference);
             }
         }
-
-        json_ok([
-            'message'          => 'Booking received',
-            'booking'          => $booking->toArray(),
-            'original_price'   => $originalPrice,
-            'final_price'      => $finalPrice,
-            'discount_percent' => $discountPct,
-            'happy_hour'       => $happyHour?->toArray(),
-            'discount_code'    => $discount?->code,
-            'discount_amount'  => $discountAmount,
-        ], 201);
+    } catch (\Throwable $e) {
+        error_log('Google Calendar sync failed: ' . $e->getMessage());
     }
 
+    try {
+        $inv = \App\Models\Invoice::createFromBooking($booking->id);
+        if ($inv) {
+            error_log('DEBUG: Invoice created: ' . $inv->reference);
+        } else {
+            error_log('DEBUG: createFromBooking returns NULL');
+        }
+    } catch (\Throwable $e) {
+        error_log('DEBUG: Exception: ' . $e->getMessage() . ' ne ' . $e->getFile() . ':' . $e->getLine());
+    }
+
+    $notificationStmt = $db->prepare("
+        SELECT
+            b.id,
+            b.reference,
+            b.booking_date,
+            b.start_time,
+            b.total_price,
+            cu.name AS customer_name,
+            cu.email AS customer_email,
+            s.name AS service_name,
+            u.name AS owner_name,
+            u.email AS owner_email
+        FROM bookings b
+        JOIN customers cu ON cu.id = b.customer_id
+        JOIN services s ON s.id = b.service_id
+        JOIN company_user companyOwner ON companyOwner.company_id = b.company_id
+        JOIN roles ownerRole ON ownerRole.id = companyOwner.role_id AND ownerRole.name = 'owner'
+        JOIN users u ON u.id = companyOwner.user_id
+        WHERE b.id = ?
+        LIMIT 1
+    ");
+    $notificationStmt->execute([$booking->id]);
+    $notification = $notificationStmt->fetch();
+
+    if ($notification) {
+        Mailer::sendBookingConfirmation(
+            $notification['customer_email'],
+            $notification['customer_name'],
+            $notification
+        );
+        Mailer::sendNewBookingToOwner(
+            $notification['owner_email'],
+            $notification['owner_name'],
+            $notification
+        );
+
+        \App\Models\Notification::notifyCompanyOwners(
+            $companyId,
+            'booking',
+            'New booking received',
+            "{$name} booked {$service->name} on {$date} at {$startTime}",
+            "/admin/bookings"
+        );
+
+        \App\Utils\WebSocket::notifyAll([
+            'type'    => 'booking_created',
+            'message' => "Booking i re: {$name} - {$service->name}",
+        ]);
+
+        if (!empty($input['needs_assistance'])) {
+            try {
+                $priorityMessage = "<h2 style='color:#d97706;'>Priority booking</h2>
+                    <p>A client needs <strong>special assistance</strong> for this booking.</p>
+                    <p><strong>Referenca:</strong> {$notification['reference']}</p>
+                    <p><strong>Data:</strong> {$notification['booking_date']} në {$notification['start_time']}</p>
+                    <p><strong>Klienti:</strong> {$notification['customer_name']}</p>
+                    <p><strong>Email:</strong> {$notification['customer_email']}</p>
+                    <p><strong>Shërbimi:</strong> {$notification['service_name']}</p>";
+
+                if (!empty($input['assistance_notes'])) {
+                    $priorityMessage .= "<p><strong>Notes from client:</strong> " 
+                        . htmlspecialchars($input['assistance_notes']) . "</p>";
+                }
+
+                $priorityMessage .= "<p style='margin-top:20px;padding:10px;background:#fef3c7;border-left:4px solid #d97706;'>
+                    <strong>Please treat this booking with high priority.</strong>
+                </p>";
+
+                Mailer::send(
+                    $notification['owner_email'],
+                    " Priority: This client needs assistance",
+                    $priorityMessage
+                );
+            } catch (\Throwable $e) {
+                error_log('Priority email failed: ' . $e->getMessage());
+            }
+        }
+    }
+
+    json_ok([
+        'message'          => 'Booking received',
+        'booking'          => $booking->toArray(),
+        'original_price'   => $originalPrice,
+        'final_price'      => $finalPrice,
+        'discount_percent' => $discountPct,
+        'happy_hour'       => $happyHour?->toArray(),
+        'discount_code'    => $discount?->code,
+        'discount_amount'  => $discountAmount,
+    ], 201);
+}
     public function calendarEvents(array $params): void
     {
         $uid = auth_user_id();
@@ -666,6 +683,15 @@ class BookingController
         $booking = Booking::findById($bookingId);
         if (!$booking || $booking->company_id !== $companyId) {
             json_err('Booking not found', 404);
+        }
+
+        if (
+            $booking->payment_method === 'card'
+            && !$booking->stripe_payment_intent
+            && $status !== 'pending'
+            && $status !== 'cancelled'
+        ) {
+            json_err('Online payment must be completed before approving this booking', 422);
         }
 
         $previousStatus = $booking->status;
@@ -942,8 +968,12 @@ class BookingController
         json_err('Booking not found',404);
        }
 
+       if ($booking->payment_method === 'card' && !$booking->stripe_payment_intent) {
+       json_err('Online payment must be completed before accepting this booking', 422);
+       }
+
        if(!empty($booking->staff_id) && $booking->staff_id !==$uid){
-        json_err ('This booking is already claimed by someone else',422);
+       json_err ('This booking is already claimed by someone else',422);
        }
 
        $stmt=$db->prepare("UPDATE bookings SET staff_id=?, status = 'confirmed' WHERE id=?");
