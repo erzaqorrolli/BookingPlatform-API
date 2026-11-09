@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
 import { Download } from 'lucide-react';
+import Swal from 'sweetalert2';
 
 const STATUS_COLORS = {
   pending: 'bg-amber-100 text-amber-700',
@@ -67,7 +68,18 @@ export default function Bookings() {
       );
       await loadBookings();
     } catch (err) {
-      alert(err.response?.data?.error || 'Change failed');
+      Swal.fire({
+        icon: 'error',
+        title: 'Cannot change status',
+        text: err.response?.data?.error || 'Something went wrong while changing the status.',
+        confirmButtonColor: '#4f46e5',
+        confirmButtonText: 'OK',
+        customClass: {
+          popup: 'rounded-2xl',
+          title: 'text-lg font-bold text-slate-900',
+          htmlContainer: 'text-sm text-slate-600',
+        }
+      });
     }
   };
 
@@ -87,7 +99,16 @@ export default function Bookings() {
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error(err);
-      alert('Failed to export CSV');
+      Swal.fire({
+        icon: 'error',
+        title: 'Export failed',
+        text: 'Could not export the CSV file. Please try again.',
+        confirmButtonColor: '#4f46e5',
+        confirmButtonText: 'OK',
+        customClass: {
+          popup: 'rounded-2xl',
+        }
+      });
     }
   };
 

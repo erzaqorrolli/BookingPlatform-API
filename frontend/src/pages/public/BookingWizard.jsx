@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../../api/client';
 import { createStripeCheckout } from '../../api/payments';
 
+
 export default function BookingWizard() {
   const { slug } = useParams();
   const navigate = useNavigate();
