@@ -305,3 +305,5 @@ Router::post('/api/payments/checkout', [PaymentController::class, 'createCheckou
 
 Router::post('/api/payments/webhook',  [PaymentController::class, 'webhook']);
 
+Router::get('/api/superadmin/payments', [SuperAdminController::class, 'payments']);
+

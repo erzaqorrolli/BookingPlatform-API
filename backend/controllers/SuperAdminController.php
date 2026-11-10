@@ -1152,6 +1152,42 @@ class SuperAdminController
     
     }
 
+
+    public function payments(): void{
+        try{
+            $db= \App\Config\Database::pdo();
+
+            $stmt=$db->prepare("
+            
+            SELECT 
+            b.id,
+            b.reference,
+            b.total_price AS amount,
+            b.payment_method,
+            b.status,
+            b.created_at,
+            c.name AS company_name,
+            cu.name AS customer_name,
+            cu.email AS customer_email,
+            FROM bookings b
+            JOIN companies c ON c.id = b.company_id
+            JOIN customers cu ON cu.id = b.customer_id
+            WHERE b.status IN ('confirmed','completed')
+            ORDER BY b.created-at DESC
+            LIMIT 500
+            ");
+
+            $stmt->execute();
+            $payments =$stmt->fetchAll();
+
+            echo json_encode(['success' => true, 'data'=>$payments]);
+
+        }catch(\Throwable $e){
+            http_response_code(500);
+            echo json_encode(['success' => false,'error' => $e->getMessage()]);
+        }
+    }
+    
     public function impersonate(array $params): void
     {
         $uid = auth_user_id();

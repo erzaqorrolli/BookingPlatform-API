@@ -242,6 +242,7 @@ class Booking
             'cancelled_by' => $this->cancelled_by,
             'cancellation_reason' => $this->cancellation_reason,
             'payment_method' => $this->payment_method,
+            'stripe_payment_intent' => $this->stripe_payment_intent,
         ];
     }
 

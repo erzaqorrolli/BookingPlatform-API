@@ -74,11 +74,6 @@ export default function Bookings() {
         text: err.response?.data?.error || 'Something went wrong while changing the status.',
         confirmButtonColor: '#4f46e5',
         confirmButtonText: 'OK',
-        customClass: {
-          popup: 'rounded-2xl',
-          title: 'text-lg font-bold text-slate-900',
-          htmlContainer: 'text-sm text-slate-600',
-        }
       });
     }
   };
@@ -105,9 +100,6 @@ export default function Bookings() {
         text: 'Could not export the CSV file. Please try again.',
         confirmButtonColor: '#4f46e5',
         confirmButtonText: 'OK',
-        customClass: {
-          popup: 'rounded-2xl',
-        }
       });
     }
   };
@@ -134,6 +126,32 @@ export default function Bookings() {
   const priorityCount = bookings.filter(
     (b) => Number(b.needs_assistance) === 1 && b.status !== 'completed'
   ).length;
+
+  // --- FUNKSION NDIHMËS PËR STATUSIN E PAGESËS ---
+  const getPaymentBadge = (booking) => {
+    // Nëse është bërë me kartë dhe ka payment_intent, do të thotë është paguar
+    if (booking.payment_method === 'card' && booking.stripe_payment_intent) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-emerald-100 text-emerald-700 rounded-full">
+          💳 Paid
+        </span>
+      );
+    }
+    // Nëse është bërë me kartë por nuk ka payment_intent, pret pagesën
+    if (booking.payment_method === 'card' && !booking.stripe_payment_intent) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-amber-100 text-amber-700 rounded-full">
+          ⏳ Unpaid
+        </span>
+      );
+    }
+    // Nëse është cash
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-slate-100 text-slate-700 rounded-full">
+        💵 Cash
+      </span>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -255,6 +273,7 @@ export default function Bookings() {
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Date</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Time</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Total</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Payment</th> {/* KOLONA E RE */}
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
                 <th className="text-right px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
               </tr>
@@ -322,6 +341,12 @@ export default function Bookings() {
                     <td className="px-5 py-4 text-sm font-medium text-slate-900">
                       €{parseFloat(b.total_price).toFixed(2)}
                     </td>
+                    
+                    {/* KOLONA E RE: STATUSI I PAGESËS */}
+                    <td className="px-5 py-4">
+                      {getPaymentBadge(b)}
+                    </td>
+
                     <td className="px-5 py-4">
                       <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_COLORS[b.status]}`}>
                         {STATUS_LABELS[b.status]}

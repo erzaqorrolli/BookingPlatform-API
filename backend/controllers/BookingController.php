@@ -63,7 +63,11 @@ class BookingController
 
         $stmt = $db->prepare($sql);
         $stmt->execute($paramsSql);
-        $bookings = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        $bookings = array_map(static function (array $booking): array {
+            $booking['payment_method'] = $booking['payment_method'] ?? 'cash';
+            $booking['stripe_payment_intent'] = $booking['stripe_payment_intent'] ?? null;
+            return $booking;
+        }, $stmt->fetchAll(\PDO::FETCH_ASSOC));
 
         json_ok($bookings);
     }

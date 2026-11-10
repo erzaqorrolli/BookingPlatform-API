@@ -72,7 +72,6 @@ export default function Financials() {
                 </table>
             </div>
 
-            {/* Të ardhurat mujore (Listë) */}
             <div className="bg-white rounded-xl border border-slate-200 p-6">
                 <h3 className="font-bold text-slate-900 mb-4">Revenue (Last 6 Months)</h3>
                 <div className="space-y-3">

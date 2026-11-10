@@ -86,7 +86,7 @@ import Billing from './pages/admin/superadmin/Billing';
 import MyBilling from './pages/admin/MyBilling';
 import CompanyAuditLogs from './pages/admin/CompanyAuditLogs';
 import StaffSupport from './pages/staff/StaffSupport';
-
+import Payments from './pages/admin/Payments';
 
 
 //children is a special prop that react fill it automaticlly with everything that stays between tags <x> example </x>
@@ -183,6 +183,8 @@ export default function App() {
               <Route path="/admin/superadmin/deletion-requests" element={<DeletionRequests />} />
               <Route path="/staff/schedule" element={<ProtectedRoute><StaffLayout><StaffSchedule /></StaffLayout></ProtectedRoute>} />
               <Route path="/staff/bookings" element={<ProtectedRoute><StaffLayout><StaffBookings /></StaffLayout></ProtectedRoute>} />
+               <Route path="/admin/payments" element={<ProtectedPage allowed={['owner','admin','manager']}><Payments /></ProtectedPage>} />
+
               <Route path="/staff/profile" element={<ProtectedRoute><StaffLayout><StaffProfile /></StaffLayout></ProtectedRoute>} />
               
               <Route path="/staff/my-role" element={<ProtectedRoute><StaffLayout><MyRole /></StaffLayout></ProtectedRoute>} />
