@@ -134,11 +134,11 @@ class Mailer
         <div style='background: #f8fafc; padding: 20px; border-radius: 12px; margin: 20px 0;'>
             <table style='width: 100%; font-size: 14px;'>
                 <tr><td style='color: #64748b; padding: 6px 0;'>Reference:</td><td style='font-weight: 600;'>$reference</td></tr>
-                <tr><td style='color: #64748b; padding: 6px 0;'>Klienti:</td><td style='font-weight: 600;'>{$booking['customer_name']}</td></tr>
+                <tr><td style='color: #64748b; padding: 6px 0;'>Client:</td><td style='font-weight: 600;'>{$booking['customer_name']}</td></tr>
                 <tr><td style='color: #64748b; padding: 6px 0;'>Email:</td><td style='font-weight: 600;'>{$booking['customer_email']}</td></tr>
-                <tr><td style='color: #64748b; padding: 6px 0;'>Shërbimi:</td><td style='font-weight: 600;'>{$booking['service_name']}</td></tr>
-                <tr><td style='color: #64748b; padding: 6px 0;'>Data:</td><td style='font-weight: 600;'>$date</td></tr>
-                <tr><td style='color: #64748b; padding: 6px 0;'>Ora:</td><td style='font-weight: 600;'>$time</td></tr>
+                <tr><td style='color: #64748b; padding: 6px 0;'>Service:</td><td style='font-weight: 600;'>{$booking['service_name']}</td></tr>
+                <tr><td style='color: #64748b; padding: 6px 0;'>Date:</td><td style='font-weight: 600;'>$date</td></tr>
+                <tr><td style='color: #64748b; padding: 6px 0;'>Time:</td><td style='font-weight: 600;'>$time</td></tr>
             </table>
         </div>
     ");

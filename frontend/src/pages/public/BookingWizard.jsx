@@ -3,7 +3,6 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../../api/client';
 import { createStripeCheckout } from '../../api/payments';
 
-
 export default function BookingWizard() {
   const { slug } = useParams();
   const navigate = useNavigate();
@@ -64,6 +63,21 @@ export default function BookingWizard() {
       .finally(() => setLoading(false));
   }, [slug]);
 
+  // Provojmë të marrim email-in e klientit nga localStorage nëse është i loguar
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        const user = JSON.parse(storedUser);
+        if (user.email) {
+          setForm((prev) => ({ ...prev, email: user.email, name: user.name || prev.name }));
+        }
+      } catch (e) {
+        console.error('Gabim gjatë leximit të user-it', e);
+      }
+    }
+  }, []);
+
   useEffect(() => {
     if (form.email && form.email.includes('@') && company?.id) {
       api.get(`/public/check-sleeping?company_id=${company.id}&email=${form.email}`)
@@ -102,7 +116,7 @@ export default function BookingWizard() {
         setDateBlockedReason(nextReason);
 
         if (['closed', 'holiday', 'past_date', 'no_hours_configured', 'invalid_hours'].includes(nextReason)) {
-          setError('This date is not available for booking.');
+          setError(''); 
         } else {
           setError('');
         }
@@ -111,7 +125,6 @@ export default function BookingWizard() {
       .finally(() => setLoadingSlots(false));
   }, [service, date, company?.id]);
 
-  // --- FUNKSIONI I PËRDITËSUAR PËR PAGESËN (CASH ose CARD) ---
   const processBooking = async (method) => {
     setError('');
     if (!isValidBookingDate(date)) {
@@ -121,23 +134,21 @@ export default function BookingWizard() {
 
     setSubmitting(true);
     try {
-      // 1. Krijo rezervimin në backend
       const r = await api.post('/public/bookings', {
         company_id: company.id,
         service_id: service.id,
         booking_date: date,
         start_time: selectedSlot.start,
         name: form.name,
-        email: form.email,
+        email: form.email, // Dërgohet automatikisht nga state-i
         phone: form.phone,
         notes: form.notes,
         discount_code: form.discount_code,
         needs_assistance: form.needs_assistance ? 1 : 0,
         assistance_notes: form.assistance_notes || '',
-        payment_method: method, // <-- SHTUAR: 'cash' ose 'card'
+        payment_method: method, 
       });
 
-      // Kontrollojmë strukturën e përgjigjes për të shmangur gabimin "undefined"
       const responseData = r.data?.data || r.data;
       const booking = responseData?.booking;
 
@@ -148,13 +159,11 @@ export default function BookingWizard() {
 
       const bookingId = booking.id;
 
-      // 2. Nëse zgjodhi CASH, ridrejto direkt te faqja e suksesit
       if (method === 'cash') {
         navigate(`/booking-success/${bookingId}`);
         return;
       }
 
-      // 3. Nëse zgjodhi CARD, krijo sesionin e Stripe dhe ridrejto
       if (method === 'card') {
         const paymentData = await createStripeCheckout(bookingId);
         if (paymentData.checkout_url) {
@@ -353,16 +362,32 @@ export default function BookingWizard() {
                 }}
                 className="w-full px-4 py-3 border border-slate-200 rounded-lg text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none"
               />
+              
+              {/* NJOFTIMI I RI PËR DATËN (MINIMALIST) */}
               {dateBlockedReason && (
-                <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
-                  {dateBlockedReason === 'closed' ? 'This date is closed for bookings.' :
-                   dateBlockedReason === 'holiday' ? 'This date is a holiday.' :
-                   dateBlockedReason === 'past_date' ? 'This date has already passed.' :
-                   dateBlockedReason === 'no_hours_configured' ? 'Working hours are not configured for this date.' :
-                   dateBlockedReason === 'invalid_hours' ? 'The working hours for this date are invalid.' :
-                   'This date is not available for booking.'}
+                <div className="mt-4 p-4 border-l-4 border-amber-500 bg-amber-50/50 rounded-r-lg">
+                  <div className="flex gap-3">
+                    <svg className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-800">
+                        {dateBlockedReason === 'fully_booked' ? 'Fully Booked' : 'Date Unavailable'}
+                      </p>
+                      <p className="text-sm text-slate-600 mt-1">
+                        {dateBlockedReason === 'closed' ? 'The company is closed on this date.' :
+                         dateBlockedReason === 'holiday' ? 'This date is a holiday. Please select another day.' :
+                         dateBlockedReason === 'past_date' ? 'This date has already passed.' :
+                         dateBlockedReason === 'no_hours_configured' ? 'Working hours are not set for this date.' :
+                         dateBlockedReason === 'invalid_hours' ? 'Invalid working hours for this date.' :
+                         dateBlockedReason === 'fully_booked' ? 'No slots available. You can join the waitlist below.' :
+                         'This date is not available.'}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
+
               <div className="flex gap-3 mt-6">
                 <button
                   onClick={() => setStep(1)}
@@ -496,7 +521,6 @@ export default function BookingWizard() {
             </div>
           )}
 
-          {/* HAPI 4: Informacioni dhe Butonat e Pagesës */}
           {step === 4 && selectedSlot && (
             <div>
               <h2 className="text-lg font-bold text-slate-900 mb-4">
@@ -549,18 +573,8 @@ export default function BookingWizard() {
                     className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    Email *
-                  </label>
-                  <input
-                    type="email"
-                    value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    required
-                    className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none"
-                  />
-                </div>
+
+
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">
                     Phone
@@ -647,7 +661,7 @@ export default function BookingWizard() {
 
                   <button
                     onClick={() => processBooking('cash')}
-                    disabled={submitting || !form.name || !form.email}
+                    disabled={submitting || !form.name}
                     className="flex-1 px-5 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 text-sm font-semibold transition flex items-center justify-center gap-2"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -658,7 +672,7 @@ export default function BookingWizard() {
 
                   <button
                     onClick={() => processBooking('card')}
-                    disabled={submitting || !form.name || !form.email}
+                    disabled={submitting || !form.name}
                     className="flex-1 px-5 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 text-sm font-semibold transition flex items-center justify-center gap-2"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -1168,12 +1168,12 @@ class SuperAdminController
             b.created_at,
             c.name AS company_name,
             cu.name AS customer_name,
-            cu.email AS customer_email,
+            cu.email AS customer_email
             FROM bookings b
             JOIN companies c ON c.id = b.company_id
             JOIN customers cu ON cu.id = b.customer_id
             WHERE b.status IN ('confirmed','completed')
-            ORDER BY b.created-at DESC
+            ORDER BY b.created_at DESC
             LIMIT 500
             ");
 

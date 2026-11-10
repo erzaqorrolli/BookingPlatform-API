@@ -50,7 +50,7 @@ class CustomerPortalController
         json_ok($stmt->fetchAll());
     }
 
-    public function cancelBooking(array $params): void
+  public function cancelBooking(array $params): void
 {
     $uid = auth_user_id();
     if (!$uid) json_err('Unauthorized', 401);
@@ -116,8 +116,22 @@ class CustomerPortalController
                 $reason
             );
         }
+
+        \App\Models\Notification::notifyCompanyOwners(
+            (int) $booking->company_id,
+            'booking_cancelled',
+            "Booking Cancelled by Customer",
+            "Booking #{$booking->reference} was cancelled by the customer. Reason: " . ($reason ?? 'No reason provided'),
+            "/admin/bookings"
+        );
+
+        \App\Utils\WebSocket::notifyAll([
+            'type'    => 'booking_cancelled',
+            'message' => "Booking {$booking->reference} cancelled from client.",
+        ]);
+
     } catch (\Throwable $e) {
-        error_log('Cancellation email failed: ' . $e->getMessage());
+        error_log('Cancellation notification failed: ' . $e->getMessage());
     }
 
     json_ok([

@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
 import api from '../../api/client';
+import { CreditCard, Banknote } from 'lucide-react';
 
 export default function Payments() {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filterMethod, setFilterMethod] = useState('all'); 
+  const [filterMethod, setFilterMethod] = useState('all');
+  const [filterMonth, setFilterMonth] = useState('');
+  const [filterWeek, setFilterWeek] = useState('');
 
   useEffect(() => {
     api.get('/superadmin/payments')
@@ -15,17 +18,33 @@ export default function Payments() {
 
   if (loading) return <div className="p-6 text-slate-500">Loading...</div>;
 
+  const getMonthKey = (dateStr) => {
+    const d = new Date(dateStr);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  };
+
+  const getWeekKey = (dateStr) => {
+    const d = new Date(dateStr);
+    const startOfYear = new Date(d.getFullYear(), 0, 1);
+    const days = Math.floor((d - startOfYear) / (24 * 60 * 60 * 1000));
+    const week = Math.ceil((days + startOfYear.getDay() + 1) / 7);
+    return `${d.getFullYear()}-W${String(week).padStart(2, '0')}`;
+  };
+
   const filteredPayments = payments.filter((p) => {
-    if (filterMethod === 'all') return true;
-    return p.payment_method === filterMethod;
+    if (filterMethod !== 'all' && p.payment_method !== filterMethod) return false;
+    if (filterMonth && getMonthKey(p.created_at) !== filterMonth) return false;
+    if (filterWeek && getWeekKey(p.created_at) !== filterWeek) return false;
+    return true;
   });
 
-  const totalCash = payments
+  const totalCash = filteredPayments
     .filter((p) => p.payment_method === 'cash')
     .reduce((sum, p) => sum + parseFloat(p.amount), 0);
-  const totalCard = payments
+  const totalCard = filteredPayments
     .filter((p) => p.payment_method === 'card')
     .reduce((sum, p) => sum + parseFloat(p.amount), 0);
+  const totalAll = filteredPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
 
   return (
     <div className="p-6">
@@ -34,52 +53,85 @@ export default function Payments() {
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <p className="text-sm text-slate-500">Total All</p>
-          <p className="text-2xl font-bold text-slate-900 mt-1">
-            €{payments.reduce((sum, p) => sum + parseFloat(p.amount), 0).toFixed(2)}
-          </p>
+          <p className="text-sm text-slate-500">Total (filtered)</p>
+          <p className="text-2xl font-bold text-slate-900 mt-1">€{totalAll.toFixed(2)}</p>
         </div>
         <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <p className="text-sm text-emerald-600 font-medium">💵 Cash</p>
+          <div className="flex items-center gap-2 text-emerald-600">
+            <Banknote className="w-4 h-4" />
+            <p className="text-sm font-medium">Cash</p>
+          </div>
           <p className="text-2xl font-bold text-emerald-700 mt-1">€{totalCash.toFixed(2)}</p>
         </div>
         <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <p className="text-sm text-indigo-600 font-medium">💳 Card</p>
+          <div className="flex items-center gap-2 text-indigo-600">
+            <CreditCard className="w-4 h-4" />
+            <p className="text-sm font-medium">Card</p>
+          </div>
           <p className="text-2xl font-bold text-indigo-700 mt-1">€{totalCard.toFixed(2)}</p>
         </div>
       </div>
 
-      <div className="flex gap-2 mb-4">
-        <button
-          onClick={() => setFilterMethod('all')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-            filterMethod === 'all'
-              ? 'bg-slate-900 text-white'
-              : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
-          }`}
-        >
-          All
-        </button>
-        <button
-          onClick={() => setFilterMethod('cash')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-            filterMethod === 'cash'
-              ? 'bg-emerald-600 text-white'
-              : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
-          }`}
-        >
-          💵 Cash
-        </button>
-        <button
-          onClick={() => setFilterMethod('card')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-            filterMethod === 'card'
-              ? 'bg-indigo-600 text-white'
-              : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
-          }`}
-        >
-          💳 Card
-        </button>
+      <div className="flex flex-wrap items-end gap-3 mb-4">
+        <div className="flex gap-2">
+          <button
+            onClick={() => setFilterMethod('all')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+              filterMethod === 'all' ? 'bg-slate-900 text-white' : 'bg-white border border-slate-200 text-slate-700'
+            }`}
+          >
+            All
+          </button>
+          <button
+            onClick={() => setFilterMethod('cash')}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition ${
+              filterMethod === 'cash' ? 'bg-emerald-600 text-white' : 'bg-white border border-slate-200 text-slate-700'
+            }`}
+          >
+            <Banknote className="w-4 h-4" /> Cash
+          </button>
+          <button
+            onClick={() => setFilterMethod('card')}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition ${
+              filterMethod === 'card' ? 'bg-indigo-600 text-white' : 'bg-white border border-slate-200 text-slate-700'
+            }`}
+          >
+            <CreditCard className="w-4 h-4" /> Card
+          </button>
+        </div>
+
+        <div className="flex flex-col">
+          <label className="text-xs text-slate-500 mb-1 ml-1 font-medium">Month</label>
+          <input
+            type="month"
+            value={filterMonth}
+            onChange={(e) => setFilterMonth(e.target.value)}
+            className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-indigo-500 outline-none text-slate-700"
+          />
+        </div>
+
+        <div className="flex flex-col">
+          <label className="text-xs text-slate-500 mb-1 ml-1 font-medium">Week</label>
+          <input
+            type="week"
+            value={filterWeek}
+            onChange={(e) => setFilterWeek(e.target.value)}
+            className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-indigo-500 outline-none text-slate-700"
+          />
+        </div>
+
+        {(filterMethod !== 'all' || filterMonth || filterWeek) && (
+          <button
+            onClick={() => {
+              setFilterMethod('all');
+              setFilterMonth('');
+              setFilterWeek('');
+            }}
+            className="px-4 py-2 h-[38px] text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:text-slate-900 transition flex items-center"
+          >
+            Clear filters
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
@@ -98,7 +150,7 @@ export default function Payments() {
             {filteredPayments.length === 0 ? (
               <tr>
                 <td colSpan="6" className="px-5 py-12 text-center text-slate-500">
-                  No payments found
+                  No payments found for the selected filters
                 </td>
               </tr>
             ) : (
@@ -113,12 +165,12 @@ export default function Payments() {
                   <td className="px-5 py-4 text-sm font-medium">€{parseFloat(p.amount).toFixed(2)}</td>
                   <td className="px-5 py-4 text-sm">
                     {p.payment_method === 'card' ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-indigo-100 text-indigo-700 rounded-full">
-                        💳 Card
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold bg-indigo-100 text-indigo-700 rounded-full">
+                        <CreditCard className="w-3 h-3" /> Card
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-emerald-100 text-emerald-700 rounded-full">
-                        💵 Cash
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold bg-emerald-100 text-emerald-700 rounded-full">
+                        <Banknote className="w-3 h-3" /> Cash
                       </span>
                     )}
                   </td>

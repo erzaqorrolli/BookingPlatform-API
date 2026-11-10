@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
-import { Download } from 'lucide-react';
+import { Download, XCircle, User, Building } from 'lucide-react';
 import Swal from 'sweetalert2';
 
 const STATUS_COLORS = {
@@ -60,21 +60,70 @@ export default function Bookings() {
     loadBookings();
   }, [activeCompany, filterStatus, filterDate]);
 
-  const updateStatus = async (bookingId, newStatus) => {
-    try {
-      await api.put(
-        `/companies/${activeCompany.id}/bookings/${bookingId}/status`,
-        { status: newStatus }
-      );
-      await loadBookings();
-    } catch (err) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Cannot change status',
-        text: err.response?.data?.error || 'Something went wrong while changing the status.',
-        confirmButtonColor: '#4f46e5',
-        confirmButtonText: 'OK',
-      });
+  const updateStatus = async (booking, newStatus) => {
+    if (newStatus !== 'cancelled') {
+      try {
+        await api.put(
+          `/companies/${activeCompany.id}/bookings/${booking.id}/status`,
+          { status: newStatus }
+        );
+        await loadBookings();
+      } catch (err) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Cannot change status',
+          text: err.response?.data?.error || 'Something went wrong.',
+          confirmButtonColor: '#4f46e5',
+        });
+      }
+      return;
+    }
+
+    const { value: reason, isConfirmed } = await Swal.fire({
+      title: 'Cancel Booking',
+      text: `Are you sure you want to cancel booking ${booking.reference}? Please provide a reason.`,
+      input: 'textarea',
+      inputPlaceholder: 'Write the reason for cancellation...',
+      inputAttributes: { 'aria-label': 'Cancellation reason' },
+      showCancelButton: true,
+      confirmButtonText: 'Yes, cancel it',
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#64748b',
+      inputValidator: (value) => {
+        if (!value || value.trim().length < 3) {
+          return 'Please provide a valid reason (at least 3 characters).';
+        }
+        return null;
+      }
+    });
+
+    if (isConfirmed && reason) {
+      try {
+        await api.put(
+          `/companies/${activeCompany.id}/bookings/${booking.id}/status`,
+          { 
+            status: 'cancelled',
+            cancellation_reason: reason,
+            cancelled_by: 'owner'
+          }
+        );
+        await loadBookings();
+        Swal.fire({
+          icon: 'success',
+          title: 'Booking Cancelled',
+          text: 'The booking has been cancelled and the reason has been saved.',
+          confirmButtonColor: '#4f46e5',
+          timer: 2000,
+          showConfirmButton: false
+        });
+      } catch (err) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: err.response?.data?.error || 'Could not cancel the booking.',
+          confirmButtonColor: '#4f46e5',
+        });
+      }
     }
   };
 
@@ -127,28 +176,24 @@ export default function Bookings() {
     (b) => Number(b.needs_assistance) === 1 && b.status !== 'completed'
   ).length;
 
-  // --- FUNKSION NDIHMËS PËR STATUSIN E PAGESËS ---
   const getPaymentBadge = (booking) => {
-    // Nëse është bërë me kartë dhe ka payment_intent, do të thotë është paguar
     if (booking.payment_method === 'card' && booking.stripe_payment_intent) {
       return (
         <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-emerald-100 text-emerald-700 rounded-full">
-          💳 Paid
+          Paid
         </span>
       );
     }
-    // Nëse është bërë me kartë por nuk ka payment_intent, pret pagesën
     if (booking.payment_method === 'card' && !booking.stripe_payment_intent) {
       return (
         <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-amber-100 text-amber-700 rounded-full">
-          ⏳ Unpaid
+          Unpaid
         </span>
       );
     }
-    // Nëse është cash
     return (
       <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-slate-100 text-slate-700 rounded-full">
-        💵 Cash
+        Cash
       </span>
     );
   };
@@ -184,7 +229,7 @@ export default function Bookings() {
               Attention: {priorityCount} priority booking{priorityCount > 1 ? 's' : ''}
             </h3>
             <p className="text-sm text-amber-800 leading-relaxed">
-              Clients with the <strong>⚠️ Priority</strong> badge have <strong>special needs</strong>{' '}
+              Clients with the <strong>Priority</strong> badge have <strong>special needs</strong>{' '}
               (disabilities, specific requirements, etc.). Please handle these bookings with{' '}
               <strong>higher priority</strong> and make sure their requests are fulfilled.
             </p>
@@ -273,7 +318,7 @@ export default function Bookings() {
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Date</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Time</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Total</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Payment</th> {/* KOLONA E RE */}
+                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Payment</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
                 <th className="text-right px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
               </tr>
@@ -315,6 +360,30 @@ export default function Bookings() {
                           <strong>Request:</strong> {b.assistance_notes}
                         </div>
                       )}
+                      
+                      {b.status === 'cancelled' && (
+                        <div className={`mt-2 p-2 rounded-lg text-xs border ${
+                          b.cancelled_by === 'customer' 
+                            ? 'bg-blue-50 border-blue-200 text-blue-800' 
+                            : 'bg-amber-50 border-amber-200 text-amber-800'
+                        }`}>
+                          <div className="font-semibold flex items-center gap-1">
+                            {b.cancelled_by === 'customer' ? (
+                              <><User className="w-3 h-3" /> Cancelled by Customer</>
+                            ) : (
+                              <><Building className="w-3 h-3" /> Cancelled by Company</>
+                            )}
+                          </div>
+                          <div className="mt-1">
+                            <strong>Reason:</strong> {b.cancellation_reason || 'No reason provided'}
+                          </div>
+                          {b.cancelled_at && (
+                            <div className="text-[11px] mt-1 opacity-75">
+                              {new Date(b.cancelled_at).toLocaleString('sq-AL')}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </td>
 
                     <td className="px-5 py-4 text-sm text-slate-700">{b.service_name}</td>
@@ -342,7 +411,6 @@ export default function Bookings() {
                       €{parseFloat(b.total_price).toFixed(2)}
                     </td>
                     
-                    {/* KOLONA E RE: STATUSI I PAGESËS */}
                     <td className="px-5 py-4">
                       {getPaymentBadge(b)}
                     </td>
@@ -355,7 +423,7 @@ export default function Bookings() {
                     <td className="px-5 py-4 text-right">
                       <select
                         value={b.status}
-                        onChange={(e) => updateStatus(b.id, e.target.value)}
+                        onChange={(e) => updateStatus(b, e.target.value)}
                         className="text-xs border border-slate-200 rounded px-2 py-1 focus:border-indigo-500 outline-none"
                       >
                         <option value="pending">Waiting</option>

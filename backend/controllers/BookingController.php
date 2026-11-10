@@ -668,77 +668,89 @@ class BookingController
         json_ok($events);
     }
 
-    public function updateStatus(array $params): void
-    {
-        $uid = auth_user_id();
-        if (!$uid) json_err('Unauthorized', 401);
+public function updateStatus(array $params): void
+{
+    $uid = auth_user_id();
+    if (!$uid) json_err('Unauthorized', 401);
 
-        $companyId = (int) $params['companyId'];
-        $bookingId = (int) $params['id'];
+    $companyId = (int) $params['companyId'];
+    $bookingId = (int) $params['id'];
 
-        $role = Company::userRole($uid, $companyId);
-        if (!in_array($role, ['owner', 'admin', 'manager', 'staff'], true)) {
-            json_err('Forbidden', 403);
+    $role = Company::userRole($uid, $companyId);
+    if (!in_array($role, ['owner', 'admin', 'manager', 'staff'], true)) {
+        json_err('Forbidden', 403);
+    }
+
+    $input  = input();
+    $status = $input['status'] ?? '';
+    $reason = $input['cancellation_reason'] ?? null;
+    $cancelledBy = $input['cancelled_by'] ?? ($role === 'staff' ? 'staff' : 'owner');
+
+    $booking = Booking::findById($bookingId);
+    if (!$booking || $booking->company_id !== $companyId) {
+        json_err('Booking not found', 404);
+    }
+
+    if (
+        $booking->payment_method === 'card'
+        && !$booking->stripe_payment_intent
+        && $status !== 'pending'
+        && $status !== 'cancelled'
+    ) {
+        json_err('Online payment must be completed before approving this booking', 422);
+    }
+
+    $previousStatus = $booking->status;
+
+    if ($status === 'cancelled') {
+        if (!$reason || strlen(trim($reason)) < 3) {
+            json_err('Cancellation reason is required', 422);
         }
-
-        $input  = input();
-        $status = $input['status'] ?? '';
-
-        $booking = Booking::findById($bookingId);
-        if (!$booking || $booking->company_id !== $companyId) {
-            json_err('Booking not found', 404);
+        if (!$booking->cancel(trim($reason), $cancelledBy)) {
+            json_err('Could not cancel booking', 500);
         }
-
-        if (
-            $booking->payment_method === 'card'
-            && !$booking->stripe_payment_intent
-            && $status !== 'pending'
-            && $status !== 'cancelled'
-        ) {
-            json_err('Online payment must be completed before approving this booking', 422);
-        }
-
-        $previousStatus = $booking->status;
-
+    } else {
         if (!$booking->updateStatus($status)) {
             json_err('Invalid status', 422);
         }
+    }
 
-        if ($previousStatus !== $status) {
-            $customerStmt = Database::pdo()->prepare(
-                'SELECT name, email FROM customers WHERE id = ? LIMIT 1'
+    if ($previousStatus !== $status) {
+        $customerStmt = Database::pdo()->prepare(
+            'SELECT name, email FROM customers WHERE id = ? LIMIT 1'
+        );
+        $customerStmt->execute([$booking->customer_id]);
+        $customer = $customerStmt->fetch();
+
+        if ($customer && filter_var($customer['email'], FILTER_VALIDATE_EMAIL)) {
+            Mailer::sendStatusUpdate(
+                $companyId,
+                $customer['email'],
+                $customer['name'],
+                $booking->reference ?? ('#' . $booking->id),
+                $status
             );
-            $customerStmt->execute([$booking->customer_id]);
-            $customer = $customerStmt->fetch();
+        }
 
-            if ($customer && filter_var($customer['email'], FILTER_VALIDATE_EMAIL)) {
-                Mailer::sendStatusUpdate(
-                    $companyId,
-                    $customer['email'],
-                    $customer['name'],
-                    $booking->reference ?? ('#' . $booking->id),
-                    $status
+        if ($booking->customer_id) {
+            $customerStmt = \App\Config\Database::pdo()->prepare("
+                SELECT user_id FROM customers WHERE id = ? LIMIT 1
+            ");
+            $customerStmt->execute([$booking->customer_id]);
+            $customerUserId = $customerStmt->fetchColumn();
+
+            if ($customerUserId) {
+                \App\Models\Notification::create(
+                    (int) $customerUserId,
+                    'booking',
+                    "Booking {$status}",
+                    "Your booking status is now {$status}",
+                    "/portal"
                 );
             }
-
-            if ($booking->customer_id) {
-                $customerStmt = \App\Config\Database::pdo()->prepare("
-                    SELECT user_id FROM customers WHERE id = ? LIMIT 1
-                ");
-                $customerStmt->execute([$booking->customer_id]);
-                $customerUserId = $customerStmt->fetchColumn();
-
-                if ($customerUserId) {
-                    \App\Models\Notification::create(
-                        (int) $customerUserId,
-                        'booking',
-                        "Booking {$status}",
-                        "Your booking status is now {$status}",
-                        "/portal"
-                    );
-                }
-            }
-                 AuditLog::log(
+        }
+        
+        AuditLog::log(
             $uid, 
             'booking.status_update', 
             'booking', 
@@ -746,31 +758,29 @@ class BookingController
             ['company_id' => $companyId, 'status' => $status]
         );
 
-                if ($status === 'cancelled') {
+        if ($status === 'cancelled') {
             $this->notifyWaitlist($booking->company_id, $booking->service_id, $booking->booking_date);
         }
 
-            \App\Models\Notification::notifyCompanyOwners(
-                (int) $booking->company_id,
-                'booking_status',
-                "Booking {$status}",
-                "Booking #{$booking->reference} status changed to {$status}",
-                "/admin/bookings"
-            );
+        \App\Models\Notification::notifyCompanyOwners(
+            (int) $booking->company_id,
+            'booking_status',
+            "Booking {$status}",
+            "Booking #{$booking->reference} status changed to {$status}",
+            "/admin/bookings"
+        );
 
-            \App\Utils\WebSocket::notifyAll([
-                'type'    => 'booking_status_changed',
-                'message' => "Booking {$booking->reference} → {$status}",
-            ]);
-        }
-
-        json_ok([
-            'message' => 'Status updated',
-            'booking' => Booking::findById($bookingId)->toArray(),
+        \App\Utils\WebSocket::notifyAll([
+            'type'    => 'booking_status_changed',
+            'message' => "Booking {$booking->reference} → {$status}",
         ]);
     }
 
-    public function publicCompanyBySlug(array $params): void
+    json_ok([
+        'message' => 'Status updated',
+        'booking' => Booking::findById($bookingId)->toArray(),
+    ]);
+}    public function publicCompanyBySlug(array $params): void
     {
         $slug = trim((string) ($params['slug'] ?? ''));
         if (!$slug) json_err('Slug required', 422);
