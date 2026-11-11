@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../../api/client';
-import { CreditCard, Banknote } from 'lucide-react';
+import { CreditCard, Banknote, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function Payments() {
   const [payments, setPayments] = useState([]);
@@ -8,6 +8,11 @@ export default function Payments() {
   const [filterMethod, setFilterMethod] = useState('all');
   const [filterMonth, setFilterMonth] = useState('');
   const [filterWeek, setFilterWeek] = useState('');
+  
+  // --- PAGINIM ---
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  // ----------------
 
   useEffect(() => {
     api.get('/superadmin/payments')
@@ -15,6 +20,11 @@ export default function Payments() {
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));
   }, []);
+
+  // Kthehu në faqen 1 kur ndryshon filtri
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterMethod, filterMonth, filterWeek]);
 
   if (loading) return <div className="p-6 text-slate-500">Loading...</div>;
 
@@ -37,6 +47,12 @@ export default function Payments() {
     if (filterWeek && getWeekKey(p.created_at) !== filterWeek) return false;
     return true;
   });
+
+  // --- LLOGARITJET E PAGINIMIT ---
+  const totalPages = Math.ceil(filteredPayments.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedPayments = filteredPayments.slice(startIndex, startIndex + itemsPerPage);
+  // -------------------------------
 
   const totalCash = filteredPayments
     .filter((p) => p.payment_method === 'cash')
@@ -147,14 +163,14 @@ export default function Payments() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {filteredPayments.length === 0 ? (
+            {paginatedPayments.length === 0 ? (
               <tr>
                 <td colSpan="6" className="px-5 py-12 text-center text-slate-500">
                   No payments found for the selected filters
                 </td>
               </tr>
             ) : (
-              filteredPayments.map((p) => (
+              paginatedPayments.map((p) => (
                 <tr key={p.id} className="hover:bg-slate-50">
                   <td className="px-5 py-4 text-sm font-mono text-indigo-600">{p.reference}</td>
                   <td className="px-5 py-4 text-sm font-medium">{p.company_name}</td>
@@ -182,6 +198,36 @@ export default function Payments() {
             )}
           </tbody>
         </table>
+
+        {/* PAGINIMI */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-5 py-4 border-t border-slate-200 bg-slate-50">
+            <div className="text-sm text-slate-500">
+              Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
+              <span className="font-medium">{Math.min(startIndex + itemsPerPage, filteredPayments.length)}</span> of{' '}
+              <span className="font-medium">{filteredPayments.length}</span> payments
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <span className="text-sm font-medium text-slate-700 px-2">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

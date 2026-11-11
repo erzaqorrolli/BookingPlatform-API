@@ -1,15 +1,23 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../../api/client';
 import Swal from 'sweetalert2';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function Users() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterRole, setFilterRole] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
-  const loadUsers = async () => {
+  const totalPages = Math.ceil(users.length / itemsPerPage);
+  const displayedPage = Math.min(currentPage, Math.max(totalPages, 1));
+  const startIndex = (displayedPage - 1) * itemsPerPage;
+  const paginatedUsers = users.slice(startIndex, startIndex + itemsPerPage);
+
+  const loadUsers = useCallback(async () => {
     setLoading(true);
     try {
       const params = {};
@@ -23,11 +31,12 @@ export default function Users() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [search, filterRole]);
 
   useEffect(() => {
-    loadUsers();
-  }, [search, filterRole]);
+    const initialLoad = window.setTimeout(loadUsers, 0);
+    return () => window.clearTimeout(initialLoad);
+  }, [loadUsers]);
 
 const handleToggleStatus = async (user) => {
   const isBlocking = user.status !== 'blocked';
@@ -162,14 +171,20 @@ const handleDelete = async (user) => {
         <input
           type="text"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setCurrentPage(1);
+          }}
           placeholder="Search by name or email..."
           className="flex-1 min-w-[200px] px-3 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-white rounded-lg text-sm focus:border-indigo-500 outline-none"
         />
 
         <select
           value={filterRole}
-          onChange={(e) => setFilterRole(e.target.value)}
+          onChange={(e) => {
+            setFilterRole(e.target.value);
+            setCurrentPage(1);
+          }}
           className="px-3 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-white rounded-lg text-sm focus:border-indigo-500 outline-none"
         >
           <option value="">All roles</option>
@@ -186,6 +201,7 @@ const handleDelete = async (user) => {
             onClick={() => {
               setSearch('');
               setFilterRole('');
+              setCurrentPage(1);
             }}
             className="px-3 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
           >
@@ -223,7 +239,7 @@ const handleDelete = async (user) => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {users.map((u) => (
+                {paginatedUsers.map((u) => (
                   <tr
                     key={u.id}
                     className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition"
@@ -326,6 +342,36 @@ const handleDelete = async (user) => {
               </tbody>
             </table>
           </div>
+          {users.length > itemsPerPage && (
+            <div className="flex items-center justify-between px-5 py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800">
+              <div className="text-sm text-slate-500 dark:text-slate-400">
+                Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
+                <span className="font-medium">{Math.min(startIndex + itemsPerPage, users.length)}</span> of{' '}
+                <span className="font-medium">{users.length}</span> users
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={displayedPage === 1}
+                  aria-label="Previous page"
+                  className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300 px-2">
+                  Page {displayedPage} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={displayedPage === totalPages}
+                  aria-label="Next page"
+                  className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

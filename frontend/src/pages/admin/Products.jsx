@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function Products() {
   const { activeCompany } = useCompany();
@@ -11,6 +12,9 @@ export default function Products() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const emptyForm = {
     name: '',
@@ -37,6 +41,7 @@ export default function Products() {
 
   useEffect(() => {
     loadProducts();
+    setCurrentPage(1); 
   }, [activeCompany]);
 
   const openCreate = () => {
@@ -105,6 +110,11 @@ export default function Products() {
     );
   }
 
+  const totalPages = Math.ceil(products.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedProducts = products.slice(startIndex, startIndex + itemsPerPage);
+  const shouldShowPagination = products.length > itemsPerPage;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -144,69 +154,100 @@ export default function Products() {
             onClick={openCreate}
             className="px-5 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-medium text-sm"
           >
-
-            Add product          </button>
+            Add product
+          </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {products.map((product) => (
-            <div
-              key={product.id}
-              className="group bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md transition"
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-lg flex items-center justify-center text-white font-bold text-lg">
-                  {product.name?.charAt(0).toUpperCase()}
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {paginatedProducts.map((product) => (
+              <div
+                key={product.id}
+                className="group bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md transition"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="w-12 h-12 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-lg flex items-center justify-center text-white font-bold text-lg">
+                    {product.name?.charAt(0).toUpperCase()}
+                  </div>
+                  <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                    product.active
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {product.active ? 'Active' : 'Inactive'}
+                  </span>
                 </div>
-                <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
-                  product.active
-                    ? 'bg-emerald-100 text-emerald-700'
-                    : 'bg-slate-100 text-slate-600'
-                }`}>
-                  {product.active ? 'Active' : 'Inactive'}
-                </span>
+
+                <h3 className="font-semibold text-slate-900 mb-1">{product.name}</h3>
+                {product.description && (
+                  <p className="text-xs text-slate-500 mb-2 line-clamp-2">
+                    {product.description}
+                  </p>
+                )}
+
+                <div className="flex items-end justify-between pt-3 border-t border-slate-100">
+                  <div>
+                    <div className="text-lg font-bold text-slate-900">
+                      €{parseFloat(product.price).toFixed(2)}
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      Stok: {product.stock}
+                    </div>
+                  </div>
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition">
+                    <button
+                      onClick={() => openEdit(product)}
+                      className="w-8 h-8 flex items-center justify-center text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
+                      title="Edit"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => setDeleteTarget(product)}
+                      className="w-8 h-8 flex items-center justify-center text-red-600 hover:bg-red-50 rounded-lg transition"
+                      title="Delete"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
               </div>
+            ))}
+          </div>
 
-              <h3 className="font-semibold text-slate-900 mb-1">{product.name}</h3>
-              {product.description && (
-                <p className="text-xs text-slate-500 mb-2 line-clamp-2">
-                  {product.description}
-                </p>
-              )}
-
-              <div className="flex items-end justify-between pt-3 border-t border-slate-100">
-                <div>
-                  <div className="text-lg font-bold text-slate-900">
-                    €{parseFloat(product.price).toFixed(2)}
-                  </div>
-                  <div className="text-xs text-slate-500">
-                    Stok: {product.stock}
-                  </div>
-                </div>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition">
-                  <button
-                    onClick={() => openEdit(product)}
-                    className="w-8 h-8 flex items-center justify-center text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
-                    title="Edit"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={() => setDeleteTarget(product)}
-                    className="w-8 h-8 flex items-center justify-center text-red-600 hover:bg-red-50 rounded-lg transition"
-                    title="Delete"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
-                </div>
+          {shouldShowPagination && (
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-slate-500">
+                Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
+                <span className="font-medium">{Math.min(startIndex + itemsPerPage, products.length)}</span> of{' '}
+                <span className="font-medium">{products.length}</span> products
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <span className="text-sm font-medium text-slate-700 px-2">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
               </div>
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
 
       {showModal && (

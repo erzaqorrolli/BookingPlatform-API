@@ -2,10 +2,13 @@ import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../../api/client';
 import { createStripeCheckout } from '../../api/payments';
+import { useSettings } from '../../contexts/SettingsContext';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function BookingWizard() {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const { settings } = useSettings();
 
   const [company, setCompany] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -36,6 +39,11 @@ export default function BookingWizard() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
+  // --- PAGINIM PËR SHËRBIMET ---
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  // -----------------------------
+
   const formatDateForInput = (date) => {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -63,7 +71,6 @@ export default function BookingWizard() {
       .finally(() => setLoading(false));
   }, [slug]);
 
-  // Provojmë të marrim email-in e klientit nga localStorage nëse është i loguar
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
@@ -140,7 +147,7 @@ export default function BookingWizard() {
         booking_date: date,
         start_time: selectedSlot.start,
         name: form.name,
-        email: form.email, // Dërgohet automatikisht nga state-i
+        email: form.email,
         phone: form.phone,
         notes: form.notes,
         discount_code: form.discount_code,
@@ -205,22 +212,29 @@ export default function BookingWizard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="text-slate-500">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0f]">
+        <div className="text-white/50">Loading...</div>
       </div>
     );
   }
 
   if (!company) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
-        <div className="bg-white rounded-xl border border-slate-200 p-8 text-center max-w-md">
-          <h1 className="text-2xl font-bold text-slate-900 mb-2"> Company not found</h1>
-          <Link to="/" className="text-indigo-600 hover:underline">← Back in Home Page</Link>
+      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0f] p-6">
+        <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-8 text-center max-w-md">
+          <h1 className="text-2xl font-bold text-white mb-2">Company not found</h1>
+          <Link to="/" className="text-indigo-400 hover:text-indigo-300 transition">← Back to Home</Link>
         </div>
       </div>
     );
   }
+
+  // --- LLOGARITJET E PAGINIMIT PËR SHËRBIMET ---
+  const totalPages = Math.ceil(company.services.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedServices = company.services.slice(startIndex, startIndex + itemsPerPage);
+  const shouldShowPagination = company.services.length > itemsPerPage;
+  // --------------------------------------------
 
   const steps = [
     { n: 1, label: 'Service' },
@@ -230,38 +244,41 @@ export default function BookingWizard() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="bg-white border-b border-slate-200">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 text-sm text-slate-600 hover:text-indigo-600">
+    <div className="min-h-screen bg-[#0a0a0f] text-white font-sans selection:bg-indigo-500/30">
+      
+      {/* NAVBAR */}
+      <nav className="sticky top-0 z-50 bg-[#0a0a0f]/80 backdrop-blur-xl border-b border-white/5">
+        <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-2 text-sm text-white/50 hover:text-white transition">
             ← Back
           </Link>
-          <div className="text-sm text-slate-500">Online Booking</div>
+          <div className="text-sm text-white/40">Online Booking</div>
         </div>
-      </div>
+      </nav>
 
-      <div className="bg-white border-b border-slate-200">
-        <div className="max-w-4xl mx-auto px-6 py-4">
+      {/* STEPS */}
+      <div className="border-b border-white/5 bg-white/[0.02]">
+        <div className="max-w-4xl mx-auto px-6 py-5">
           <div className="flex items-center justify-between">
             {steps.map((s, i) => (
               <div key={s.n} className="flex items-center flex-1">
                 <div className="flex items-center gap-2">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold transition ${
-                    step > s.n ? 'bg-indigo-600 text-white' :
-                    step === s.n ? 'bg-indigo-600 text-white' :
-                    'bg-slate-200 text-slate-500'
+                    step > s.n ? 'bg-indigo-500 text-white' :
+                    step === s.n ? 'bg-white text-black' :
+                    'bg-white/5 text-white/30'
                   }`}>
                     {step > s.n ? '✓' : s.n}
                   </div>
                   <span className={`text-sm font-medium hidden sm:block ${
-                    step >= s.n ? 'text-slate-900' : 'text-slate-400'
+                    step >= s.n ? 'text-white' : 'text-white/30'
                   }`}>
                     {s.label}
                   </span>
                 </div>
                 {i < steps.length - 1 && (
-                  <div className={`flex-1 h-0.5 mx-3 ${
-                    step > s.n ? 'bg-indigo-600' : 'bg-slate-200'
+                  <div className={`flex-1 h-px mx-3 ${
+                    step > s.n ? 'bg-indigo-500' : 'bg-white/10'
                   }`} />
                 )}
               </div>
@@ -270,22 +287,33 @@ export default function BookingWizard() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 py-10">
-        <div className="bg-white rounded-2xl border border-slate-200 p-8">
-          <div className="flex items-center gap-4 mb-8 pb-6 border-b border-slate-100">
-            <div className="w-14 h-14 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold text-xl">
-              {company.name?.charAt(0).toUpperCase()}
-            </div>
+      {/* MAIN CONTENT */}
+      <div className="max-w-4xl mx-auto px-6 py-12">
+        <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-8">
+          
+          {/* Company Header - PËRDOR logo_url */}
+          <div className="flex items-center gap-4 mb-8 pb-6 border-b border-white/5">
+            {company.logo_url ? (
+              <img
+                src={company.logo_url}
+                alt={company.name}
+                className="w-14 h-14 rounded-2xl object-cover shadow-lg shadow-indigo-500/20 shrink-0"
+              />
+            ) : (
+              <div className="w-14 h-14 bg-gradient-to-br from-indigo-500 to-fuchsia-500 rounded-2xl flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-indigo-500/20 shrink-0">
+                {company.name?.charAt(0).toUpperCase()}
+              </div>
+            )}
             <div>
-              <h1 className="text-xl font-bold text-slate-900">{company.name}</h1>
+              <h1 className="text-xl font-bold tracking-tight">{company.name}</h1>
               {company.address && (
-                <p className="text-sm text-slate-500">{company.address}</p>
+                <p className="text-sm text-white/40">{company.address}</p>
               )}
             </div>
           </div>
 
           {error && (
-            <div className="mb-6 p-3 bg-red-50 border border-red-100 rounded-lg text-sm text-red-700">
+            <div className="mb-6 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-400">
               {error}
             </div>
           )}
@@ -293,45 +321,75 @@ export default function BookingWizard() {
           {/* HAPI 1: Zgjedhja e Shërbimit */}
           {step === 1 && (
             <div>
-              <h2 className="text-lg font-bold text-slate-900 mb-4">
-                Choose service
-              </h2>
+              <h2 className="text-xl font-bold tracking-tight mb-6">Choose service</h2>
               {company.services.length === 0 ? (
-                <div className="text-center py-8 text-slate-500">
+                <div className="text-center py-8 text-white/40">
                   This company has no services
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {company.services.map((s) => (
-                    <button
-                      key={s.id}
-                      onClick={() => {
-                        setService(s);
-                        setStep(2);
-                      }}
-                      className={`w-full text-left p-4 rounded-xl border-2 transition ${
-                        service?.id === s.id
-                          ? 'border-indigo-500 bg-indigo-50'
-                          : 'border-slate-200 hover:border-indigo-300 hover:bg-slate-50'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <div className="font-semibold text-slate-900">{s.name}</div>
-                          {s.description && (
-                            <div className="text-sm text-slate-500 mt-0.5">{s.description}</div>
-                          )}
-                          <div className="text-xs text-slate-400 mt-1">
-                            {s.duration_minutes} minutes
+                <>
+                  <div className="space-y-3">
+                    {paginatedServices.map((s) => (
+                      <button
+                        key={s.id}
+                        onClick={() => {
+                          setService(s);
+                          setStep(2);
+                        }}
+                        className={`w-full text-left p-5 rounded-2xl border transition-all ${
+                          service?.id === s.id
+                            ? 'border-indigo-500 bg-indigo-500/10'
+                            : 'border-white/5 bg-white/[0.02] hover:border-white/10 hover:bg-white/[0.05]'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="font-semibold text-white">{s.name}</div>
+                            {s.description && (
+                              <div className="text-sm text-white/40 mt-1">{s.description}</div>
+                            )}
+                            <div className="text-xs text-white/30 mt-2 uppercase tracking-wider">
+                              {s.duration_minutes} minutes
+                            </div>
+                          </div>
+                          <div className="text-xl font-bold text-white ml-4">
+                            €{parseFloat(s.price).toFixed(2)}
                           </div>
                         </div>
-                        <div className="text-lg font-bold text-indigo-600 ml-4">
-                          €{parseFloat(s.price).toFixed(2)}
-                        </div>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* PAGINIMI PËR SHËRBIMET */}
+                  {shouldShowPagination && (
+                    <div className="flex items-center justify-between mt-8 pt-6 border-t border-white/5">
+                      <div className="text-sm text-white/40">
+                        Showing <span className="font-medium text-white">{startIndex + 1}</span> to{' '}
+                        <span className="font-medium text-white">{Math.min(startIndex + itemsPerPage, company.services.length)}</span> of{' '}
+                        <span className="font-medium text-white">{company.services.length}</span> services
                       </div>
-                    </button>
-                  ))}
-                </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                          disabled={currentPage === 1}
+                          className="p-2 rounded-lg border border-white/10 bg-white/5 text-white/60 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </button>
+                        <span className="text-sm font-medium text-white/60 px-2">
+                          Page {currentPage} of {totalPages}
+                        </span>
+                        <button
+                          onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                          disabled={currentPage === totalPages}
+                          className="p-2 rounded-lg border border-white/10 bg-white/5 text-white/60 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}
@@ -339,9 +397,7 @@ export default function BookingWizard() {
           {/* HAPI 2: Zgjedhja e Datës */}
           {step === 2 && service && (
             <div>
-              <h2 className="text-lg font-bold text-slate-900 mb-4">
-                Choose date
-              </h2>
+              <h2 className="text-xl font-bold tracking-tight mb-6">Choose date</h2>
               <input
                 type="date"
                 value={date}
@@ -360,21 +416,20 @@ export default function BookingWizard() {
                   setDateBlockedReason('');
                   setDate(/^\d{4}-\d{2}-\d{2}$/.test(nextDate) ? nextDate : '');
                 }}
-                className="w-full px-4 py-3 border border-slate-200 rounded-lg text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none"
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:border-indigo-400 focus:bg-white/10 outline-none transition"
               />
               
-              {/* NJOFTIMI I RI PËR DATËN (MINIMALIST) */}
               {dateBlockedReason && (
-                <div className="mt-4 p-4 border-l-4 border-amber-500 bg-amber-50/50 rounded-r-lg">
+                <div className="mt-4 p-4 border-l-4 border-amber-500 bg-amber-500/10 rounded-r-xl">
                   <div className="flex gap-3">
-                    <svg className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <div>
-                      <p className="text-sm font-semibold text-slate-800">
+                      <p className="text-sm font-semibold text-amber-300">
                         {dateBlockedReason === 'fully_booked' ? 'Fully Booked' : 'Date Unavailable'}
                       </p>
-                      <p className="text-sm text-slate-600 mt-1">
+                      <p className="text-sm text-amber-200/70 mt-1">
                         {dateBlockedReason === 'closed' ? 'The company is closed on this date.' :
                          dateBlockedReason === 'holiday' ? 'This date is a holiday. Please select another day.' :
                          dateBlockedReason === 'past_date' ? 'This date has already passed.' :
@@ -388,10 +443,10 @@ export default function BookingWizard() {
                 </div>
               )}
 
-              <div className="flex gap-3 mt-6">
+              <div className="flex gap-3 mt-8">
                 <button
                   onClick={() => setStep(1)}
-                  className="px-4 py-2.5 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 text-sm font-medium"
+                  className="px-5 py-3 border border-white/10 text-white/60 rounded-xl hover:bg-white/5 text-sm font-medium transition"
                 >
                   ← Back
                 </button>
@@ -400,9 +455,9 @@ export default function BookingWizard() {
                     if (isValidBookingDate(date) && !dateBlockedReason) setStep(3);
                   }}
                   disabled={!isValidBookingDate(date) || !!dateBlockedReason || loadingSlots}
-                  className="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 text-sm font-medium"
+                  className="flex-1 px-5 py-3 bg-white text-black rounded-xl hover:bg-white/90 disabled:opacity-50 text-sm font-semibold transition shadow-[0_0_30px_rgba(255,255,255,0.15)]"
                 >
-                  {loadingSlots ? 'Checking...' : 'Go'}
+                  {loadingSlots ? 'Checking...' : 'Continue'}
                 </button>
               </div>
             </div>
@@ -411,16 +466,14 @@ export default function BookingWizard() {
           {/* HAPI 3: Zgjedhja e Orarit */}
           {step === 3 && service && date && (
             <div>
-              <h2 className="text-lg font-bold text-slate-900 mb-4">
-                Choose schedule
-              </h2>
+              <h2 className="text-xl font-bold tracking-tight mb-6">Choose time</h2>
 
               {loadingSlots ? (
-                <div className="text-center py-8 text-slate-500">Loading...</div>
+                <div className="text-center py-8 text-white/40">Loading...</div>
               ) : slots.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-slate-500 mb-2">
-                    {slotReason === 'closed' ? 'Company is closed in this day' :
+                  <p className="text-white/50 mb-4">
+                    {slotReason === 'closed' ? 'Company is closed on this day' :
                      slotReason === 'holiday' ? 'Holiday' :
                      slotReason === 'past_date' ? 'This date has already passed' :
                      slotReason === 'no_hours_configured' ? 'Working hours are not configured for this day' :
@@ -430,9 +483,9 @@ export default function BookingWizard() {
                   </p>
 
                   {slotReason === 'fully_booked' && !waitlistJoined && (
-                    <div className="mt-6 bg-indigo-50 p-5 rounded-xl text-left max-w-md mx-auto border border-indigo-100">
-                      <h4 className="font-bold text-indigo-900 mb-1">Join Waitlist</h4>
-                      <p className="text-sm text-indigo-700 mb-4">Get notified automatically if a slot opens up for this date.</p>
+                    <div className="mt-6 bg-indigo-500/10 p-6 rounded-2xl text-left max-w-md mx-auto border border-indigo-500/20">
+                      <h4 className="font-bold text-indigo-300 mb-1">Join Waitlist</h4>
+                      <p className="text-sm text-indigo-200/60 mb-5">Get notified automatically if a slot opens up for this date.</p>
                       
                       <div className="space-y-3">
                         <input 
@@ -440,26 +493,26 @@ export default function BookingWizard() {
                           placeholder="Your Name *" 
                           value={waitlistForm.name} 
                           onChange={e => setWaitlistForm({...waitlistForm, name: e.target.value})} 
-                          className="w-full px-3 py-2 border border-indigo-200 rounded-lg text-sm focus:ring-indigo-500 outline-none" 
+                          className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder:text-white/30 focus:border-indigo-400 outline-none transition" 
                         />
                         <input 
                           type="email" 
                           placeholder="Your Email *" 
                           value={waitlistForm.email} 
                           onChange={e => setWaitlistForm({...waitlistForm, email: e.target.value})} 
-                          className="w-full px-3 py-2 border border-indigo-200 rounded-lg text-sm focus:ring-indigo-500 outline-none" 
+                          className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder:text-white/30 focus:border-indigo-400 outline-none transition" 
                         />
                         <input 
                           type="tel" 
                           placeholder="Phone (optional)" 
                           value={waitlistForm.phone} 
                           onChange={e => setWaitlistForm({...waitlistForm, phone: e.target.value})} 
-                          className="w-full px-3 py-2 border border-indigo-200 rounded-lg text-sm focus:ring-indigo-500 outline-none" 
+                          className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder:text-white/30 focus:border-indigo-400 outline-none transition" 
                         />
                         <button 
                           onClick={handleJoinWaitlist}
                           disabled={waitlistLoading}
-                          className="w-full bg-indigo-600 text-white py-2.5 rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 transition"
+                          className="w-full bg-indigo-500 text-white py-3 rounded-xl font-medium hover:bg-indigo-400 disabled:opacity-50 transition"
                         >
                           {waitlistLoading ? 'Joining...' : 'Join Waitlist'}
                         </button>
@@ -468,16 +521,16 @@ export default function BookingWizard() {
                   )}
                   
                   {waitlistJoined && (
-                    <div className="mt-6 bg-emerald-50 border border-emerald-200 text-emerald-700 p-4 rounded-xl max-w-md mx-auto">
+                    <div className="mt-6 bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 p-4 rounded-xl max-w-md mx-auto">
                       <p className="font-bold">✓ You're on the list!</p>
-                      <p className="text-sm mt-1">We will email you as soon as a slot becomes available.</p>
+                      <p className="text-sm mt-1 text-emerald-200/60">We will email you as soon as a slot becomes available.</p>
                     </div>
                   )}
 
                   {!waitlistJoined && slotReason !== 'fully_booked' && (
                     <button
                       onClick={() => setStep(2)}
-                      className="text-sm text-indigo-600 hover:underline mt-4"
+                      className="text-sm text-indigo-400 hover:text-indigo-300 transition mt-4"
                     >
                       Choose another date
                     </button>
@@ -489,10 +542,10 @@ export default function BookingWizard() {
                     <button
                       key={s.start}
                       onClick={() => setSelectedSlot(s)}
-                      className={`px-3 py-2.5 rounded-lg border text-sm font-medium transition ${
+                      className={`px-3 py-2.5 rounded-xl border text-sm font-medium transition ${
                         selectedSlot?.start === s.start
-                          ? 'bg-indigo-600 text-white border-indigo-600'
-                          : 'bg-white border-slate-200 text-slate-700 hover:border-indigo-400 hover:bg-indigo-50'
+                          ? 'bg-white text-black border-white'
+                          : 'bg-white/5 border-white/10 text-white/70 hover:border-white/30 hover:text-white'
                       }`}
                     >
                       {s.start.slice(0, 5)}
@@ -501,10 +554,10 @@ export default function BookingWizard() {
                 </div>
               )}
 
-              <div className="flex gap-3 mt-6">
+              <div className="flex gap-3 mt-8">
                 <button
                   onClick={() => setStep(2)}
-                  className="px-4 py-2.5 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 text-sm font-medium"
+                  className="px-5 py-3 border border-white/10 text-white/60 rounded-xl hover:bg-white/5 text-sm font-medium transition"
                 >
                   ← Back
                 </button>
@@ -512,9 +565,9 @@ export default function BookingWizard() {
                   <button
                     onClick={() => setStep(4)}
                     disabled={!selectedSlot}
-                    className="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 text-sm font-medium"
+                    className="flex-1 px-5 py-3 bg-white text-black rounded-xl hover:bg-white/90 disabled:opacity-50 text-sm font-semibold transition shadow-[0_0_30px_rgba(255,255,255,0.15)]"
                   >
-                    Go
+                    Continue
                   </button>
                 )}
               </div>
@@ -523,38 +576,36 @@ export default function BookingWizard() {
 
           {step === 4 && selectedSlot && (
             <div>
-              <h2 className="text-lg font-bold text-slate-900 mb-4">
-                Your information
-              </h2>
+              <h2 className="text-xl font-bold tracking-tight mb-6">Your information</h2>
 
-              <div className="bg-slate-50 rounded-lg p-4 mb-6 space-y-1">
+              <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-5 mb-8 space-y-3">
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Service</span>
-                  <span className="font-medium text-slate-900">{service.name}</span>
+                  <span className="text-white/40">Service</span>
+                  <span className="font-medium text-white">{service.name}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Date</span>
-                  <span className="font-medium text-slate-900">
+                  <span className="text-white/40">Date</span>
+                  <span className="font-medium text-white">
                     {new Date(date).toLocaleDateString('sq-AL')}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Time</span>
-                  <span className="font-medium text-slate-900">
+                  <span className="text-white/40">Time</span>
+                  <span className="font-medium text-white">
                     {selectedSlot.start.slice(0, 5)} - {selectedSlot.end.slice(0, 5)}
                   </span>
                 </div>
                 {selectedSlot.happy_hour && (
-                  <div className="flex justify-between text-sm pt-2 border-t border-slate-200 mt-2">
-                    <span className="text-slate-500">Happy Hour ({selectedSlot.happy_hour.discount_percent}% off)</span>
-                    <span className="font-medium text-emerald-600">
+                  <div className="flex justify-between text-sm pt-3 border-t border-white/5">
+                    <span className="text-white/40">Happy Hour ({selectedSlot.happy_hour.discount_percent}% off)</span>
+                    <span className="font-medium text-emerald-400">
                       -€{(parseFloat(service.price) * selectedSlot.happy_hour.discount_percent / 100).toFixed(2)}
                     </span>
                   </div>
                 )}
-                <div className="flex justify-between text-sm pt-2 border-t border-slate-200 mt-2">
-                  <span className="text-slate-500">Price</span>
-                  <span className="font-bold text-indigo-600">
+                <div className="flex justify-between text-sm pt-3 border-t border-white/5">
+                  <span className="text-white/40">Price</span>
+                  <span className="font-bold text-white text-lg">
                     €{(parseFloat(service.price) * (1 - (selectedSlot.happy_hour?.discount_percent || 0) / 100)).toFixed(2)}
                   </span>
                 </div>
@@ -562,7 +613,7 @@ export default function BookingWizard() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-white/50 mb-2">
                     Full name *
                   </label>
                   <input
@@ -570,73 +621,73 @@ export default function BookingWizard() {
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                     required
-                    className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none"
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-white/30 focus:border-indigo-400 focus:bg-white/10 outline-none transition"
                   />
                 </div>
 
-
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-white/50 mb-2">
                     Phone
                   </label>
                   <input
                     type="tel"
                     value={form.phone}
                     onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                    className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none"
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-white/30 focus:border-indigo-400 focus:bg-white/10 outline-none transition"
                   />
                 </div>
+
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-white/50 mb-2">
                     Notes (optional)
                   </label>
                   <textarea
                     value={form.notes}
                     onChange={(e) => setForm({ ...form, notes: e.target.value })}
                     rows={2}
-                    className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none resize-none"
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-white/30 focus:border-indigo-400 focus:bg-white/10 outline-none transition resize-none"
                   />
                 </div>
 
-                <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                <div className="flex items-start gap-3 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
                   <input
                     type="checkbox"
                     id="needs_assistance"
                     checked={form.needs_assistance}
                     onChange={(e) => setForm({ ...form, needs_assistance: e.target.checked, assistance_notes: e.target.checked ? form.assistance_notes : '' })}
-                    className="mt-0.5 w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 cursor-pointer"
+                    className="mt-0.5 w-4 h-4 text-amber-500 bg-white/5 border-white/20 rounded focus:ring-amber-500 cursor-pointer"
                   />
-                  <label htmlFor="needs_assistance" className="text-sm text-slate-700 cursor-pointer flex-1">
-                    <span className="font-medium flex items-center gap-1.5">
-                      <svg className="w-4 h-4 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
+                  <label htmlFor="needs_assistance" className="text-sm text-white/70 cursor-pointer flex-1">
+                    <span className="font-medium flex items-center gap-1.5 text-white">
+                      <svg className="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                       </svg>
                       I need assistance
                     </span>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      If you need speacial help, or need assistance please note here. Your booking will be treated with high priority!
+                    <p className="text-xs text-white/40 mt-1">
+                      Your booking will be treated with high priority.
                     </p>
                   </label>
                 </div>
 
                 {form.needs_assistance && (
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                      What kind of help you need? (optional)
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-white/50 mb-2">
+                      What kind of help you need?
                     </label>
                     <textarea
                       value={form.assistance_notes}
                       onChange={(e) => setForm({ ...form, assistance_notes: e.target.value })}
                       rows={2}
                       placeholder="I need an assistant..."
-                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none resize-none"
+                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-white/30 focus:border-indigo-400 focus:bg-white/10 outline-none transition resize-none"
                     />
                   </div>
                 )}
 
                 {company.has_active_discount_codes && (
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-white/50 mb-2">
                       Discount code (optional)
                     </label>
                     <input
@@ -644,17 +695,17 @@ export default function BookingWizard() {
                       value={form.discount_code}
                       onChange={(e) => setForm({ ...form, discount_code: e.target.value.toUpperCase() })}
                       placeholder={isSleeping ? 'Enter the code sent to you by email' : 'Enter discount code'}
-                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm font-mono focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none"
+                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-white/30 font-mono focus:border-indigo-400 focus:bg-white/10 outline-none transition"
                     />
                   </div>
                 )}
               </div>
 
-              <div className="mt-8 border-t border-slate-200 pt-6">
+              <div className="mt-8 pt-6 border-t border-white/5">
                 <div className="flex flex-col sm:flex-row gap-3">
                   <button
                     onClick={() => setStep(3)}
-                    className="px-5 py-3 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 text-sm font-medium transition"
+                    className="px-5 py-3.5 border border-white/10 text-white/60 rounded-xl hover:bg-white/5 text-sm font-medium transition"
                   >
                     ← Back
                   </button>
@@ -662,7 +713,7 @@ export default function BookingWizard() {
                   <button
                     onClick={() => processBooking('cash')}
                     disabled={submitting || !form.name}
-                    className="flex-1 px-5 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 text-sm font-semibold transition flex items-center justify-center gap-2"
+                    className="flex-1 px-5 py-3.5 bg-emerald-500 text-white rounded-xl hover:bg-emerald-400 disabled:opacity-50 text-sm font-semibold transition flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(16,185,129,0.3)]"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -673,7 +724,7 @@ export default function BookingWizard() {
                   <button
                     onClick={() => processBooking('card')}
                     disabled={submitting || !form.name}
-                    className="flex-1 px-5 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 text-sm font-semibold transition flex items-center justify-center gap-2"
+                    className="flex-1 px-5 py-3.5 bg-white text-black rounded-xl hover:bg-white/90 disabled:opacity-50 text-sm font-semibold transition flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(255,255,255,0.2)]"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />

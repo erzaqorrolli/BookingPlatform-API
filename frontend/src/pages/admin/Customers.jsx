@@ -3,12 +3,18 @@ import { Link } from 'react-router-dom';
 import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
 import EditableCell from '../../components/EditableCell';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function Customers() {
   const { activeCompany } = useCompany();
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+
+  // --- PAGINIM ---
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  // ----------------
 
   const loadCustomers = useCallback(async () => {
     if (!activeCompany) return;
@@ -36,6 +42,11 @@ export default function Customers() {
     };
   }, [loadCustomers]);
 
+  // Kthehu në faqen 1 kur ndryshon kërkimi
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
+
   const filtered = customers.filter((c) => {
     if (!search) return true;
     const q = search.toLowerCase();
@@ -46,35 +57,34 @@ export default function Customers() {
     );
   });
 
-const handleExportContacts = async () => {
+  const handleExportContacts = async () => {
     try {
-        const res = await api.get(`/companies/${activeCompany.id}/customers/export-vcard`, {
-            responseType: 'blob' 
-        });
+      const res = await api.get(`/companies/${activeCompany.id}/customers/export-vcard`, {
+        responseType: 'blob'
+      });
 
-        const url = window.URL.createObjectURL(new Blob([res.data]));
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', `clients-${activeCompany.id}.vcf`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `clients-${activeCompany.id}.vcf`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
     } catch (err) {
-        alert('Failed to export contacts: ' + (err.response?.data?.error || err.message));
+      alert('Failed to export contacts: ' + (err.response?.data?.error || err.message));
     }
-};
+  };
 
   const updateCustomerField = async (customerId, field, value) => {
     try {
       await api.put(`/companies/${activeCompany.id}/customers/${customerId}/quick-update`, {
         [field]: value
       });
-      
-      setCustomers(prev => prev.map(c => 
+
+      setCustomers(prev => prev.map(c =>
         c.id === customerId ? { ...c, [field]: value } : c
       ));
-      
     } catch (err) {
       console.error(err);
       alert('Failed to update customer');
@@ -91,6 +101,13 @@ const handleExportContacts = async () => {
   }
 
   const vipCount = customers.filter((c) => Number(c.is_vip) === 1).length;
+
+  // --- LLOGARITJET E PAGINIMIT ---
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedCustomers = filtered.slice(startIndex, startIndex + itemsPerPage);
+  const shouldShowPagination = filtered.length > itemsPerPage;
+  // -------------------------------
 
   return (
     <div className="space-y-6">
@@ -121,8 +138,8 @@ const handleExportContacts = async () => {
             className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none"
           />
         </div>
-        
-        <button 
+
+        <button
           onClick={handleExportContacts}
           className="px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition flex items-center gap-2 text-sm font-medium shadow-sm"
         >
@@ -170,7 +187,7 @@ const handleExportContacts = async () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filtered.map((c) => (
+                {paginatedCustomers.map((c) => (
                   <tr key={c.id} className="hover:bg-slate-50">
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
@@ -243,6 +260,35 @@ const handleExportContacts = async () => {
               </tbody>
             </table>
           </div>
+
+          {shouldShowPagination && (
+            <div className="flex items-center justify-between px-5 py-4 border-t border-slate-200 bg-slate-50">
+              <div className="text-sm text-slate-500">
+                Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
+                <span className="font-medium">{Math.min(startIndex + itemsPerPage, filtered.length)}</span> of{' '}
+                <span className="font-medium">{filtered.length}</span> clients
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <span className="text-sm font-medium text-slate-700 px-2">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

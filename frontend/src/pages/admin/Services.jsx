@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function Services() {
   const { activeCompany } = useCompany();
@@ -10,6 +11,11 @@ export default function Services() {
   const [editing, setEditing] = useState(null);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // --- PAGINIM ---
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  // ----------------
 
   const emptyForm = {
     name: '',
@@ -37,6 +43,7 @@ export default function Services() {
 
   useEffect(() => {
     loadServices();
+    setCurrentPage(1); // Kthehu në faqen 1 kur ndryshon kompania
   }, [activeCompany]);
 
   const openCreate = () => {
@@ -122,6 +129,12 @@ export default function Services() {
     );
   }
 
+  const totalPages = Math.ceil(services.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedServices = services.slice(startIndex, startIndex + itemsPerPage);
+  const shouldShowPagination = services.length > itemsPerPage;
+  // -------------------------------
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -156,7 +169,7 @@ export default function Services() {
             </svg>
           </div>
           <h3 className="text-lg font-semibold text-slate-900 mb-1">
-            No serivces
+            No services
           </h3>
           <p className="text-sm text-slate-500 mb-5">
             Add first service to start
@@ -194,7 +207,7 @@ export default function Services() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {services.map((service) => (
+              {paginatedServices.map((service) => (
                 <tr key={service.id} className="hover:bg-slate-50">
                   <td className="px-5 py-4">
                     <div className="font-medium text-slate-900">{service.name}</div>
@@ -245,6 +258,35 @@ export default function Services() {
               ))}
             </tbody>
           </table>
+
+          {shouldShowPagination && (
+            <div className="flex items-center justify-between px-5 py-4 border-t border-slate-200 bg-slate-50">
+              <div className="text-sm text-slate-500">
+                Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
+                <span className="font-medium">{Math.min(startIndex + itemsPerPage, services.length)}</span> of{' '}
+                <span className="font-medium">{services.length}</span> services
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <span className="text-sm font-medium text-slate-700 px-2">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -275,7 +317,7 @@ export default function Services() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Name of serivce *
+                  Name of service *
                 </label>
                 <input
                   type="text"

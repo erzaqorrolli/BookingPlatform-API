@@ -1,15 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
 import { useRole } from '../../hooks/useRole';
 import Swal from 'sweetalert2';
 import toast from 'react-hot-toast';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function Team() {
   const { activeCompany } = useCompany();
   const role = useRole();
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ email: '', role: 'staff' });
   const [saving, setSaving] = useState(false);
@@ -20,7 +23,7 @@ export default function Team() {
   const [customRoles, setCustomRoles] = useState([]);
   const [memberRoles, setMemberRoles] = useState({}); 
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!activeCompany) return;
     setLoading(true);
     try {
@@ -35,7 +38,7 @@ export default function Team() {
           try {
             const res = await api.get(`/companies/${activeCompany.id}/members/${m.id}/custom-role`);
             rolesMap[m.id] = res.data.data.custom_role_id || '';
-          } catch (err) {
+          } catch {
             rolesMap[m.id] = '';
           }
         }
@@ -47,20 +50,24 @@ export default function Team() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeCompany]);
 
-  const loadCustomRoles = async () => {
+  const loadCustomRoles = useCallback(async () => {
     if (!activeCompany) return;
     try {
       const res = await api.get(`/companies/${activeCompany.id}/custom-roles`);
       setCustomRoles(res.data.data || []);
     } catch (err) { console.error(err); }
-  };
-
-  useEffect(() => { 
-    load(); 
-    loadCustomRoles();
   }, [activeCompany]);
+
+  useEffect(() => {
+    const initialLoad = window.setTimeout(() => {
+      setCurrentPage(1);
+      load();
+      loadCustomRoles();
+    }, 0);
+    return () => window.clearTimeout(initialLoad);
+  }, [load, loadCustomRoles]);
 
   const handleRoleChange = async (userId, newRoleId) => {
     try {
@@ -164,6 +171,11 @@ export default function Team() {
     return colors[role] || colors.staff;
   };
 
+  const totalPages = Math.ceil(members.length / itemsPerPage);
+  const displayedPage = Math.min(currentPage, Math.max(totalPages, 1));
+  const startIndex = (displayedPage - 1) * itemsPerPage;
+  const paginatedMembers = members.slice(startIndex, startIndex + itemsPerPage);
+
   if (!activeCompany) {
     return (
       <div className="bg-white border-2 border-dashed border-slate-200 rounded-xl p-12 text-center">
@@ -225,7 +237,7 @@ export default function Team() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {members.map((m) => (
+              {paginatedMembers.map((m) => (
                 <tr key={m.id} className="hover:bg-slate-50">
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
@@ -293,6 +305,36 @@ export default function Team() {
               ))}
             </tbody>
           </table>
+          {members.length > itemsPerPage && (
+            <div className="flex items-center justify-between px-5 py-4 border-t border-slate-200 bg-slate-50">
+              <div className="text-sm text-slate-500">
+                Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
+                <span className="font-medium">{Math.min(startIndex + itemsPerPage, members.length)}</span> of{' '}
+                <span className="font-medium">{members.length}</span> members
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={displayedPage === 1}
+                  aria-label="Previous page"
+                  className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <span className="text-sm font-medium text-slate-700 px-2">
+                  Page {displayedPage} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={displayedPage === totalPages}
+                  aria-label="Next page"
+                  className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

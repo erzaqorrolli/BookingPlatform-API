@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
 import InvoiceForm from './InvoiceForm';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 const STATUS_LABELS = {
   draft:     'Draft',
@@ -26,6 +27,11 @@ export default function Invoices() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState(null);
 
+  // --- PAGINIM ---
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  // ----------------
+
   const loadInvoices = useCallback(async () => {
     if (!activeCompany) return;
     setLoading(true);
@@ -45,6 +51,7 @@ export default function Invoices() {
 
   useEffect(() => {
     loadInvoices();
+    setCurrentPage(1); // Kthehu në faqen 1 kur ndryshon filtri
   }, [loadInvoices]);
 
   const updateStatus = async (invoiceId, newStatus) => {
@@ -78,6 +85,12 @@ export default function Invoices() {
   const totalRevenue = invoices
     .filter((i) => i.status === 'paid')
     .reduce((sum, i) => sum + parseFloat(i.total || 0), 0);
+
+  // --- LLOGARITJET E PAGINIMIT ---
+  const totalPages = Math.ceil(invoices.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedInvoices = invoices.slice(startIndex, startIndex + itemsPerPage);
+  // -------------------------------
 
   return (
     <div className="space-y-6">
@@ -179,7 +192,7 @@ export default function Invoices() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {invoices.map((inv) => (
+              {paginatedInvoices.map((inv) => (
                 <tr key={inv.id} className="hover:bg-slate-50">
                   <td className="px-5 py-4 text-sm font-mono font-semibold text-indigo-600">
                     {inv.reference}
@@ -234,6 +247,35 @@ export default function Invoices() {
               ))}
             </tbody>
           </table>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-5 py-4 border-t border-slate-200 bg-slate-50">
+              <div className="text-sm text-slate-500">
+                Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
+                <span className="font-medium">{Math.min(startIndex + itemsPerPage, invoices.length)}</span> of{' '}
+                <span className="font-medium">{invoices.length}</span> invoices
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <span className="text-sm font-medium text-slate-700 px-2">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

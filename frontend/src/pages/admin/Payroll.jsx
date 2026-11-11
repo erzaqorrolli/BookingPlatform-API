@@ -2,12 +2,18 @@ import { useState, useEffect } from 'react';
 import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
 import Swal from 'sweetalert2';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function Payroll() {
   const { activeCompany } = useCompany();
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState({});
+
+  // --- PAGINIM ---
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  // ----------------
 
   const load = async () => {
     if (!activeCompany) return;
@@ -24,6 +30,7 @@ export default function Payroll() {
 
   useEffect(() => {
     load();
+    setCurrentPage(1); // Kthehu në faqen 1 kur ndryshon kompania
   }, [activeCompany]);
 
   const handleRateChange = (userId, value) => {
@@ -104,6 +111,13 @@ export default function Payroll() {
   const totalUnpaid = employees.reduce((s, e) => s + parseFloat(e.unpaid_total || 0), 0);
   const totalPaid = employees.reduce((s, e) => s + parseFloat(e.paid_total || 0), 0);
 
+  // --- LLOGARITJET E PAGINIMIT ---
+  const totalPages = Math.ceil(employees.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedEmployees = employees.slice(startIndex, startIndex + itemsPerPage);
+  const shouldShowPagination = employees.length > itemsPerPage;
+  // -------------------------------
+
   return (
     <div className="space-y-6">
       <div>
@@ -148,7 +162,7 @@ export default function Payroll() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {employees.map((e) => {
+              {paginatedEmployees.map((e) => {
                 const isEditing = editing[e.id] !== undefined;
                 const rate = isEditing ? editing[e.id] : (e.hourly_rate ?? '');
                 const unpaid = parseFloat(e.unpaid_total || 0);
@@ -214,6 +228,35 @@ export default function Payroll() {
               })}
             </tbody>
           </table>
+
+          {shouldShowPagination && (
+            <div className="flex items-center justify-between px-5 py-4 border-t border-slate-200 bg-slate-50">
+              <div className="text-sm text-slate-500">
+                Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
+                <span className="font-medium">{Math.min(startIndex + itemsPerPage, employees.length)}</span> of{' '}
+                <span className="font-medium">{employees.length}</span> employees
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <span className="text-sm font-medium text-slate-700 px-2">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
