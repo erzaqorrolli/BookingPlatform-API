@@ -10,6 +10,7 @@ use App\Models\HappyHour;
 use App\Models\Discount;
 use App\Config\Database;
 use App\Utils\Mailer;
+use App\Utils\TenantMailer;
 use App\Models\Invoice;
 use App\Models\AuditLog;
 
@@ -260,12 +261,10 @@ class BookingController
     $email = strtolower(trim((string) ($input['email'] ?? '')));
     $phone = $input['phone'] ?? null;
 
-    // --- MËNYRA E PAGESËS (CASH ose CARD) ---
     $paymentMethod = strtolower(trim((string) ($input['payment_method'] ?? 'cash')));
     if (!in_array($paymentMethod, ['cash', 'card'], true)) {
         $paymentMethod = 'cash';
     }
-    // -----------------------------------------
 
     if (!$companyId || !$serviceId || !$date || !$startTime) {
         json_err('Missing required fields', 422);
@@ -528,12 +527,14 @@ class BookingController
     $notification = $notificationStmt->fetch();
 
     if ($notification) {
-        Mailer::sendBookingConfirmation(
+        TenantMailer::sendBookingConfirmation(
+            $companyId,
             $notification['customer_email'],
             $notification['customer_name'],
             $notification
         );
-        Mailer::sendNewBookingToOwner(
+        TenantMailer::sendNewBookingToOwner(
+            $companyId,
             $notification['owner_email'],
             $notification['owner_name'],
             $notification
@@ -549,7 +550,7 @@ class BookingController
 
         \App\Utils\WebSocket::notifyAll([
             'type'    => 'booking_created',
-            'message' => "Booking i re: {$name} - {$service->name}",
+            'message' => "New booking: {$name} - {$service->name}",
         ]);
 
         if (!empty($input['needs_assistance'])) {
@@ -571,9 +572,10 @@ class BookingController
                     <strong>Please treat this booking with high priority.</strong>
                 </p>";
 
-                Mailer::send(
+                TenantMailer::send(
+                    $companyId,
                     $notification['owner_email'],
-                    " Priority: This client needs assistance",
+                    "Priority: This client needs assistance",
                     $priorityMessage
                 );
             } catch (\Throwable $e) {
@@ -723,7 +725,7 @@ public function updateStatus(array $params): void
         $customer = $customerStmt->fetch();
 
         if ($customer && filter_var($customer['email'], FILTER_VALIDATE_EMAIL)) {
-            Mailer::sendStatusUpdate(
+            TenantMailer::sendStatusUpdate(
                 $companyId,
                 $customer['email'],
                 $customer['name'],
@@ -1187,31 +1189,32 @@ public function updateStatus(array $params): void
 
             if ($notification) {
                 if (!empty($notification['customer_email'])) {
-                    Mailer::sendBookingConfirmation(
+                    TenantMailer::sendBookingConfirmation(
+                        $companyId,
                         $notification['customer_email'],
                         $notification['customer_name'],
                         $notification
                     );
+                    TenantMailer::sendNewBookingToOwner(
+                        $companyId,
+                        $notification['owner_email'],
+                        $notification['owner_name'],
+                        $notification
+                    );
+
+                    \App\Models\Notification::notifyCompanyOwners(
+                        $companyId,
+                        'booking',
+                        'Manual booking received',
+                        "{$name} booked {$service->name} on {$date} at {$startTime} (added by staff)",
+                        '/admin/bookings'
+                    );
+
+                    \App\Utils\WebSocket::notifyAll([
+                        'type' => 'booking_created',
+                        'message' => "Manual booking: {$name} - {$service->name}",
+                    ]);
                 }
-
-                Mailer::sendNewBookingToOwner(
-                    $notification['owner_email'],
-                    $notification['owner_name'],
-                    $notification
-                );
-
-                \App\Models\Notification::notifyCompanyOwners(
-                    $companyId,
-                    'booking',
-                    'Manual booking received',
-                    "{$name} booked {$service->name} on {$date} at {$startTime} (added by staff)",
-                    '/admin/bookings'
-                );
-
-                \App\Utils\WebSocket::notifyAll([
-                    'type' => 'booking_created',
-                    'message' => "Manual booking: {$name} - {$service->name}",
-                ]);
             }
         } catch (\Throwable $e) {
             error_log('Manual booking email failed:' . $e->getMessage());
@@ -1282,7 +1285,7 @@ public function updateStatus(array $params): void
             <a href='https://bookwise.com/book'>Book Now</a>
         ";
 
-        if(Mailer::send($waiting['customer_email'],$subject,$body)){
+        if(TenantMailer::send($companyId, $waiting['customer_email'], $subject, $body)){
             $db->prepare("UPDATE waitlist SET status='notified',notified_at=NOW() WHERE id=?")
             ->execute([$waiting['id']]);
         }

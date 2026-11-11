@@ -21,7 +21,7 @@ class ContactController
         if ($name === '') json_err('Name is required', 422);
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) json_err('Valid email required', 422);
         if ($subject === '') json_err('Subject is required', 422);
-        if (strlen($message) < 10) json_err('Message must be at least 10 characters', 422);
+        // if (strlen($message) < 10) json_err('Message must be at least 10 characters', 422);
 
         $contactMessage = ContactMessage::create([
             'name'    => $name,

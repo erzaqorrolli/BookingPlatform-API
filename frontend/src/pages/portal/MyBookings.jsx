@@ -18,11 +18,14 @@ const STATUS_COLORS = {
   no_show: 'bg-slate-100 text-slate-700',
 };
 
+const PAGE_SIZE = 10;
+
 export default function MyBookings() {
   const [bookings, setBookings] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('upcoming');
+  const [currentPage, setCurrentPage] = useState(1);
   const [reviewModal, setReviewModal] = useState(null);
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
@@ -48,6 +51,7 @@ export default function MyBookings() {
       ]);
       setBookings(bookingsRes.data.data || []);
       setReviews(reviewsRes.data.data || []);
+      setCurrentPage(1);
     } catch (err) {
       console.error(err);
     } finally {
@@ -111,6 +115,14 @@ export default function MyBookings() {
     }
     return true;
   });
+
+  const pageCount = Math.ceil(filtered.length / PAGE_SIZE);
+  const firstItem = (currentPage - 1) * PAGE_SIZE + 1;
+  const lastItem = Math.min(currentPage * PAGE_SIZE, filtered.length);
+  const visibleBookings = filtered.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
 
   const hasReview = (bookingId) => {
     return reviews.find((r) => r.booking_id === bookingId);
@@ -177,7 +189,10 @@ export default function MyBookings() {
         ].map((f) => (
           <button
             key={f.key}
-            onClick={() => setFilter(f.key)}
+            onClick={() => {
+              setFilter(f.key);
+              setCurrentPage(1);
+            }}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition whitespace-nowrap ${
               filter === f.key
                 ? 'border-emerald-500 text-emerald-600'
@@ -214,7 +229,7 @@ export default function MyBookings() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filtered.map((b) => {
+              {visibleBookings.map((b) => {
                 const review = hasReview(b.id);
                 const canCancel = ['pending', 'confirmed'].includes(b.status);
 
@@ -272,6 +287,43 @@ export default function MyBookings() {
               })}
             </tbody>
           </table>
+          {filtered.length > PAGE_SIZE && (
+            <nav
+              className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-200 bg-slate-50/70 px-4 py-3"
+              aria-label="Bookings pagination"
+            >
+              <p className="text-xs text-slate-500">
+                Showing {firstItem} to {lastItem} of {filtered.length} bookings
+              </p>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((page) => Math.max(page - 1, 1))}
+                  disabled={currentPage === 1}
+                  aria-label="Previous page"
+                  className="flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m15 19-7-7 7-7" />
+                  </svg>
+                </button>
+                <span className="text-xs font-medium text-slate-700">
+                  Page {currentPage} of {pageCount}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((page) => Math.min(page + 1, pageCount))}
+                  disabled={currentPage === pageCount}
+                  aria-label="Next page"
+                  className="flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m9 5 7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            </nav>
+          )}
         </div>
       )}
 
