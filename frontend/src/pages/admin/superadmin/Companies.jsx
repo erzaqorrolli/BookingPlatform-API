@@ -2,12 +2,16 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../../api/client';
 import Swal from 'sweetalert2';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function Companies() {
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const loadCompanies = async () => {
     setLoading(true);
@@ -24,6 +28,10 @@ export default function Companies() {
   useEffect(() => {
     loadCompanies();
   }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filterStatus]);
 
   const handleImpersonate = async (company) => {
     const { value: reason } = await Swal.fire({
@@ -71,6 +79,7 @@ export default function Companies() {
       });
     }
   };
+
   const handleToggleStatus = async (company) => {
     const newStatus = company.status === 'blocked' ? 'active' : 'blocked';
 
@@ -209,6 +218,11 @@ export default function Companies() {
     return true;
   });
 
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedCompanies = filtered.slice(startIndex, startIndex + itemsPerPage);
+  const shouldShowPagination = filtered.length > itemsPerPage;
+
   if (loading) {
     return (
       <div className="p-12 text-center text-slate-500 dark:text-slate-400">
@@ -272,119 +286,150 @@ export default function Companies() {
           </p>
         </div>
       ) : (
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-                <tr>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Company</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Owner</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Bookings</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Services</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Customers</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Revenue</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Status</th>
-                  <th className="text-right px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {filtered.map((c) => (
-                  <tr
-                    key={c.id}
-                    className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition"
-                  >
-                    <td className="px-5 py-4">
-                      <div className="text-sm font-semibold text-slate-900 dark:text-white">
-                        {c.name}
-                      </div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400">
-                        {c.slug}
-                      </div>
-                      <div className="text-xs text-slate-400 dark:text-slate-500">
-                        {c.email}
-                      </div>
-                    </td>
-                    <td className="px-5 py-4">
-                      {c.owner_email ? (
-                        <>
-                          <div className="text-sm text-slate-900 dark:text-white">
-                            {c.owner_name || '—'}
-                          </div>
-                          <div className="text-xs text-slate-500 dark:text-slate-400">
-                            {c.owner_email}
-                          </div>
-                        </>
-                      ) : (
-                        <span className="text-xs text-slate-400">—</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-4 text-sm text-slate-700 dark:text-slate-300">
-                      {c.bookings_count}
-                    </td>
-                    <td className="px-5 py-4 text-sm text-slate-700 dark:text-slate-300">
-                      {c.services_count}
-                    </td>
-                    <td className="px-5 py-4 text-sm text-slate-700 dark:text-slate-300">
-                      {c.customers_count}
-                    </td>
-                    <td className="px-5 py-4 text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                      €{parseFloat(c.revenue).toFixed(2)}
-                    </td>
-                    <td className="px-5 py-4">
-                      {c.status === 'blocked' ? (
-                        <span className="text-xs font-semibold px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-full">
-                          Blocked
-                        </span>
-                      ) : (
-                        <span className="text-xs font-semibold px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-full">
-                          Active
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-5 py-4 text-right">
-                      <div className="flex items-center justify-end gap-3">
-                        <Link
-                          to={`/admin/superadmin/companies/${c.id}`}
-                          className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
-                        >
-                          View
-                        </Link>
-                        
-                        {c.slug !== 'platform-admin' && (
-                          <button
-                            onClick={() => handleImpersonate(c)}
-                            className="text-xs font-medium text-amber-600 dark:text-amber-400 hover:underline"
-                          >
-                            Login as
-                          </button>
-                        )}
-
-                        <button
-                          onClick={() => handleToggleStatus(c)}
-                          className={`text-xs font-medium ${
-                            c.status === 'blocked'
-                              ? 'text-emerald-600 dark:text-emerald-400'
-                              : 'text-amber-600 dark:text-amber-400'
-                          } hover:underline`}
-                        >
-                          {c.status === 'blocked' ? 'Activate' : 'Block'}
-                        </button>
-                        {c.slug !== 'platform-admin' && (
-                          <button
-                            onClick={() => handleDelete(c)}
-                            className="text-xs font-medium text-red-600 dark:text-red-400 hover:underline"
-                          >
-                            Delete
-                          </button>
-                        )}
-                      </div>
-                    </td>
+        <>
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+                  <tr>
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Company</th>
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Owner</th>
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Bookings</th>
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Services</th>
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Customers</th>
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Revenue</th>
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Status</th>
+                    <th className="text-right px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {paginatedCompanies.map((c) => (
+                    <tr
+                      key={c.id}
+                      className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition"
+                    >
+                      <td className="px-5 py-4">
+                        <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                          {c.name}
+                        </div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">
+                          {c.slug}
+                        </div>
+                        <div className="text-xs text-slate-400 dark:text-slate-500">
+                          {c.email}
+                        </div>
+                      </td>
+                      <td className="px-5 py-4">
+                        {c.owner_email ? (
+                          <>
+                            <div className="text-sm text-slate-900 dark:text-white">
+                              {c.owner_name || '—'}
+                            </div>
+                            <div className="text-xs text-slate-500 dark:text-slate-400">
+                              {c.owner_email}
+                            </div>
+                          </>
+                        ) : (
+                          <span className="text-xs text-slate-400">—</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-4 text-sm text-slate-700 dark:text-slate-300">
+                        {c.bookings_count}
+                      </td>
+                      <td className="px-5 py-4 text-sm text-slate-700 dark:text-slate-300">
+                        {c.services_count}
+                      </td>
+                      <td className="px-5 py-4 text-sm text-slate-700 dark:text-slate-300">
+                        {c.customers_count}
+                      </td>
+                      <td className="px-5 py-4 text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                        €{parseFloat(c.revenue).toFixed(2)}
+                      </td>
+                      <td className="px-5 py-4">
+                        {c.status === 'blocked' ? (
+                          <span className="text-xs font-semibold px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-full">
+                            Blocked
+                          </span>
+                        ) : (
+                          <span className="text-xs font-semibold px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-full">
+                            Active
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-5 py-4 text-right">
+                        <div className="flex items-center justify-end gap-3">
+                          <Link
+                            to={`/admin/superadmin/companies/${c.id}`}
+                            className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
+                          >
+                            View
+                          </Link>
+                          
+                          {c.slug !== 'platform-admin' && (
+                            <button
+                              onClick={() => handleImpersonate(c)}
+                              className="text-xs font-medium text-amber-600 dark:text-amber-400 hover:underline"
+                            >
+                              Login as
+                            </button>
+                          )}
+
+                          <button
+                            onClick={() => handleToggleStatus(c)}
+                            className={`text-xs font-medium ${
+                              c.status === 'blocked'
+                                ? 'text-emerald-600 dark:text-emerald-400'
+                                : 'text-amber-600 dark:text-amber-400'
+                            } hover:underline`}
+                          >
+                            {c.status === 'blocked' ? 'Activate' : 'Block'}
+                          </button>
+                          {c.slug !== 'platform-admin' && (
+                            <button
+                              onClick={() => handleDelete(c)}
+                              className="text-xs font-medium text-red-600 dark:text-red-400 hover:underline"
+                            >
+                              Delete
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+
+          {shouldShowPagination && (
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-slate-500 dark:text-slate-400">
+                Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
+                <span className="font-medium">{Math.min(startIndex + itemsPerPage, filtered.length)}</span> of{' '}
+                <span className="font-medium">{filtered.length}</span> companies
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300 px-2">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

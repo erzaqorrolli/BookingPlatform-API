@@ -1,8 +1,8 @@
-
 import { useState } from 'react';
 import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
 import toast from 'react-hot-toast';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function Companies() {
     const { companies, activeCompany, switchCompany, refreshCompanies } = useCompany();
@@ -12,6 +12,9 @@ export default function Companies() {
     const [form, setForm] = useState({ name: '', email: '', phone: '', address: '' });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
 
     const openCreate = () => {
         setEditing(null);
@@ -70,22 +73,30 @@ export default function Companies() {
         }
     };
 
+    const totalPages = Math.ceil(companies.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const paginatedCompanies = companies.slice(startIndex, startIndex + itemsPerPage);
+    const shouldShowPagination = companies.length > itemsPerPage;
+
     return (
         <div className="space-y-6">
-            <div>
-          <h1 className="text-2xl font-bold text-slate-900">Company</h1>
-          <p className="text-sm text-slate-500 mt-1">
-Manage Companies          </p>
-        </div>
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-medium text-sm"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Create Company
-        </button>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold text-slate-900">Company</h1>
+                    <p className="text-sm text-slate-500 mt-1">
+                        Manage Companies
+                    </p>
+                </div>
+                <button
+                  onClick={openCreate}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-medium text-sm"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Create Company
+                </button>
+            </div>
 
          {companies.length === 0 ? (
         <div className="bg-white border-2 border-dashed border-slate-200 rounded-xl p-12 text-center">
@@ -108,63 +119,94 @@ Manage Companies          </p>
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {companies.map((c) => (
-            <div
-              key={c.id}
-              className={`bg-white rounded-xl border-2 p-5 transition hover:shadow-md ${
-                activeCompany?.id === c.id
-                  ? 'border-indigo-500 bg-indigo-50/30'
-                  : 'border-slate-200'
-              }`}
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">
-                  {c.name?.charAt(0).toUpperCase()}
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {paginatedCompanies.map((c) => (
+              <div
+                key={c.id}
+                className={`bg-white rounded-xl border-2 p-5 transition hover:shadow-md ${
+                  activeCompany?.id === c.id
+                    ? 'border-indigo-500 bg-indigo-50/30'
+                    : 'border-slate-200'
+                }`}
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">
+                    {c.name?.charAt(0).toUpperCase()}
+                  </div>
+                  {activeCompany?.id === c.id && (
+                    <span className="text-xs font-semibold text-indigo-600 bg-indigo-100 px-2 py-1 rounded">
+                      Active
+                    </span>
+                  )}
                 </div>
-                {activeCompany?.id === c.id && (
-                  <span className="text-xs font-semibold text-indigo-600 bg-indigo-100 px-2 py-1 rounded">
-                    Active
-                  </span>
+
+                <h3 className="font-semibold text-slate-900 mb-1">{c.name}</h3>
+                <p className="text-xs text-slate-500 mb-3">
+                  Role: <span className="font-medium text-slate-700">{c.role}</span>
+                </p>
+
+                {c.address && (
+                  <p className="text-xs text-slate-400 mb-3">{c.address}</p>
                 )}
-              </div>
 
-              <h3 className="font-semibold text-slate-900 mb-1">{c.name}</h3>
-              <p className="text-xs text-slate-500 mb-3">
-                Role: <span className="font-medium text-slate-700">{c.role}</span>
-              </p>
-
-              {c.address && (
-                <p className="text-xs text-slate-400 mb-3">{c.address}</p>
-              )}
-
-              <div className="flex items-center gap-2 pt-3 border-t border-slate-100">
-                {activeCompany?.id !== c.id && (
-                   <button
-                    onClick={() => {
-                      switchCompany(c.id);
-                      toast.success(`Switched to ${c.name}`);
-                    }}
-                    className="flex-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50 py-1.5 rounded transition"
+                <div className="flex items-center gap-2 pt-3 border-t border-slate-100">
+                  {activeCompany?.id !== c.id && (
+                     <button
+                      onClick={() => {
+                        switchCompany(c.id);
+                        toast.success(`Switched to ${c.name}`);
+                      }}
+                      className="flex-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50 py-1.5 rounded transition"
+                    >
+                      Activate
+                    </button>
+                  )}
+                  {activeCompany?.id === c.id && (
+                    <span className="flex-1 text-xs text-center text-slate-400 py-1.5">
+                      Now
+                    </span>
+                  )}
+                  <button
+                    onClick={() => openEdit(c)}
+                    className="text-xs font-medium text-slate-600 hover:bg-slate-100 px-2 py-1.5 rounded transition"
                   >
-                    Activate
+                    Edit
                   </button>
-                )}
-                {activeCompany?.id === c.id && (
-                  <span className="flex-1 text-xs text-center text-slate-400 py-1.5">
-                    Now
-                  </span>
-                )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {shouldShowPagination && (
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-slate-500">
+                Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
+                <span className="font-medium">{Math.min(startIndex + itemsPerPage, companies.length)}</span> of{' '}
+                <span className="font-medium">{companies.length}</span> companies
+              </div>
+              <div className="flex items-center gap-2">
                 <button
-                  onClick={() => openEdit(c)}
-                  className="text-xs font-medium text-slate-600 hover:bg-slate-100 px-2 py-1.5 rounded transition"
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
                 >
-                  Edit
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <span className="text-sm font-medium text-slate-700 px-2">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
 
       {showModal && (

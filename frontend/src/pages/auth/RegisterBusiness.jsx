@@ -50,17 +50,17 @@ export default function RegisterBusiness() {
   return (
     <AuthLayout
       title="Register your business"
-      subtitle="Start for free – recieve online bookings in just 2 minutes"
+      subtitle="Start for free – receive online bookings in just 2 minutes"
     >
       {error && (
-        <div className="mb-5 p-3 bg-red-50 border border-red-100 rounded-lg text-sm text-red-700">
+        <div className="mb-5 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-400">
           {error}
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">
+          <label className="block text-xs font-semibold uppercase tracking-wide text-white/60 mb-1.5">
             Full name *
           </label>
           <input
@@ -69,12 +69,12 @@ export default function RegisterBusiness() {
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             required
             placeholder="Filan Fisteku"
-            className="w-full px-4 py-3 border border-slate-200 rounded-lg text-sm focus:border-indigo-500 outline-none"
+            className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder:text-white/30 focus:border-indigo-400 focus:bg-white/10 outline-none transition"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">
+          <label className="block text-xs font-semibold uppercase tracking-wide text-white/60 mb-1.5">
             Company name *
           </label>
           <input
@@ -83,15 +83,15 @@ export default function RegisterBusiness() {
             onChange={(e) => setForm({ ...form, company_name: e.target.value })}
             required
             placeholder="Barber Shop Prishtina"
-            className="w-full px-4 py-3 border border-slate-200 rounded-lg text-sm focus:border-indigo-500 outline-none"
+            className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder:text-white/30 focus:border-indigo-400 focus:bg-white/10 outline-none transition"
           />
-          <p className="text-xs text-slate-500 mt-1.5">
-            This name will be showed when clients book.
+          <p className="text-xs text-white/40 mt-1.5">
+            This name will be shown when clients book.
           </p>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">
+          <label className="block text-xs font-semibold uppercase tracking-wide text-white/60 mb-1.5">
             Email *
           </label>
           <input
@@ -100,12 +100,12 @@ export default function RegisterBusiness() {
             onChange={(e) => setForm({ ...form, email: e.target.value })}
             required
             placeholder="emri@kompania.com"
-            className="w-full px-4 py-3 border border-slate-200 rounded-lg text-sm focus:border-indigo-500 outline-none"
+            className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder:text-white/30 focus:border-indigo-400 focus:bg-white/10 outline-none transition"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">
+          <label className="block text-xs font-semibold uppercase tracking-wide text-white/60 mb-1.5">
             Password *
           </label>
           <input
@@ -114,31 +114,31 @@ export default function RegisterBusiness() {
             onChange={(e) => setForm({ ...form, password: e.target.value })}
             required
             minLength={6}
-            placeholder="Minimun 6 charachters"
-            className="w-full px-4 py-3 border border-slate-200 rounded-lg text-sm focus:border-indigo-500 outline-none"
+            placeholder="Minimum 6 characters"
+            className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder:text-white/30 focus:border-indigo-400 focus:bg-white/10 outline-none transition"
           />
         </div>
 
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 font-medium transition disabled:opacity-60"
+          className="w-full py-3.5 bg-white text-black font-semibold rounded-xl hover:bg-white/90 transition disabled:opacity-60 shadow-[0_0_40px_rgba(255,255,255,0.2)]"
         >
-          {loading ? 'Registring...' : 'Create business account'}
+          {loading ? 'Registering...' : 'Create business account'}
         </button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-slate-600">
+      <p className="mt-6 text-center text-sm text-white/50">
         Have an account?{' '}
-        <Link to="/login" className="font-medium text-indigo-600 hover:text-indigo-700">
+        <Link to="/login" className="font-medium text-indigo-400 hover:text-indigo-300 transition">
           Login
         </Link>
       </p>
 
-      <div className="mt-4 pt-4 border-t border-slate-100 text-center">
-        <p className="text-sm text-slate-600">
+      <div className="mt-4 pt-4 border-t border-white/10 text-center">
+        <p className="text-sm text-white/50">
           Are you a client?{' '}
-          <Link to="/register" className="font-medium text-emerald-600 hover:text-emerald-700">
+          <Link to="/register" className="font-medium text-emerald-400 hover:text-emerald-300 transition">
             Register as a client
           </Link>
         </p>

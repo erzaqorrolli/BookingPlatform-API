@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../../../api/client';
 import Swal from 'sweetalert2';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function Billing() {
     const [invoices, setInvoices] = useState([]);
@@ -8,6 +9,9 @@ export default function Billing() {
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [form, setForm] = useState({ company_id: '', amount: '', due_date: '' });
+
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
 
     useEffect(() => {
         loadData();
@@ -62,6 +66,11 @@ export default function Billing() {
         }
     };
 
+    const totalPages = Math.ceil(invoices.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const paginatedInvoices = invoices.slice(startIndex, startIndex + itemsPerPage);
+    const shouldShowPagination = invoices.length > itemsPerPage;
+
     if (loading) return <div className="p-12 text-center text-slate-500">Loading...</div>;
 
     return (
@@ -89,9 +98,9 @@ export default function Billing() {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                        {invoices.length === 0 ? (
+                        {paginatedInvoices.length === 0 ? (
                             <tr><td colSpan="6" className="px-5 py-8 text-center text-sm text-slate-500">No invoices yet.</td></tr>
-                        ) : invoices.map(inv => (
+                        ) : paginatedInvoices.map(inv => (
                             <tr key={inv.id} className="hover:bg-slate-50">
                                 <td className="px-5 py-4 text-sm font-mono text-slate-700">{inv.invoice_number}</td>
                                 <td className="px-5 py-4 text-sm text-slate-700">{inv.company_name}</td>
@@ -115,6 +124,35 @@ export default function Billing() {
                         ))}
                     </tbody>
                 </table>
+
+                {shouldShowPagination && (
+                    <div className="flex items-center justify-between px-5 py-4 border-t border-slate-200 bg-slate-50">
+                        <div className="text-sm text-slate-500">
+                            Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
+                            <span className="font-medium">{Math.min(startIndex + itemsPerPage, invoices.length)}</span> of{' '}
+                            <span className="font-medium">{invoices.length}</span> invoices
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                                disabled={currentPage === 1}
+                                className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                            >
+                                <ChevronLeft className="w-4 h-4" />
+                            </button>
+                            <span className="text-sm font-medium text-slate-700 px-2">
+                                Page {currentPage} of {totalPages}
+                            </span>
+                            <button
+                                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                                disabled={currentPage === totalPages}
+                                className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                            >
+                                <ChevronRight className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {showModal && (

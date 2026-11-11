@@ -25,6 +25,7 @@ use App\Controllers\NotificationController;
 use App\Controllers\SupportController;
 use App\Controllers\BillingController;
 use App\Controllers\PaymentController;
+use App\Controllers\SettingsController;
 
 
 Router::get('/api/health', function() {
@@ -307,3 +308,6 @@ Router::post('/api/payments/webhook',  [PaymentController::class, 'webhook']);
 
 Router::get('/api/superadmin/payments', [SuperAdminController::class, 'payments']);
 
+Router::get('/api/settings', [SettingsController::class, 'index']);
+
+Router::put('/api/superadmin/settings', [SettingsController::class, 'update']);

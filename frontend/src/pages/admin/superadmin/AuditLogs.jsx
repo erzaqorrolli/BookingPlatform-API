@@ -16,12 +16,22 @@ export default function AuditLogs() {
   const [search, setSearch] = useState('');
   const [filterAction, setFilterAction] = useState('');
 
+  // --- STATE PËR PAGINIM ---
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  // -------------------------
+
   useEffect(() => {
     api.get('/superadmin/audit-logs')
       .then((r) => setLogs(r.data.data || []))
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));
   }, []);
+
+  // Kur ndryshojnë filtrat, kthehu në faqen 1
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filterAction]);
 
   const formatDate = (d) => {
     if (!d) return '—';
@@ -50,6 +60,12 @@ export default function AuditLogs() {
     }
     return true;
   });
+
+  // --- LLOGARITJET E PAGINIMIT ---
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedLogs = filtered.slice(startIndex, startIndex + itemsPerPage);
+  // -------------------------------
 
   const uniqueActions = [...new Set(logs.map((l) => l.action))];
 
@@ -132,7 +148,7 @@ export default function AuditLogs() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {filtered.map((log) => {
+                {paginatedLogs.map((log) => {
                   const meta = log.metadata ? JSON.parse(log.metadata) : {};
                   return (
                     <tr key={log.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
@@ -173,6 +189,36 @@ export default function AuditLogs() {
               </tbody>
             </table>
           </div>
+
+          {/* PAGINIMI */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-5 py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+              <div className="text-sm text-slate-500 dark:text-slate-400">
+                Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
+                <span className="font-medium">{Math.min(startIndex + itemsPerPage, filtered.length)}</span> of{' '}
+                <span className="font-medium">{filtered.length}</span> logs
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition text-sm"
+                >
+                  Previous
+                </button>
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300 px-2">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition text-sm"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../../../api/client';
-import { Download } from 'lucide-react'; 
+import { Download } from 'lucide-react';
 
 const STATUS_COLORS = {
   pending: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300',
@@ -17,20 +17,23 @@ export default function Bookings() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filter, setFilter] = useState('');
-  const [limit, setLimit] = useState(100);
-  const [offset, setOffset] = useState(0);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const loadBookings = async () => {
     setLoading(true);
     try {
-      const params = { limit, offset };
+      const params = {};
       if (search) params.search = search;
       if (filterStatus) params.status = filterStatus;
       if (filter) params.filter = filter;
 
       const r = await api.get('/superadmin/bookings', { params });
-      setBookings(r.data.data?.bookings || []);
-      setTotal(r.data.data?.total || 0);
+      
+      const data = r.data.data?.bookings || r.data.data || [];
+      setBookings(data);
+      setTotal(r.data.data?.total || data.length);
     } catch (err) {
       console.error('Load bookings error:', err);
     } finally {
@@ -40,18 +43,12 @@ export default function Bookings() {
 
   useEffect(() => {
     loadBookings();
-  }, [search, filterStatus, filter, limit, offset]);
+    setCurrentPage(1); 
+  }, [search, filterStatus, filter]);
 
-  const totalPages = Math.ceil(total / limit);
-  const currentPage = Math.floor(offset / limit) + 1;
-
-  const handleNextPage = () => {
-    if (offset + limit < total) setOffset(offset + limit);
-  };
-
-  const handlePrevPage = () => {
-    if (offset > 0) setOffset(Math.max(0, offset - limit));
-  };
+  const totalPages = Math.ceil(bookings.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedBookings = bookings.slice(startIndex, startIndex + itemsPerPage);
 
   const handleExport = async () => {
     try {
@@ -75,7 +72,6 @@ export default function Bookings() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
@@ -99,14 +95,14 @@ export default function Bookings() {
         <input
           type="text"
           value={search}
-          onChange={(e) => { setSearch(e.target.value); setOffset(0); }}
+          onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by reference, customer, company..."
           className="flex-1 min-w-[200px] px-3 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-white rounded-lg text-sm focus:border-indigo-500 outline-none"
         />
 
         <select
           value={filterStatus}
-          onChange={(e) => { setFilterStatus(e.target.value); setOffset(0); }}
+          onChange={(e) => setFilterStatus(e.target.value)}
           className="px-3 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-white rounded-lg text-sm focus:border-indigo-500 outline-none"
         >
           <option value="">All statuses</option>
@@ -119,7 +115,7 @@ export default function Bookings() {
 
         <select
           value={filter}
-          onChange={(e) => { setFilter(e.target.value); setOffset(0); }}
+          onChange={(e) => setFilter(e.target.value)}
           className="px-3 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-white rounded-lg text-sm focus:border-indigo-500 outline-none"
         >
           <option value="">All time</option>
@@ -134,7 +130,6 @@ export default function Bookings() {
               setSearch('');
               setFilterStatus('');
               setFilter('');
-              setOffset(0);
             }}
             className="px-3 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
           >
@@ -173,7 +168,7 @@ export default function Bookings() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {bookings.map((b) => (
+                  {paginatedBookings.map((b) => (
                     <tr
                       key={b.id}
                       className={b.needs_assistance ? 'bg-amber-50 dark:bg-amber-900/20' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}
@@ -184,7 +179,7 @@ export default function Bookings() {
                         </div>
                         {b.needs_assistance === 1 && (
                           <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 text-xs font-semibold bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100 rounded-full">
-                            ⚠️ Priority
+                            Priority
                           </span>
                         )}
                       </td>
@@ -223,23 +218,27 @@ export default function Bookings() {
             </div>
           </div>
 
-          {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between">
               <div className="text-sm text-slate-500 dark:text-slate-400">
-                Page {currentPage} of {totalPages}
+                Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
+                <span className="font-medium">{Math.min(startIndex + itemsPerPage, bookings.length)}</span> of{' '}
+                <span className="font-medium">{bookings.length}</span> bookings
               </div>
               <div className="flex gap-2">
                 <button
-                  onClick={handlePrevPage}
-                  disabled={offset === 0}
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
                   className="px-3 py-1.5 text-sm border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 dark:text-slate-300"
                 >
                   ← Previous
                 </button>
+                <span className="px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300">
+                  Page {currentPage} of {totalPages}
+                </span>
                 <button
-                  onClick={handleNextPage}
-                  disabled={offset + limit >= total}
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
                   className="px-3 py-1.5 text-sm border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 dark:text-slate-300"
                 >
                   Next →

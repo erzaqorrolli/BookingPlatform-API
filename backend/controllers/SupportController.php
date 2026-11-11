@@ -152,10 +152,15 @@ class SupportController
     }
 
 
-    public function updateStatus(array $params): void
+   public function updateStatus(array $params): void
 {
     $uid = auth_user_id();
     if (!$uid) json_err('Unauthorized', 401);
+
+    $user = \App\Models\User::findById($uid); 
+    if (!$user || $user->role !== 'superadmin') {
+        json_err('Only Super Admin can change ticket status', 403);
+    }
 
     $ticketId = (int) $params['id'];
     $input = input();
@@ -197,7 +202,6 @@ class SupportController
 
     json_ok(['message' => 'Status updated and client notified']);
 }
-
           public function impersonate (array $params): void{
 
 

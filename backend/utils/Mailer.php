@@ -8,26 +8,29 @@ use PHPMailer\PHPMailer\Exception;
 
 class Mailer
 {
-    private static function createMailer(): PHPMailer
-    {
-        $mail = new PHPMailer(true);
+ private static function createMailer(): PHPMailer
+{
+    $mail = new PHPMailer(true);
 
-        $mail->isSMTP();
-        $mail->Host       = $_ENV['MAIL_HOST'] ?? 'smtp.gmail.com';
-        $mail->SMTPAuth   = true;
-        $mail->Username   = $_ENV['MAIL_USERNAME'] ?? '';
-        $mail->Password   = $_ENV['MAIL_PASSWORD'] ?? '';
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port       = (int) ($_ENV['MAIL_PORT'] ?? 587);
-        $mail->CharSet    = 'UTF-8';
+    $mail->isSMTP();
+    $mail->Host       = $_ENV['MAIL_HOST'] ?? 'smtp.gmail.com';
+    $mail->SMTPAuth   = true;
+    $mail->Username   = $_ENV['MAIL_USERNAME'] ?? '';
+    $mail->Password   = $_ENV['MAIL_PASSWORD'] ?? '';
+    $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+    $mail->Port       = (int) ($_ENV['MAIL_PORT'] ?? 587);
+    $mail->CharSet    = 'UTF-8';
 
-        $mail->setFrom(
-            $_ENV['MAIL_FROM'] ?? 'noreply@booking.local',
-            $_ENV['MAIL_FROM_NAME'] ?? 'BookWise'
-        );
+    $settings = self::getSettings();
+    $fromName = $settings['smtp_from_name'] ?? $_ENV['MAIL_FROM_NAME'] ?? 'BookingPlatform';
 
-        return $mail;
-    }
+    $mail->setFrom(
+        $_ENV['MAIL_FROM'] ?? 'noreply@booking.local',
+        $fromName
+    );
+
+    return $mail;
+}
 
     public static function send(string $to, string $subject, string $htmlBody): bool
     {
@@ -262,32 +265,37 @@ public static function sendInvoice(string $email, string $customerName, array $i
     ");
 
     self::send($email, "Invoice $reference from $companyName", $body);
-}    private static function template(string $title, string $content): string
-    {
-        return "
-        <!DOCTYPE html>
-        <html>
-        <head><meta charset='UTF-8'></head>
-        <body style='margin: 0; padding: 0; font-family: Inter, -apple-system, sans-serif; background: #f1f5f9;'>
-            <table width='100%' cellpadding='0' cellspacing='0' style='background: #f1f5f9; padding: 40px 20px;'>
-                <tr><td align='center'>
-                    <table width='600' cellpadding='0' cellspacing='0' style='background: white; border-radius: 16px; overflow: hidden;'>
-                        <tr><td style='background: linear-gradient(135deg, #4f46e5, #9333ea); padding: 30px; text-align: center;'>
-                            <h1 style='color: white; margin: 0; font-size: 22px;'>📅 BookingPlatform</h1>
-                        </td></tr>
-                        <tr><td style='padding: 40px 30px;'>
-                            <h2 style='color: #0f172a; margin: 0 0 20px; font-size: 20px;'>$title</h2>
-                            <div style='color: #334155; line-height: 1.7; font-size: 15px;'>$content</div>
-                        </td></tr>
-                        <tr><td style='background: #f8fafc; padding: 20px; text-align: center; color: #94a3b8; font-size: 13px;'>
-                            © 2026 BookWise Booking-Platform
-                        </td></tr>
-                    </table>
-                </td></tr>
-            </table>
-        </body>
-        </html>";
-    }
+}  private static function template(string $title, string $content): string
+{
+    $settings = self::getSettings();
+    $platformName = htmlspecialchars($settings['platform_name'] ?? 'BookingPlatform');
+    $companyName  = htmlspecialchars($settings['company_name'] ?? 'BookWise');
+    $year = date('Y');
+
+    return "
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset='UTF-8'></head>
+    <body style='margin: 0; padding: 0; font-family: Inter, -apple-system, sans-serif; background: #f1f5f9;'>
+        <table width='100%' cellpadding='0' cellspacing='0' style='background: #f1f5f9; padding: 40px 20px;'>
+            <tr><td align='center'>
+                <table width='600' cellpadding='0' cellspacing='0' style='background: white; border-radius: 16px; overflow: hidden;'>
+                    <tr><td style='background: linear-gradient(135deg, #4f46e5, #9333ea); padding: 30px; text-align: center;'>
+                        <h1 style='color: white; margin: 0; font-size: 22px;'>📅 {$platformName}</h1>
+                    </td></tr>
+                    <tr><td style='padding: 40px 30px;'>
+                        <h2 style='color: #0f172a; margin: 0 0 20px; font-size: 20px;'>$title</h2>
+                        <div style='color: #334155; line-height: 1.7; font-size: 15px;'>$content</div>
+                    </td></tr>
+                    <tr><td style='background: #f8fafc; padding: 20px; text-align: center; color: #94a3b8; font-size: 13px;'>
+                        © $year {$companyName}
+                    </td></tr>
+                </table>
+            </td></tr>
+        </table>
+    </body>
+    </html>";
+}
 
     private static function saveToChat(int $companyId,string $toEmail,string $subject,string $body): void{
         try{
@@ -297,5 +305,19 @@ public static function sendInvoice(string $email, string $customerName, array $i
         }catch(\Throwable $e){
             error_log ('Failed to save email to chat: ' . $e->getMessage());
         }
+    }
+
+    public static function getSettings(): array{
+        static $cache =null;
+        if($cache !==null) return $cache;
+        try{
+            $db=\App\Config\Database::pdo();
+            $stmt=$db->query("SELECT * FROM platform_settings WHERE id=1");
+            $cache=$stmt->fetch() ?: [];
+        }catch (\Throwable $e){
+            $cache=[];
+
+        } 
+        return $cache;
     }
 }
