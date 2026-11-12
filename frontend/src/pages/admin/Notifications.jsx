@@ -2,11 +2,15 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/client';
 import Swal from 'sweetalert2';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+
+const PAGE_SIZE = 10;
 
 export default function Notifications() {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
   const navigate = useNavigate();
 
   const load = async () => {
@@ -18,6 +22,7 @@ export default function Notifications() {
     } finally {
       setLoading(false);
     }
+
   };
 
   useEffect(() => {
@@ -93,6 +98,12 @@ export default function Notifications() {
     return true;
   });
 
+  const pageCount = Math.ceil(filtered.length / PAGE_SIZE);
+  const displayedPage = Math.min(currentPage, Math.max(pageCount, 1));
+  const visibleNotifications = filtered.slice(
+    (displayedPage - 1) * PAGE_SIZE,
+    displayedPage * PAGE_SIZE
+  );
   const unreadCount = notifications.filter((n) => !n.read_at).length;
 
   if (loading) {
@@ -128,7 +139,10 @@ export default function Notifications() {
         ].map((f) => (
           <button
             key={f.key}
-            onClick={() => setFilter(f.key)}
+            onClick={() => {
+              setFilter(f.key);
+              setCurrentPage(1);
+            }}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition ${
               filter === f.key
                 ? 'border-indigo-500 text-indigo-600'
@@ -153,7 +167,7 @@ export default function Notifications() {
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden divide-y divide-slate-100">
-          {filtered.map((n) => (
+          {visibleNotifications.map((n) => (
             <div
               key={n.id}
               className={`flex items-start gap-4 p-5 transition ${
@@ -227,6 +241,36 @@ export default function Notifications() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {filtered.length > PAGE_SIZE && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-slate-500">
+            Showing {(displayedPage - 1) * PAGE_SIZE + 1}–
+            {Math.min(displayedPage * PAGE_SIZE, filtered.length)} of {filtered.length}
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentPage((page) => Math.max(page - 1, 1))}
+              disabled={displayedPage === 1}
+              aria-label="Previous page"
+              className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="text-sm font-medium text-slate-700 px-2">
+              Page {displayedPage} of {pageCount}
+            </span>
+            <button
+              onClick={() => setCurrentPage((page) => Math.min(page + 1, pageCount))}
+              disabled={displayedPage === pageCount}
+              aria-label="Next page"
+              className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       )}
     </div>
