@@ -5,24 +5,37 @@ namespace App\Utils;
 
 use App\Config\Database;
 use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
 
 class TenantMailer
 {
-    public static function send(int $companyId, string $toEmail, string $subject, string $body): bool
+    public static function send(
+        int $companyId,
+        string $toEmail,
+        string $subject,
+        string $body,
+        ?string &$error = null
+    ): bool
     {
-        $db = Database::pdo();
-        $stmt = $db->prepare("SELECT * FROM company_settings WHERE company_id = ?");
-        $stmt->execute([$companyId]);
-        $settings = $stmt->fetch();
-
-        if (!$settings || empty($settings['smtp_host'])) {
-            throw new \Exception("SMTP settings not found in database for company ID: $companyId");
-        }
-
-        $mail = new PHPMailer(true);
+        $error = null;
 
         try {
+            $db = Database::pdo();
+            $stmt = $db->prepare("SELECT * FROM company_settings WHERE company_id = ?");
+            $stmt->execute([$companyId]);
+            $settings = $stmt->fetch();
+        } catch (\Throwable $e) {
+            error_log("TenantMailer settings lookup failed for company $companyId: " . $e->getMessage());
+            $error = 'Could not load company SMTP settings.';
+            return false;
+        }
+
+        if (!$settings || empty($settings['smtp_host'])) {
+            return Mailer::send($toEmail, $subject, $body, $error);
+        }
+
+        $mail = null;
+        try {
+            $mail = new PHPMailer(true);
             $mail->isSMTP();
             $mail->Host       = $settings['smtp_host'];
             $mail->SMTPAuth   = true;
@@ -46,18 +59,33 @@ class TenantMailer
             $mail->Body    = $body;
 
             $mail->send();
+        } catch (\Throwable $e) {
+            $failure = $mail instanceof PHPMailer && $mail->ErrorInfo
+                ? $mail->ErrorInfo
+                : $e->getMessage();
+            $error = self::safeError($failure);
+            error_log("TenantMailer SMTP Error for company $companyId: " . $failure);
+            return false;
+        }
 
+        try {
             $db->prepare("
                 INSERT INTO email_messages (company_id, customer_email, subject, body, direction, from_email) 
                 VALUES (?, ?, ?, ?, 'outbound', ?)
             ")->execute([$companyId, $toEmail, $subject, $body, $senderEmail]);
-            return true;
-        } catch (Exception $e) {
-            throw new \Exception("SMTP Error: " . $mail->ErrorInfo);
+        } catch (\Throwable $e) {
+            error_log("TenantMailer could not save sent email for company $companyId: " . $e->getMessage());
         }
+
+        return true;
     }
 
-    // --- KJO METODË TË MUNGONTE ---
+    private static function safeError(string $error): string
+    {
+        $error = preg_replace('/[\r\n]+/', ' ', $error) ?? 'Email delivery failed.';
+        return substr($error, 0, 300);
+    }
+
     private static function template(string $title, string $content): string
     {
         $year = date('Y');
@@ -92,7 +120,6 @@ class TenantMailer
         string $name,
         array $booking
     ): bool {
-        // Rregullimi i datës: marrim datën nga DB dhe e konvertojmë në format të lexueshëm
         $date = !empty($booking['booking_date']) ? date('d.m.Y', strtotime($booking['booking_date'])) : '—';
         $time = !empty($booking['start_time']) ? substr($booking['start_time'], 0, 5) : '—';
         $reference = $booking['reference'] ?? ('#' . $booking['id']);

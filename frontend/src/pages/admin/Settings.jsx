@@ -305,6 +305,20 @@ export default function Settings() {
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                Encryption
+              </label>
+              <select
+                value={smtpForm.smtp_encryption}
+                onChange={(e) => setSmtpForm({ ...smtpForm, smtp_encryption: e.target.value })}
+                className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:border-indigo-500 outline-none"
+              >
+                <option value="tls">TLS / STARTTLS (usually port 587)</option>
+                <option value="ssl">SSL (usually port 465)</option>
+                <option value="none">None</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
                 Email (User)
               </label>
               <input

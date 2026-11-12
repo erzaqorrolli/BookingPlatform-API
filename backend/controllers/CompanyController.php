@@ -407,17 +407,19 @@ class CompanyController {
             json_err('Valid email required. Received: ' . $to, 422);
         }
 
+        $mailError = null;
         $sent = \App\Utils\TenantMailer::send(
             $companyId, 
             $to, 
             'Test Email from Booking Platform', 
-            '<h1>Success!</h1><p>If you are reading this email, your company smtp configuration is working 100%.</p>'
+            '<h1>Success!</h1><p>If you are reading this email, your company smtp configuration is working 100%.</p>',
+            $mailError
         );
 
         if ($sent) {
             json_ok(['message' => 'Test email sent successfully!']);
         } else {
-            json_err('Failed to send. Check your SMTP credentials.', 500);
+            json_err('Failed to send email: ' . ($mailError ?? 'Check your SMTP configuration.'), 500);
         }
     }
 

@@ -23,16 +23,24 @@ export default function Chat() {
 
     let isMounted = true;
     let syncInProgress = false;
+    const loadCustomers = async () => {
+      try {
+        const res = await api.get(`/companies/${activeCompany.id}/chat-customers`);
+        if (isMounted) {
+          setCustomers(res.data.data || []);
+        }
+      } catch (err) {
+        console.error('Failed to load chat customers:', err);
+      }
+    };
+
     const syncInbox = async () => {
       if (syncInProgress) return;
       syncInProgress = true;
       try {
         await api.post(`/companies/${activeCompany.id}/sync-inbox`);
-        const res = await api.get(`/companies/${activeCompany.id}/chat-customers`);
-        if (isMounted) {
-          setCustomers(res.data.data || []);
-          setInboxSyncError('');
-        }
+        if (isMounted) setInboxSyncError('');
+        await loadCustomers();
       } catch (err) {
         console.error('Failed to sync the company inbox:', err);
         if (isMounted) {
@@ -43,6 +51,7 @@ export default function Chat() {
       }
     };
 
+    loadCustomers();
     syncInbox();
     const interval = setInterval(syncInbox, 30000);
     return () => {

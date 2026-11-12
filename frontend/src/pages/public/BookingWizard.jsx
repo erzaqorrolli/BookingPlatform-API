@@ -3,12 +3,14 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../../api/client';
 import { createStripeCheckout } from '../../api/payments';
 import { useSettings } from '../../contexts/SettingsContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function BookingWizard() {
   const { slug } = useParams();
   const navigate = useNavigate();
   const { settings } = useSettings();
+  const { user } = useAuth();
 
   const [company, setCompany] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -38,6 +40,8 @@ export default function BookingWizard() {
   });  
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const registeredClientEmail = user?.role === 'customer' ? user.email : '';
+  const bookingName = (form.name || user?.name || '').trim();
 
   // --- PAGINIM PËR SHËRBIMET ---
   const [currentPage, setCurrentPage] = useState(1);
@@ -70,20 +74,6 @@ export default function BookingWizard() {
       .catch(() => setError('Company not found'))
       .finally(() => setLoading(false));
   }, [slug]);
-
-  useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        const user = JSON.parse(storedUser);
-        if (user.email) {
-          setForm((prev) => ({ ...prev, email: user.email, name: user.name || prev.name }));
-        }
-      } catch (e) {
-        console.error('Gabim gjatë leximit të user-it', e);
-      }
-    }
-  }, []);
 
   useEffect(() => {
     if (form.email && form.email.includes('@') && company?.id) {
@@ -134,6 +124,12 @@ export default function BookingWizard() {
 
   const processBooking = async (method) => {
     setError('');
+    const bookingEmail = registeredClientEmail || form.email.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(bookingEmail)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
     if (!isValidBookingDate(date)) {
       setError('Please choose a valid date');
       return;
@@ -146,8 +142,8 @@ export default function BookingWizard() {
         service_id: service.id,
         booking_date: date,
         start_time: selectedSlot.start,
-        name: form.name,
-        email: form.email,
+        name: bookingName,
+        email: bookingEmail,
         phone: form.phone,
         notes: form.notes,
         discount_code: form.discount_code,
@@ -618,12 +614,31 @@ export default function BookingWizard() {
                   </label>
                   <input
                     type="text"
-                    value={form.name}
+                    value={form.name || user?.name || ''}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                     required
                     className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-white/30 focus:border-indigo-400 focus:bg-white/10 outline-none transition"
                   />
                 </div>
+
+                {!registeredClientEmail && (
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-white/50 mb-2">
+                      Email *
+                    </label>
+                    <input
+                      type="email"
+                      value={form.email}
+                      onChange={(e) => setForm({ ...form, email: e.target.value })}
+                      required
+                      autoComplete="email"
+                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-white/30 focus:border-indigo-400 focus:bg-white/10 outline-none transition"
+                    />
+                    <p className="text-xs text-white/40 mt-2">
+                      We’ll send your booking confirmation to this address.
+                    </p>
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wide text-white/50 mb-2">
@@ -712,7 +727,7 @@ export default function BookingWizard() {
 
                   <button
                     onClick={() => processBooking('cash')}
-                    disabled={submitting || !form.name}
+                    disabled={submitting || !bookingName}
                     className="flex-1 px-5 py-3.5 bg-emerald-500 text-white rounded-xl hover:bg-emerald-400 disabled:opacity-50 text-sm font-semibold transition flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(16,185,129,0.3)]"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -723,7 +738,7 @@ export default function BookingWizard() {
 
                   <button
                     onClick={() => processBooking('card')}
-                    disabled={submitting || !form.name}
+                    disabled={submitting || !bookingName}
                     className="flex-1 px-5 py-3.5 bg-white text-black rounded-xl hover:bg-white/90 disabled:opacity-50 text-sm font-semibold transition flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(255,255,255,0.2)]"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

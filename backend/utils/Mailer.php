@@ -4,7 +4,6 @@ declare(strict_types=1);
 namespace App\Utils;
 
 use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
 
 class Mailer
 {
@@ -17,8 +16,16 @@ class Mailer
     $mail->SMTPAuth   = true;
     $mail->Username   = $_ENV['MAIL_USERNAME'] ?? '';
     $mail->Password   = $_ENV['MAIL_PASSWORD'] ?? '';
-    $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
     $mail->Port       = (int) ($_ENV['MAIL_PORT'] ?? 587);
+    $encryption = strtolower(trim((string) ($_ENV['MAIL_ENCRYPTION'] ?? '')));
+    if ($encryption === '') {
+        $encryption = $mail->Port === 465 ? 'ssl' : 'tls';
+    }
+    $mail->SMTPSecure = match ($encryption) {
+        'ssl' => PHPMailer::ENCRYPTION_SMTPS,
+        'none' => '',
+        default => PHPMailer::ENCRYPTION_STARTTLS,
+    };
     $mail->CharSet    = 'UTF-8';
 
     $settings = self::getSettings();
@@ -32,8 +39,15 @@ class Mailer
     return $mail;
 }
 
-    public static function send(string $to, string $subject, string $htmlBody): bool
+    public static function send(
+        string $to,
+        string $subject,
+        string $htmlBody,
+        ?string &$error = null
+    ): bool
     {
+        $error = null;
+        $mail = null;
         try {
             $mail = self::createMailer();
             $mail->addAddress($to);
@@ -51,10 +65,14 @@ class Mailer
             );
 
             return true;
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
+            $failure = $mail instanceof PHPMailer && $mail->ErrorInfo
+                ? $mail->ErrorInfo
+                : $e->getMessage();
+            $error = substr(preg_replace('/[\r\n]+/', ' ', $failure) ?? 'Email delivery failed.', 0, 300);
             @file_put_contents(
                 __DIR__ . '/../storage/mail.log',
-                sprintf("[%s] ✗ FAILED to %s | %s | Error: %s\n", date('c'), $to, $subject, $e->getMessage()),
+                sprintf("[%s] ✗ FAILED to %s | %s | Error: %s\n", date('c'), $to, $subject, $error),
                 FILE_APPEND
             );
 
