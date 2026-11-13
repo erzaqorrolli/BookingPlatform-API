@@ -63,13 +63,23 @@ class HappyHour
               AND day_of_week = ?
               AND active = 1
               AND start_time <= ?
-              AND end_time > ?
+              AND (end_time > ? OR (end_time = '00:00:00' AND start_time <> '00:00:00'))
             ORDER BY discount_percent DESC
             LIMIT 1
         ");
         $stmt->execute([$companyId, $dow, $time, $time]);
         $row = $stmt->fetch();
         return $row ? self::fromRow($row) : null;
+    }
+
+    public function includesTime(string $time): bool
+    {
+        if ($this->start_time > $time) {
+            return false;
+        }
+
+        return $this->end_time > $time
+            || ($this->end_time === '00:00:00' && $this->start_time !== '00:00:00');
     }
 
     public static function create(int $companyId, array $data): self

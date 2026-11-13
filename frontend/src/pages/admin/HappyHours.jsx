@@ -72,6 +72,13 @@ export default function HappyHours() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    // Validim sigurie (në rast se browser-i nuk e mban min)
+    if (form.end_time <= form.start_time) {
+      setError('Ora e mbarimit duhet të jetë më e madhe se ora e fillimit.');
+      return;
+    }
+
     setSaving(true);
 
     try {
@@ -106,6 +113,20 @@ export default function HappyHours() {
     } catch (err) {
       alert(err.response?.data?.error || 'Deletion failed');
     }
+  };
+
+  // Kjo funksion kontrollon nëse ora e fillimit ndryshon dhe rregullon automatikisht orën e mbarimit
+  const handleStartTimeChange = (newStartTime) => {
+    setForm((prev) => {
+      let newEndTime = prev.end_time;
+      // Nëse ora e mbarimit është më e vogël ose e barabartë me fillimin, shto 1 orë
+      if (newEndTime <= newStartTime) {
+        const [h, m] = newStartTime.split(':').map(Number);
+        const nextHour = (h + 1) % 24; // Nëse bëhet 23:xx, kalon në 00:xx
+        newEndTime = `${String(nextHour).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+      }
+      return { ...prev, start_time: newStartTime, end_time: newEndTime };
+    });
   };
 
   if (!activeCompany) {
@@ -251,17 +272,20 @@ export default function HappyHours() {
                   <input
                     type="time"
                     value={form.start_time}
-                    onChange={(e) => setForm({ ...form, start_time: e.target.value })}
+                    onChange={(e) => handleStartTimeChange(e.target.value)}
                     required
                     className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:border-indigo-500 outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Till *</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    Till (00:00 = end of day) *
+                  </label>
                   <input
                     type="time"
                     value={form.end_time}
                     onChange={(e) => setForm({ ...form, end_time: e.target.value })}
+                    min={form.start_time}
                     required
                     className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:border-indigo-500 outline-none"
                   />

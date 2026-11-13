@@ -17,12 +17,19 @@ export default function BookingWizard() {
   const [service, setService] = useState(null);
   const [date, setDate] = useState('');
   const [slots, setSlots] = useState([]);
+  const [availabilityHappyHours, setAvailabilityHappyHours] = useState(null);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [slotReason, setSlotReason] = useState('');
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [dateBlockedReason, setDateBlockedReason] = useState('');
   const [isSleeping, setIsSleeping] = useState(false);
   const [isExistingClient, setIsExistingClient] = useState(false);
+
+  // --- STATE PËR ZBRITJEN ---
+  const [appliedDiscount, setAppliedDiscount] = useState(null);
+  const [discountError, setDiscountError] = useState('');
+  const [discountLoading, setDiscountLoading] = useState(false);
+  // ---------------------------
 
   const [waitlistForm, setWaitlistForm] = useState({ name: '', email: '', phone: '' });
   const [waitlistJoined, setWaitlistJoined] = useState(false);
@@ -73,7 +80,6 @@ export default function BookingWizard() {
     return selectedDate >= startOfToday && selectedDate <= maxAllowedDate;
   };
 
-  // 1. Merr kompaninë (me datë nëse ka)
   useEffect(() => {
     const url = `/public/companies/${slug}${date ? `?date=${date}` : ''}`;
     api.get(url)
@@ -82,7 +88,6 @@ export default function BookingWizard() {
       .finally(() => setLoading(false));
   }, [slug, date]);
 
-  // 2. Plotëso email-in e klientit të loguar
   useEffect(() => {
     if (authenticatedEmail) {
       setForm(prev => ({ 
@@ -93,7 +98,6 @@ export default function BookingWizard() {
     }
   }, [authenticatedEmail, user?.name]);
 
-  // 3. Kontrollo sleeping statusin dhe ekzistencën
   useEffect(() => {
     if (form.email && form.email.includes('@') && company?.id) {
       api.get(`/public/check-sleeping?company_id=${company.id}&email=${form.email}`)
@@ -111,18 +115,19 @@ export default function BookingWizard() {
     }
   }, [form.email, company?.id]);
 
-  // 4. Merr orarin e disponueshëm
   useEffect(() => {
     if (!service || !isValidBookingDate(date) || !company?.id) {
       setDateBlockedReason('');
       setSlotReason('');
       setSlots([]);
+      setAvailabilityHappyHours([]);
       setSelectedSlot(null);
       return;
     }
 
     setLoadingSlots(true);
     setSlots([]);
+    setAvailabilityHappyHours([]);
     setSlotReason('');
     setSelectedSlot(null);
     setDateBlockedReason('');
@@ -134,6 +139,9 @@ export default function BookingWizard() {
       .then((r) => {
         const nextReason = r.data.data.reason || '';
         setSlots(r.data.data.slots || []);
+        setAvailabilityHappyHours(
+          Array.isArray(r.data.data.happy_hours) ? r.data.data.happy_hours : null
+        );
         setSlotReason(nextReason);
         setDateBlockedReason(nextReason);
 
@@ -147,6 +155,36 @@ export default function BookingWizard() {
       .finally(() => setLoadingSlots(false));
   }, [service, date, company?.id]);
 
+  useEffect(() => {
+    if (!form.discount_code || !company?.id || !service?.id || !date) {
+      setAppliedDiscount(null);
+      setDiscountError('');
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setDiscountLoading(true);
+      setDiscountError('');
+      api.post('/public/validate-discount', {
+        company_id: company.id,
+        service_id: service.id,
+        code: form.discount_code,
+        date: date,
+      })
+        .then((r) => {
+          setAppliedDiscount(r.data.data);
+          setDiscountError('');
+        })
+        .catch((err) => {
+          setAppliedDiscount(null);
+          setDiscountError(err.response?.data?.error || 'Invalid code');
+        })
+        .finally(() => setDiscountLoading(false));
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [form.discount_code, company?.id, service?.id, date]);
+  
   const processBooking = async (method) => {
     setError('');
     const bookingEmail = registeredClientEmail || form.email.trim();
@@ -181,7 +219,7 @@ export default function BookingWizard() {
       const booking = responseData?.booking;
 
       if (!booking || !booking.id) {
-        console.error("Përgjigja e backend-it:", r.data);
+        console.error("Backend answer:", r.data);
         throw new Error("Booking created, but ID is not returned from server.");
       }
 
@@ -262,10 +300,47 @@ export default function BookingWizard() {
     { n: 4, label: 'Information' },
   ];
 
-  // Kushti për shfaqjen e fushës së kodit të zbritjes
   const showDiscountCode = Boolean(
     company.has_active_discount_codes && (isExistingClient || isLoggedInClient)
   );
+
+  const getHappyHourForSlot = (slot) => {
+    if (slot?.happy_hour) return slot.happy_hour;
+
+    const dayOfWeek = new Date(`${date}T00:00:00`).getDay();
+    const slotTime = String(slot?.start || '').slice(0, 8);
+    const happyHours = availabilityHappyHours ?? company.happy_hours ?? [];
+    return happyHours.find((happyHour) => (
+      Number(happyHour.day_of_week) === dayOfWeek &&
+      String(happyHour.start_time).slice(0, 8) <= slotTime &&
+      (
+        String(happyHour.end_time).slice(0, 8) > slotTime ||
+        (
+          String(happyHour.end_time).slice(0, 8) === '00:00:00' &&
+          String(happyHour.start_time).slice(0, 8) !== '00:00:00'
+        )
+      )
+    )) || null;
+  };
+  const selectedHappyHour = getHappyHourForSlot(selectedSlot);
+
+  const calculateFinalPrice = () => {
+    let basePrice = parseFloat(service.price);
+    
+    if (selectedHappyHour) {
+      basePrice = basePrice * (1 - selectedHappyHour.discount_percent / 100);
+    }
+    
+    if (appliedDiscount) {
+      if (appliedDiscount.type === 'percentage') {
+        basePrice = basePrice * (1 - appliedDiscount.value / 100);
+      } else {
+        basePrice = Math.max(0, basePrice - appliedDiscount.value);
+      }
+    }
+    
+    return basePrice.toFixed(2);
+  };
 
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-white font-sans selection:bg-indigo-500/30">
@@ -611,18 +686,31 @@ export default function BookingWizard() {
                     {selectedSlot.start.slice(0, 5)} - {selectedSlot.end.slice(0, 5)}
                   </span>
                 </div>
-                {selectedSlot.happy_hour && (
+
+                {selectedHappyHour && (
                   <div className="flex justify-between gap-4 border-t border-white/5 pt-3 text-sm">
-                    <span className="text-white/40">Happy Hour ({selectedSlot.happy_hour.discount_percent}% off)</span>
+                    <span className="text-white/40">Happy Hour ({selectedHappyHour.discount_percent}% off)</span>
                     <span className="font-medium text-emerald-400">
-                      -€{(parseFloat(service.price) * selectedSlot.happy_hour.discount_percent / 100).toFixed(2)}
+                      -€{(parseFloat(service.price) * selectedHappyHour.discount_percent / 100).toFixed(2)}
                     </span>
                   </div>
                 )}
+
+                {appliedDiscount && (
+                  <div className="flex justify-between gap-4 border-t border-white/5 pt-3 text-sm">
+                    <span className="text-white/40">Discount ({appliedDiscount.code})</span>
+                    <span className="font-medium text-emerald-400">
+                      {appliedDiscount.type === 'percentage'
+                        ? `-${appliedDiscount.value}%`
+                        : `-€${appliedDiscount.value.toFixed(2)}`}
+                    </span>
+                  </div>
+                )}
+
                 <div className="flex justify-between gap-4 border-t border-white/5 pt-3 text-sm">
                   <span className="text-white/40">Price</span>
                   <span className="font-bold text-white text-lg">
-                    €{(parseFloat(service.price) * (1 - (selectedSlot.happy_hour?.discount_percent || 0) / 100)).toFixed(2)}
+                    €{calculateFinalPrice()}
                   </span>
                 </div>
               </div>
@@ -732,6 +820,12 @@ export default function BookingWizard() {
                       placeholder="Enter discount code"
                       className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-white/30 font-mono focus:border-indigo-400 focus:bg-white/10 outline-none transition"
                     />
+                    {discountError && (
+                      <p className="text-xs text-red-400 mt-1">{discountError}</p>
+                    )}
+                    {discountLoading && (
+                      <p className="text-xs text-white/40 mt-1">Duke verifikuar kodin...</p>
+                    )}
                   </div>
                 )}
               </div>

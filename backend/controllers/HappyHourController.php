@@ -44,6 +44,10 @@ class HappyHourController
             json_err('Discount required', 422);
         }
 
+        if ($input['end_time'] <= $input['start_time']) {
+            json_err('Ora e mbarimit (Till) duhet të jetë më e madhe se ora e fillimit (From).', 422);
+        }
+
         $happyHour = HappyHour::create($companyId, $input);
 
         json_ok([
@@ -70,7 +74,15 @@ class HappyHourController
             json_err('Happy hour not found', 404);
         }
 
-        $happyHour->update(input());
+        $input = input();
+
+        if (isset($input['start_time']) && isset($input['end_time'])) {
+            if ($input['end_time'] <= $input['start_time']) {
+                json_err('Ora e mbarimit (Till) duhet të jetë më e madhe se ora e fillimit (From).', 422);
+            }
+        }
+
+        $happyHour->update($input);
         json_ok([
             'message'    => 'Happy hour updated',
             'happy_hour' => HappyHour::findById($id)->toArray(),

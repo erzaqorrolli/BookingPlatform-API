@@ -221,7 +221,7 @@ class BookingController
             if ($overlap < $cap) {
                 $slotHappyHour = null;
                 foreach ($happyHours as $hh) {
-                    if ($hh->start_time <= $startStr && $hh->end_time > $startStr) {
+                    if ($hh->includesTime($startStr)) {
                         $slotHappyHour = $hh->toArray();
                         break;
                     }
@@ -903,6 +903,36 @@ public function updateStatus(array $params): void
         return $h * 60 + $m;
     }
 
+    public function validateDiscount(): void
+{
+    $input = input();
+    $companyId = (int) ($input['company_id'] ?? 0);
+    $code      = strtoupper(trim((string) ($input['code'] ?? '')));
+    $date      = trim((string) ($input['date'] ?? ''));
+    $serviceId = (int) ($input['service_id'] ?? 0);
+
+    if (!$companyId || !$code || !$date || !$serviceId) {
+        json_err('Missing required fields', 422);
+    }
+
+    $service = Service::findById($serviceId);
+    if (!$service || $service->company_id !== $companyId) {
+        json_err('Service not found', 404);
+    }
+
+    $discount = Discount::findByCode($companyId, $code, $date);
+    if (!$discount) {
+        json_err('Invalid or expired discount code', 422);
+    }
+
+    json_ok([
+        'valid' => true,
+        'code' => $discount->code,
+        'type' => $discount->type, 
+        'value' => (float) $discount->value, 
+        'description' => $discount->description ?? null,
+    ]);
+}
     public function exportCompanyBookings(array $params): void
     {
         $uid = auth_user_id();
@@ -1050,7 +1080,6 @@ public function updateStatus(array $params): void
             json_err('Failed to send email. Please check SMTP settings', 500);
         }
     }
-
     public function checkSleepingStatus(): void
     {
      

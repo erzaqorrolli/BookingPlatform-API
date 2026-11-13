@@ -311,3 +311,7 @@ Router::get('/api/superadmin/payments', [SuperAdminController::class, 'payments'
 Router::get('/api/settings', [SettingsController::class, 'index']);
 
 Router::put('/api/superadmin/settings', [SettingsController::class, 'update']);
+
+Router::post('/api/public/validate-discount', [BookingController::class, 'validateDiscount']);
+
+Router::get('/api/public/check-sleeping', [BookingController::class, 'checkSleepingStatus']);
