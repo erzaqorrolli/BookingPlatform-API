@@ -27,29 +27,29 @@ export default function Profile() {
   };
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="w-full max-w-2xl space-y-5 sm:space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">My profile</h1>
+        <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">My profile</h1>
         <p className="text-sm text-slate-500 mt-1">
           Manage profile
         </p>
       </div>
 
       {/* User info */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6">
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center text-white font-bold text-2xl">
+      <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-6">
+        <div className="flex min-w-0 items-center gap-4">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-2xl font-bold text-white sm:h-16 sm:w-16">
             {user?.name?.charAt(0).toUpperCase()}
           </div>
-          <div>
-            <div className="font-semibold text-slate-900 text-lg">{user?.name}</div>
-            <div className="text-sm text-slate-500">{user?.email}</div>
+          <div className="min-w-0">
+            <div className="break-words text-lg font-semibold text-slate-900">{user?.name}</div>
+            <div className="break-all text-sm text-slate-500">{user?.email}</div>
           </div>
         </div>
       </div>
 
       {/* Change password */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6">
+      <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-6">
         <h2 className="text-lg font-bold text-slate-900 mb-5">
           Change password
         </h2>
@@ -76,7 +76,7 @@ export default function Profile() {
               value={pwForm.current_password}
               onChange={(e) => setPwForm({ ...pwForm, current_password: e.target.value })}
               required
-              className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:border-emerald-500 outline-none"
+              className="w-full min-w-0 rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:border-emerald-500 outline-none"
             />
           </div>
 
@@ -90,7 +90,7 @@ export default function Profile() {
               onChange={(e) => setPwForm({ ...pwForm, new_password: e.target.value })}
               required
               minLength={6}
-              className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:border-emerald-500 outline-none"
+              className="w-full min-w-0 rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:border-emerald-500 outline-none"
             />
           </div>
 
@@ -98,7 +98,7 @@ export default function Profile() {
             <button
               type="submit"
               disabled={saving}
-              className="px-5 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium text-sm disabled:opacity-60"
+              className="min-h-11 w-full rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-60 sm:w-auto"
             >
               {saving ? 'Changing...' : 'Change password'}
             </button>

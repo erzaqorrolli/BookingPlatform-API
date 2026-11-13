@@ -545,7 +545,12 @@ class CompanyController {
             json_err('Forbidden', 403);
         }
 
-        $synced = \App\Utils\ImapSyncer::syncInbox($companyId);
+        try {
+            $synced = \App\Utils\ImapSyncer::syncInbox($companyId);
+        } catch (\DomainException $e) {
+            json_err($e->getMessage(), 422);
+        }
+
         json_ok(['synced' => $synced, 'message' => "Synced $synced new answer"]);
     }
 

@@ -26,8 +26,8 @@ class ImapSyncer
         $host = preg_replace('/^smtp\./i', 'imap.', $host);
         $inbox = @imap_open('{' . $host . ':993/imap/ssl}INBOX', $settings['smtp_user'], $settings['smtp_pass']);
         if (!$inbox) {
-            $error = imap_last_error();
-            error_log('IMAP connection failed: ' . ($error ?: 'Unknown IMAP error'));
+            $errors = imap_errors();
+            error_log('IMAP connection failed: ' . ($errors ? implode('; ', $errors) : 'Unknown IMAP error'));
             throw new \DomainException('Could not connect to the company inbox. Check the email address, app password, and IMAP settings.');
         }
 

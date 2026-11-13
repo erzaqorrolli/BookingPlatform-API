@@ -76,7 +76,7 @@ export default function StaffCustomers() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Clients</h1>
           <p className="text-sm text-slate-500 mt-1">
@@ -85,7 +85,7 @@ export default function StaffCustomers() {
         </div>
         <button
           onClick={() => handleOpenModal()}
-          className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition"
+          className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700 sm:w-auto"
         >
           <Plus className="w-4 h-4" /> Add Client
         </button>
@@ -103,7 +103,8 @@ export default function StaffCustomers() {
         />
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <div className="overflow-x-auto">
         <table className="w-full">
           <thead className="bg-slate-50 border-b border-slate-200">
             <tr>
@@ -146,6 +147,7 @@ export default function StaffCustomers() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {isModalOpen && (

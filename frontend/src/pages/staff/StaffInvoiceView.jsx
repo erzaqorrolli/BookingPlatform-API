@@ -29,8 +29,8 @@ export default function StaffInvoiceView(){
   if (!invoice) return <div className="p-12 text-center">Invoice not found.</div>;
   
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-<div className="flex items-center justify-between no-print">
+    <div className="mx-auto max-w-4xl space-y-5 sm:space-y-6">
+<div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center no-print">
           <Link to="/staff/invoices" className="text-sm font-medium text-slate-500 hover:text-slate-900 flex items-center gap-2">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -39,14 +39,14 @@ export default function StaffInvoiceView(){
         </Link>
         <button 
           onClick={() => window.print()}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition"
+          className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700 sm:w-auto"
         >
           <Printer className="w-4 h-4" /> Print Invoice
         </button>
       </div>
 
-<div className="bg-white rounded-xl border border-slate-200 p-10 shadow-sm print-invoice">
-        <div className="flex justify-between items-start border-b border-slate-100 pb-8 mb-8">
+<div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm print-invoice sm:p-10">
+        <div className="mb-6 flex flex-col items-start justify-between gap-4 border-b border-slate-100 pb-6 sm:mb-8 sm:flex-row sm:pb-8">
           <div>
             <h1 className="text-3xl font-bold text-slate-900">{activeCompany.name}</h1>
             <p className="text-sm text-slate-500 mt-1">{activeCompany.email}</p>
@@ -57,14 +57,14 @@ export default function StaffInvoiceView(){
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-8 mb-8">
+        <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-8">
           <div>
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Bill To</p>
             <p className="font-semibold text-slate-900">{invoice.customer_name}</p>
             <p className="text-sm text-slate-600">{invoice.customer_email}</p>
             {invoice.customer_phone && <p className="text-sm text-slate-600">{invoice.customer_phone}</p>}
           </div>
-          <div className="text-right space-y-1">
+          <div className="space-y-1 sm:text-right">
             <p className="text-sm text-slate-500">Issue Date: <span className="font-medium text-slate-900">{new Date(invoice.issue_date).toLocaleDateString('en-GB')}</span></p>
             <p className="text-sm text-slate-500">Due Date: <span className="font-medium text-slate-900">{new Date(invoice.due_date).toLocaleDateString('en-GB')}</span></p>
             <p className="text-sm text-slate-500">Status: <span className="font-medium text-slate-900 capitalize">{invoice.status}</span></p>

@@ -51,7 +51,7 @@ export default function AuthLayout({ children, title, subtitle }) {
         </div>
       </div>
 
-      <div className="w-full lg:w-1/2 flex items-center justify-center px-6 py-12 relative">
+      <div className="relative flex w-full items-center justify-center px-4 py-8 sm:px-6 sm:py-12 lg:w-1/2">
         <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-[100px] lg:hidden" />
 
         <div className="relative w-full max-w-md">
@@ -76,7 +76,7 @@ export default function AuthLayout({ children, title, subtitle }) {
             <p className="text-sm text-white/50">{subtitle}</p>
           </div>
 
-          <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-6 sm:p-8">
+          <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-4 sm:p-8">
             {children}
           </div>
 

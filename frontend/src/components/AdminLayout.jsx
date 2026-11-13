@@ -384,6 +384,7 @@ const settingsItems = [
 
 export default function AdminLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState(false);
   const { user, logout } = useAuth();
@@ -434,17 +435,25 @@ export default function AdminLayout({ children }) {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex">
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-slate-900 dark:bg-slate-950 text-white transition-all duration-300 flex flex-col fixed h-screen z-30`}>
+      {mobileNavOpen && (
+        <button
+          type="button"
+          aria-label="Close navigation menu"
+          className="fixed inset-0 z-[60] bg-slate-950/60 md:hidden"
+          onClick={() => setMobileNavOpen(false)}
+        />
+      )}
+      <aside className={`fixed inset-y-0 left-0 z-[70] flex h-[100dvh] w-64 flex-col bg-slate-900 text-white transition-transform duration-300 dark:bg-slate-950 ${sidebarOpen ? 'md:w-64' : 'md:w-20'} ${mobileNavOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
         <div className="h-16 flex items-center px-4 border-b border-slate-800">
           <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
             <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
           </div>
-          {sidebarOpen && <span className="ml-3 font-bold tracking-tight">{settings.platform_name}</span>}
+          {(sidebarOpen || mobileNavOpen) && <span className="ml-3 truncate font-bold tracking-tight">{settings.platform_name}</span>}
         </div>
 
-        {sidebarOpen && companies.length > 0 && (role !== 'staff' || companies.length > 1) && (
+        {(sidebarOpen || mobileNavOpen) && companies.length > 0 && (role !== 'staff' || companies.length > 1) && (
           <div className="px-3 py-3 border-b border-slate-800">
             <label className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Company</label>
             <select value={activeCompany?.id || ''} onChange={(e) => switchCompany(e.target.value)} className="w-full mt-1.5 bg-slate-800 text-white text-sm rounded-lg px-3 py-2 border border-slate-700 focus:border-indigo-500 outline-none">
@@ -459,19 +468,19 @@ export default function AdminLayout({ children }) {
               const isChildActive = item.children.some(child => child.path === location.pathname);
               return (
                 <div key={item.label} className="space-y-1">
-                  <button onClick={() => setOpenDropdown(!openDropdown)} className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${isChildActive ? 'bg-slate-800 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}`}>
+                  <button onClick={() => setOpenDropdown(!openDropdown)} className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${isChildActive ? 'bg-slate-800 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}`}>
                     <div className="flex items-center gap-3">
                       <span className="flex-shrink-0">{item.icon}</span>
-                      {sidebarOpen && <span>{item.label}</span>}
+                      {(sidebarOpen || mobileNavOpen) && <span>{item.label}</span>}
                     </div>
-                    {sidebarOpen && <svg className={`w-4 h-4 transition-transform ${openDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>}
+                    {(sidebarOpen || mobileNavOpen) && <svg className={`w-4 h-4 transition-transform ${openDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>}
                   </button>
-                  {openDropdown && sidebarOpen && (
+                  {openDropdown && (sidebarOpen || mobileNavOpen) && (
                     <div className="pl-10 space-y-1">
                       {item.children.filter(child => child.roles.includes(role)).map(child => {
                         const isActive = location.pathname === child.path;
                         return (
-                          <Link key={child.path} to={child.path} className={`block px-3 py-2 rounded-lg text-sm transition ${isActive ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>{child.label}</Link>
+                          <Link key={child.path} to={child.path} onClick={() => setMobileNavOpen(false)} className={`block min-h-11 px-3 py-2 rounded-lg text-sm transition ${isActive ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>{child.label}</Link>
                         );
                       })}
                     </div>
@@ -482,41 +491,52 @@ export default function AdminLayout({ children }) {
 
             const active = location.pathname === item.path;
             return (
-              <Link key={item.path} to={item.path} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${active ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}`}>
+              <Link key={item.path} to={item.path} onClick={() => setMobileNavOpen(false)} className={`flex min-h-11 items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${active ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}`}>
                 <span className="flex-shrink-0">{item.icon}</span>
-                {sidebarOpen && <span>{item.label}</span>}
+                {(sidebarOpen || mobileNavOpen) && <span>{item.label}</span>}
               </Link>
             );
           })}
 
           <div className="pt-4">
-            {sidebarOpen && <p className="px-3 pb-2 text-xs text-slate-500 uppercase tracking-wider font-semibold">Settings</p>}
+            {(sidebarOpen || mobileNavOpen) && <p className="px-3 pb-2 text-xs text-slate-500 uppercase tracking-wider font-semibold">Settings</p>}
             {visibleSettingsItems.map((item) => {
               const active = location.pathname === item.path;
               return (
-                <Link key={item.path} to={item.path} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${active ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}`}>
+                <Link key={item.path} to={item.path} onClick={() => setMobileNavOpen(false)} className={`flex min-h-11 items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${active ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}`}>
                   <span className="flex-shrink-0">{item.icon}</span>
-                  {sidebarOpen && <span>{item.label}</span>}
+                  {(sidebarOpen || mobileNavOpen) && <span>{item.label}</span>}
                 </Link>
               );
             })}
           </div>
         </nav>
 
-        <button onClick={() => setSidebarOpen(!sidebarOpen)} className="h-12 border-t border-slate-800 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 transition">
+        <button onClick={() => setSidebarOpen(!sidebarOpen)} className="hidden h-12 border-t border-slate-800 items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 transition md:flex">
           <svg className={`w-5 h-5 transition-transform ${sidebarOpen ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
         </button>
       </aside>
 
-      <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-20'}`}>
-        <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 sticky top-0 z-20">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+      <div className={`min-w-0 flex-1 transition-all duration-300 ${sidebarOpen ? 'md:ml-64' : 'md:ml-20'}`}>
+        <header className="sticky top-0 z-50 flex min-h-16 items-center justify-between gap-2 border-b border-slate-200 bg-white px-3 dark:border-slate-800 dark:bg-slate-900 sm:px-6">
+          <div className="flex min-w-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setMobileNavOpen(true)}
+              aria-label="Open navigation menu"
+              aria-expanded={mobileNavOpen}
+              className="relative z-10 flex h-12 w-12 shrink-0 touch-manipulation items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 md:hidden"
+            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            <h2 className="truncate text-base font-semibold text-slate-900 dark:text-white sm:text-lg">
               {visibleMenuItems.flatMap(item => item.children || [item]).find((m) => m.path === location.pathname)?.label || settingsItems.find((m) => m.path === location.pathname)?.label || 'Dashboard'}
             </h2>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
             <button onClick={toggleTheme} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition" title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
               {theme === 'dark' ? (
                 <svg className="w-5 h-5 text-slate-600 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
@@ -524,7 +544,9 @@ export default function AdminLayout({ children }) {
                 <svg className="w-5 h-5 text-slate-600 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
               )}
             </button>
-            <GlobalSearch />
+            <div className="hidden sm:block">
+              <GlobalSearch />
+            </div>
             <NotificationBell />
 
             <div className="relative">
@@ -561,7 +583,7 @@ export default function AdminLayout({ children }) {
           </div>
         </header>
 
-        <main className="p-6 dark:text-slate-100">{children}</main>
+        <main className="min-w-0 p-3 dark:text-slate-100 sm:p-6">{children}</main>
       </div>
     </div>
   );

@@ -96,7 +96,7 @@ export default function StaffInvoices() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Invoices</h1>
           <p className="text-sm text-slate-500 mt-1">
@@ -105,7 +105,7 @@ export default function StaffInvoices() {
         </div>
         <button
           onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition"
+          className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700 sm:w-auto"
         >
           <Plus className="w-4 h-4" /> Add Invoice
         </button>
@@ -204,7 +204,7 @@ export default function StaffInvoices() {
                   ))}
                 </select>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">Issue Date *</label>
                   <input

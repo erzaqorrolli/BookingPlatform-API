@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
-import { Send, User, Search } from 'lucide-react';
+import { ChevronLeft, Send, User, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { usePermissions } from '../../contexts/PermissionsContext';
 
@@ -120,9 +120,9 @@ export default function Chat() {
   const filteredCustomers = customers.filter(c => c.toLowerCase().includes(search.toLowerCase()));
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+    <div className="flex h-[calc(100dvh-8rem)] min-h-[420px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       
-      <div className="w-1/3 border-r border-slate-200 flex flex-col bg-slate-50">
+      <div className={`${selectedCustomer ? 'hidden md:flex' : 'flex'} w-full flex-col border-r border-slate-200 bg-slate-50 md:w-1/3`}>
         <div className="p-4 border-b border-slate-200 bg-white">
           <div className="flex items-center justify-between">
             <h2 className="font-bold text-slate-900">Inbox</h2>
@@ -172,22 +172,30 @@ export default function Chat() {
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col bg-slate-50">
+      <div className={`${selectedCustomer ? 'flex' : 'hidden md:flex'} min-w-0 flex-1 flex-col bg-slate-50`}>
         {selectedCustomer ? (
           <>
-            <div className="p-4 border-b border-slate-200 bg-white flex items-center justify-between">
-              <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between gap-2 border-b border-slate-200 bg-white p-3 sm:p-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setSelectedCustomer(null)}
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 md:hidden"
+                  aria-label="Back to conversations"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
                 <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
                   <User className="w-4 h-4" />
                 </div>
-                <div>
-                  <h3 className="font-bold text-slate-900">{selectedCustomer}</h3>
+                <div className="min-w-0">
+                  <h3 className="break-all font-bold text-slate-900">{selectedCustomer}</h3>
                   <p className="text-xs text-slate-500">Customer</p>
                 </div>
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            <div className="flex-1 space-y-4 overflow-y-auto p-3 sm:p-6">
               {messages.length === 0 ? (
                 <div className="text-center text-slate-400 mt-10">
                   No messages with this client
@@ -198,7 +206,7 @@ export default function Chat() {
                               (msg.from_email && msg.from_email === activeCompany?.email);
                   return (
                     <div key={msg.id} className={`flex ${isOutbound ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-[70%] p-3 rounded-2xl text-sm shadow-sm ${
+                      <div className={`max-w-[90%] break-words p-3 text-sm shadow-sm sm:max-w-[70%] ${
                         isOutbound 
                           ? 'bg-indigo-600 text-white rounded-br-sm' 
                           : 'bg-white border border-slate-200 text-slate-800 rounded-bl-sm'
@@ -220,7 +228,7 @@ export default function Chat() {
               )}
             </div>
 
-            <div className="p-4 bg-white border-t border-slate-200">
+            <div className="border-t border-slate-200 bg-white p-3 sm:p-4">
               {canSendEmail ? (
                 <div className="flex gap-2">
                   <input
@@ -234,7 +242,8 @@ export default function Chat() {
                   <button
                     onClick={handleSend}
                     disabled={loading}
-                    className="px-5 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition shadow-sm"
+                    aria-label="Send message"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm transition hover:bg-indigo-700 disabled:opacity-50 sm:w-auto sm:px-5 sm:py-3"
                   >
                     <Send className="w-5 h-5" />
                   </button>

@@ -24,14 +24,14 @@ export default function HomePage() {
       
       {/* NAVBAR */}
       <nav className="sticky top-0 z-50 bg-[#0a0a0f]/80 backdrop-blur-xl border-b border-white/5">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2.5 group">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 min-h-16 flex items-center justify-between gap-2">
+          <Link to="/" className="flex min-w-0 items-center gap-2.5 group">
             <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-fuchsia-500 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-500/30 group-hover:scale-105 transition">
               <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </div>
-            <span className="font-bold text-base tracking-tight">{settings.platform_name}</span>
+            <span className="truncate font-bold text-sm tracking-tight sm:text-base">{settings.platform_name}</span>
           </Link>
 
           <div className="hidden md:flex items-center gap-8 text-sm text-white/60">
@@ -40,27 +40,32 @@ export default function HomePage() {
             <Link to="/contact" className="hover:text-white transition">Contact</Link>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             {user ? (
               <>
-                <Link to="/admin" className="text-sm font-semibold bg-white text-black px-4 py-2 rounded-lg hover:bg-white/90 transition">
+                <Link to="/admin" className="rounded-lg bg-white px-2.5 py-2 text-xs font-semibold text-black transition hover:bg-white/90 sm:px-4 sm:text-sm">
                   Dashboard
                 </Link>
-                <button onClick={handleLogout} className="text-sm text-white/60 hover:text-white transition">
+                <button onClick={handleLogout} className="min-h-11 px-1 text-xs text-white/60 transition hover:text-white sm:px-0 sm:text-sm">
                   Logout
                 </button>
               </>
             ) : (
               <>
-                <Link to="/login" className="text-sm text-white/60 hover:text-white transition">
+                <Link to="/login" className="min-h-11 px-1 flex items-center text-xs text-white/60 transition hover:text-white sm:px-0 sm:text-sm">
                   Login
                 </Link>
-                <Link to="/register-business" className="text-sm font-semibold bg-white text-black px-4 py-2 rounded-lg hover:bg-white/90 transition">
+                <Link to="/register-business" className="rounded-lg bg-white px-2.5 py-2 text-xs font-semibold text-black transition hover:bg-white/90 sm:px-4 sm:text-sm">
                   Get started
                 </Link>
               </>
             )}
           </div>
+        </div>
+        <div className="flex items-center justify-center gap-6 border-t border-white/5 px-4 py-2 text-sm text-white/60 md:hidden">
+          <Link to="/" className="min-h-10 flex items-center hover:text-white">Home</Link>
+          <Link to="/about" className="min-h-10 flex items-center hover:text-white">About</Link>
+          <Link to="/contact" className="min-h-10 flex items-center hover:text-white">Contact</Link>
         </div>
       </nav>
 
@@ -69,13 +74,13 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/40 via-[#0a0a0f] to-[#0a0a0f]" />
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-indigo-500/20 rounded-full blur-[120px]" />
         
-        <div className="relative max-w-6xl mx-auto px-6 pt-32 pb-24 text-center">
+        <div className="relative max-w-6xl mx-auto px-4 pt-20 pb-16 text-center sm:px-6 sm:pt-28 sm:pb-20 lg:pt-32 lg:pb-24">
           <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-1.5 text-xs font-medium text-white/70 mb-8 backdrop-blur-sm">
             <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse shadow-lg shadow-emerald-400/50" />
             The biggest booking platform in Kosovo
           </div>
 
-          <h1 className="text-6xl md:text-8xl font-bold tracking-tighter leading-[0.95] mb-8">
+          <h1 className="mb-6 text-5xl font-bold tracking-tighter leading-[0.95] sm:text-6xl md:mb-8 md:text-8xl">
             Book anything. <br />
             <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-fuchsia-400 bg-clip-text text-transparent">
               Anytime.
@@ -107,15 +112,15 @@ export default function HomePage() {
 
       {/* STATS */}
       <section className="border-y border-white/5 bg-white/[0.02]">
-        <div className="max-w-6xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 divide-x divide-white/5">
+        <div className="max-w-6xl mx-auto px-4 grid grid-cols-2 divide-x divide-white/5 sm:px-6 md:grid-cols-4">
           {[
             { value: companies.length || '0', label: 'Companies' },
             { value: '24/7', label: 'Available' },
             { value: '30s', label: 'To book' },
             { value: '100%', label: 'Free' },
           ].map((stat, i) => (
-            <div key={i} className="py-10 text-center">
-              <div className="text-3xl font-bold tracking-tight text-white">{stat.value}</div>
+            <div key={i} className="py-7 text-center sm:py-10">
+              <div className="text-2xl font-bold tracking-tight text-white sm:text-3xl">{stat.value}</div>
               <div className="text-xs text-white/40 mt-2 uppercase tracking-widest">{stat.label}</div>
             </div>
           ))}
@@ -123,9 +128,9 @@ export default function HomePage() {
       </section>
 
       {/* COMPANIES */}
-      <section id="companies" className="max-w-6xl mx-auto px-6 py-28">
-        <div className="mb-14">
-          <h2 className="text-3xl md:text-5xl font-bold tracking-tighter mb-3">Companies</h2>
+      <section id="companies" className="max-w-6xl mx-auto px-4 py-16 sm:px-6 sm:py-20 lg:py-28">
+        <div className="mb-10 sm:mb-14">
+          <h2 className="text-3xl font-bold tracking-tighter mb-3 md:text-5xl">Companies</h2>
           <p className="text-white/40 text-lg">Verified businesses taking bookings online.</p>
         </div>
 
@@ -185,7 +190,7 @@ export default function HomePage() {
 
       {/* HOW IT WORKS */}
       <section className="border-t border-white/5 bg-white/[0.02]">
-        <div className="max-w-6xl mx-auto px-6 py-28">
+        <div className="max-w-6xl mx-auto px-4 py-16 sm:px-6 sm:py-20 lg:py-28">
           <div className="mb-14">
             <h2 className="text-3xl md:text-5xl font-bold tracking-tighter mb-3">How it works</h2>
             <p className="text-white/40 text-lg">Three steps. That's it.</p>
@@ -208,7 +213,7 @@ export default function HomePage() {
       </section>
 
       {/* FEATURES */}
-      <section className="max-w-6xl mx-auto px-6 py-28">
+      <section className="max-w-6xl mx-auto px-4 py-16 sm:px-6 sm:py-20 lg:py-28">
         <div className="mb-14">
           <h2 className="text-3xl md:text-5xl font-bold tracking-tighter mb-3">Why {settings.platform_name}</h2>
           <p className="text-white/40 text-lg">Built for speed, simplicity, and scale.</p>
@@ -238,7 +243,7 @@ export default function HomePage() {
 
       {/* CTA */}
       <section className="border-t border-white/5">
-        <div className="max-w-6xl mx-auto px-6 py-28 text-center">
+        <div className="max-w-6xl mx-auto px-4 py-16 text-center sm:px-6 sm:py-20 lg:py-28">
           <h2 className="text-4xl md:text-6xl font-bold tracking-tighter mb-6">
             Ready to <span className="text-indigo-400">start?</span>
           </h2>
@@ -258,7 +263,7 @@ export default function HomePage() {
 
       {/* FOOTER */}
       <footer className="border-t border-white/5 py-12">
-        <div className="max-w-6xl mx-auto px-6">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 mb-8">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-fuchsia-500 rounded-lg flex items-center justify-center">
@@ -268,7 +273,7 @@ export default function HomePage() {
               </div>
               <span className="font-bold text-base">{settings.platform_name}</span>
             </div>
-            <div className="flex gap-6 text-sm text-white/40">
+            <div className="flex flex-wrap gap-x-6 gap-y-3 text-sm text-white/40">
               <Link to="/" className="hover:text-white transition">Home</Link>
               <Link to="/about" className="hover:text-white transition">About</Link>
               <Link to="/contact" className="hover:text-white transition">Contact</Link>

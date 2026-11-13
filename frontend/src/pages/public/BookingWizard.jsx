@@ -43,10 +43,8 @@ export default function BookingWizard() {
   const registeredClientEmail = user?.role === 'customer' ? user.email : '';
   const bookingName = (form.name || user?.name || '').trim();
 
-  // --- PAGINIM PËR SHËRBIMET ---
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
-  // -----------------------------
 
   const formatDateForInput = (date) => {
     const year = date.getFullYear();
@@ -157,7 +155,7 @@ export default function BookingWizard() {
 
       if (!booking || !booking.id) {
         console.error("Përgjigja e backend-it:", r.data);
-        throw new Error("Rezervimi u krijua, por ID nuk u kthye nga serveri.");
+        throw new Error("Booking created, but ID is not returned from server.");
       }
 
       const bookingId = booking.id;
@@ -217,7 +215,7 @@ export default function BookingWizard() {
   if (!company) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0a0a0f] p-6">
-        <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-8 text-center max-w-md">
+        <div className="w-full max-w-md rounded-2xl border border-white/5 bg-white/[0.02] p-5 text-center sm:p-8">
           <h1 className="text-2xl font-bold text-white mb-2">Company not found</h1>
           <Link to="/" className="text-indigo-400 hover:text-indigo-300 transition">← Back to Home</Link>
         </div>
@@ -225,12 +223,10 @@ export default function BookingWizard() {
     );
   }
 
-  // --- LLOGARITJET E PAGINIMIT PËR SHËRBIMET ---
   const totalPages = Math.ceil(company.services.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedServices = company.services.slice(startIndex, startIndex + itemsPerPage);
   const shouldShowPagination = company.services.length > itemsPerPage;
-  // --------------------------------------------
 
   const steps = [
     { n: 1, label: 'Service' },
@@ -244,7 +240,7 @@ export default function BookingWizard() {
       
       {/* NAVBAR */}
       <nav className="sticky top-0 z-50 bg-[#0a0a0f]/80 backdrop-blur-xl border-b border-white/5">
-        <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="mx-auto flex h-14 max-w-4xl items-center justify-between px-4 sm:h-16 sm:px-6">
           <Link to="/" className="flex items-center gap-2 text-sm text-white/50 hover:text-white transition">
             ← Back
           </Link>
@@ -252,28 +248,27 @@ export default function BookingWizard() {
         </div>
       </nav>
 
-      {/* STEPS */}
       <div className="border-b border-white/5 bg-white/[0.02]">
-        <div className="max-w-4xl mx-auto px-6 py-5">
+        <div className="mx-auto max-w-4xl px-4 py-4 sm:px-6 sm:py-5">
           <div className="flex items-center justify-between">
             {steps.map((s, i) => (
               <div key={s.n} className="flex items-center flex-1">
-                <div className="flex items-center gap-2">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold transition ${
+                <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
+                  <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition sm:h-8 sm:w-8 ${
                     step > s.n ? 'bg-indigo-500 text-white' :
                     step === s.n ? 'bg-white text-black' :
                     'bg-white/5 text-white/30'
                   }`}>
                     {step > s.n ? '✓' : s.n}
                   </div>
-                  <span className={`text-sm font-medium hidden sm:block ${
+                  <span className={`hidden truncate text-sm font-medium sm:block ${
                     step >= s.n ? 'text-white' : 'text-white/30'
                   }`}>
                     {s.label}
                   </span>
                 </div>
                 {i < steps.length - 1 && (
-                  <div className={`flex-1 h-px mx-3 ${
+                  <div className={`mx-1.5 h-px min-w-2 flex-1 sm:mx-3 ${
                     step > s.n ? 'bg-indigo-500' : 'bg-white/10'
                   }`} />
                 )}
@@ -283,27 +278,25 @@ export default function BookingWizard() {
         </div>
       </div>
 
-      {/* MAIN CONTENT */}
-      <div className="max-w-4xl mx-auto px-6 py-12">
-        <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-8">
+      <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-10 lg:py-12">
+        <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-4 sm:rounded-3xl sm:p-6 md:p-8">
           
-          {/* Company Header - PËRDOR logo_url */}
-          <div className="flex items-center gap-4 mb-8 pb-6 border-b border-white/5">
+          <div className="mb-6 flex min-w-0 items-center gap-3 border-b border-white/5 pb-5 sm:mb-8 sm:gap-4 sm:pb-6">
             {company.logo_url ? (
               <img
                 src={company.logo_url}
                 alt={company.name}
-                className="w-14 h-14 rounded-2xl object-cover shadow-lg shadow-indigo-500/20 shrink-0"
+                className="h-12 w-12 shrink-0 rounded-2xl object-cover shadow-lg shadow-indigo-500/20 sm:h-14 sm:w-14"
               />
             ) : (
-              <div className="w-14 h-14 bg-gradient-to-br from-indigo-500 to-fuchsia-500 rounded-2xl flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-indigo-500/20 shrink-0">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-xl font-bold text-white shadow-lg shadow-indigo-500/20 sm:h-14 sm:w-14">
                 {company.name?.charAt(0).toUpperCase()}
               </div>
             )}
-            <div>
-              <h1 className="text-xl font-bold tracking-tight">{company.name}</h1>
+            <div className="min-w-0">
+              <h1 className="break-words text-lg font-bold tracking-tight sm:text-xl">{company.name}</h1>
               {company.address && (
-                <p className="text-sm text-white/40">{company.address}</p>
+                <p className="break-words text-sm text-white/40">{company.address}</p>
               )}
             </div>
           </div>
@@ -314,7 +307,6 @@ export default function BookingWizard() {
             </div>
           )}
 
-          {/* HAPI 1: Zgjedhja e Shërbimit */}
           {step === 1 && (
             <div>
               <h2 className="text-xl font-bold tracking-tight mb-6">Choose service</h2>
@@ -332,23 +324,23 @@ export default function BookingWizard() {
                           setService(s);
                           setStep(2);
                         }}
-                        className={`w-full text-left p-5 rounded-2xl border transition-all ${
+                        className={`w-full min-w-0 rounded-2xl border p-4 text-left transition-all sm:p-5 ${
                           service?.id === s.id
                             ? 'border-indigo-500 bg-indigo-500/10'
                             : 'border-white/5 bg-white/[0.02] hover:border-white/10 hover:bg-white/[0.05]'
                         }`}
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <div className="font-semibold text-white">{s.name}</div>
+                        <div className="flex min-w-0 items-start justify-between gap-3 sm:items-center">
+                          <div className="min-w-0 flex-1">
+                            <div className="break-words font-semibold text-white">{s.name}</div>
                             {s.description && (
-                              <div className="text-sm text-white/40 mt-1">{s.description}</div>
+                              <div className="mt-1 break-words text-sm text-white/40">{s.description}</div>
                             )}
                             <div className="text-xs text-white/30 mt-2 uppercase tracking-wider">
                               {s.duration_minutes} minutes
                             </div>
                           </div>
-                          <div className="text-xl font-bold text-white ml-4">
+                          <div className="ml-1 shrink-0 text-lg font-bold text-white sm:ml-4 sm:text-xl">
                             €{parseFloat(s.price).toFixed(2)}
                           </div>
                         </div>
@@ -356,15 +348,14 @@ export default function BookingWizard() {
                     ))}
                   </div>
 
-                  {/* PAGINIMI PËR SHËRBIMET */}
                   {shouldShowPagination && (
-                    <div className="flex items-center justify-between mt-8 pt-6 border-t border-white/5">
+                    <div className="mt-8 flex flex-col items-start justify-between gap-4 border-t border-white/5 pt-6 sm:flex-row sm:items-center">
                       <div className="text-sm text-white/40">
                         Showing <span className="font-medium text-white">{startIndex + 1}</span> to{' '}
                         <span className="font-medium text-white">{Math.min(startIndex + itemsPerPage, company.services.length)}</span> of{' '}
                         <span className="font-medium text-white">{company.services.length}</span> services
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-start">
                         <button
                           onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                           disabled={currentPage === 1}
@@ -390,7 +381,6 @@ export default function BookingWizard() {
             </div>
           )}
 
-          {/* HAPI 2: Zgjedhja e Datës */}
           {step === 2 && service && (
             <div>
               <h2 className="text-xl font-bold tracking-tight mb-6">Choose date</h2>
@@ -439,10 +429,10 @@ export default function BookingWizard() {
                 </div>
               )}
 
-              <div className="flex gap-3 mt-8">
+              <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row">
                 <button
                   onClick={() => setStep(1)}
-                  className="px-5 py-3 border border-white/10 text-white/60 rounded-xl hover:bg-white/5 text-sm font-medium transition"
+                  className="min-h-11 rounded-xl border border-white/10 px-5 py-3 text-sm font-medium text-white/60 transition hover:bg-white/5 sm:min-w-24"
                 >
                   ← Back
                 </button>
@@ -451,7 +441,7 @@ export default function BookingWizard() {
                     if (isValidBookingDate(date) && !dateBlockedReason) setStep(3);
                   }}
                   disabled={!isValidBookingDate(date) || !!dateBlockedReason || loadingSlots}
-                  className="flex-1 px-5 py-3 bg-white text-black rounded-xl hover:bg-white/90 disabled:opacity-50 text-sm font-semibold transition shadow-[0_0_30px_rgba(255,255,255,0.15)]"
+                  className="min-h-11 flex-1 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-black shadow-[0_0_30px_rgba(255,255,255,0.15)] transition hover:bg-white/90 disabled:opacity-50"
                 >
                   {loadingSlots ? 'Checking...' : 'Continue'}
                 </button>
@@ -459,7 +449,6 @@ export default function BookingWizard() {
             </div>
           )}
 
-          {/* HAPI 3: Zgjedhja e Orarit */}
           {step === 3 && service && date && (
             <div>
               <h2 className="text-xl font-bold tracking-tight mb-6">Choose time</h2>
@@ -479,7 +468,7 @@ export default function BookingWizard() {
                   </p>
 
                   {slotReason === 'fully_booked' && !waitlistJoined && (
-                    <div className="mt-6 bg-indigo-500/10 p-6 rounded-2xl text-left max-w-md mx-auto border border-indigo-500/20">
+                    <div className="mx-auto mt-6 max-w-md rounded-2xl border border-indigo-500/20 bg-indigo-500/10 p-4 text-left sm:p-6">
                       <h4 className="font-bold text-indigo-300 mb-1">Join Waitlist</h4>
                       <p className="text-sm text-indigo-200/60 mb-5">Get notified automatically if a slot opens up for this date.</p>
                       
@@ -533,7 +522,7 @@ export default function BookingWizard() {
                   )}
                 </div>
               ) : (
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                <div className="grid grid-cols-2 gap-2 min-[380px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-6">
                   {slots.map((s) => (
                     <button
                       key={s.start}
@@ -550,10 +539,10 @@ export default function BookingWizard() {
                 </div>
               )}
 
-              <div className="flex gap-3 mt-8">
+              <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row">
                 <button
                   onClick={() => setStep(2)}
-                  className="px-5 py-3 border border-white/10 text-white/60 rounded-xl hover:bg-white/5 text-sm font-medium transition"
+                  className="min-h-11 rounded-xl border border-white/10 px-5 py-3 text-sm font-medium text-white/60 transition hover:bg-white/5 sm:min-w-24"
                 >
                   ← Back
                 </button>
@@ -561,7 +550,7 @@ export default function BookingWizard() {
                   <button
                     onClick={() => setStep(4)}
                     disabled={!selectedSlot}
-                    className="flex-1 px-5 py-3 bg-white text-black rounded-xl hover:bg-white/90 disabled:opacity-50 text-sm font-semibold transition shadow-[0_0_30px_rgba(255,255,255,0.15)]"
+                    className="min-h-11 flex-1 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-black shadow-[0_0_30px_rgba(255,255,255,0.15)] transition hover:bg-white/90 disabled:opacity-50"
                   >
                     Continue
                   </button>
@@ -574,32 +563,32 @@ export default function BookingWizard() {
             <div>
               <h2 className="text-xl font-bold tracking-tight mb-6">Your information</h2>
 
-              <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-5 mb-8 space-y-3">
-                <div className="flex justify-between text-sm">
+              <div className="mb-6 space-y-3 rounded-2xl border border-white/5 bg-white/[0.03] p-4 sm:mb-8 sm:p-5">
+                <div className="flex min-w-0 justify-between gap-4 text-sm">
                   <span className="text-white/40">Service</span>
-                  <span className="font-medium text-white">{service.name}</span>
+                  <span className="min-w-0 break-words text-right font-medium text-white">{service.name}</span>
                 </div>
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between gap-4 text-sm">
                   <span className="text-white/40">Date</span>
-                  <span className="font-medium text-white">
+                  <span className="text-right font-medium text-white">
                     {new Date(date).toLocaleDateString('sq-AL')}
                   </span>
                 </div>
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between gap-4 text-sm">
                   <span className="text-white/40">Time</span>
-                  <span className="font-medium text-white">
+                  <span className="text-right font-medium text-white">
                     {selectedSlot.start.slice(0, 5)} - {selectedSlot.end.slice(0, 5)}
                   </span>
                 </div>
                 {selectedSlot.happy_hour && (
-                  <div className="flex justify-between text-sm pt-3 border-t border-white/5">
+                  <div className="flex justify-between gap-4 border-t border-white/5 pt-3 text-sm">
                     <span className="text-white/40">Happy Hour ({selectedSlot.happy_hour.discount_percent}% off)</span>
                     <span className="font-medium text-emerald-400">
                       -€{(parseFloat(service.price) * selectedSlot.happy_hour.discount_percent / 100).toFixed(2)}
                     </span>
                   </div>
                 )}
-                <div className="flex justify-between text-sm pt-3 border-t border-white/5">
+                <div className="flex justify-between gap-4 border-t border-white/5 pt-3 text-sm">
                   <span className="text-white/40">Price</span>
                   <span className="font-bold text-white text-lg">
                     €{(parseFloat(service.price) * (1 - (selectedSlot.happy_hour?.discount_percent || 0) / 100)).toFixed(2)}

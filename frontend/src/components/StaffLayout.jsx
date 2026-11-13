@@ -137,9 +137,9 @@ export default function StaffLayout({ children }) {
   return (
     <div className="min-h-screen bg-slate-50">
       <nav className="bg-white border-b border-slate-200 sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 min-h-16 flex items-center justify-between gap-2">
           
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <Link to="/staff" className="w-9 h-9 bg-gradient-to-br from-orange-500 to-amber-600 rounded-lg flex items-center justify-center shrink-0">
               <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -153,7 +153,7 @@ export default function StaffLayout({ children }) {
                 <>
                   <button
                     onClick={() => setWorkspaceMenuOpen(!workspaceMenuOpen)}
-                    className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-orange-600 transition-colors -mt-0.5 outline-none"
+                    className="flex min-h-10 items-center gap-1 text-xs font-medium text-slate-500 hover:text-orange-600 transition-colors -mt-0.5 outline-none"
                   >
                     <Building2 className="w-3 h-3" />
                     <span className="truncate max-w-[120px]">{activeCompany?.name}</span>
@@ -188,7 +188,7 @@ export default function StaffLayout({ children }) {
                 </>
               ) : (
                 activeCompany && (
-                  <span className="text-xs text-slate-500 -mt-0.5">{activeCompany.name}</span>
+                  <span className="max-w-[42vw] truncate text-xs text-slate-500 -mt-0.5 sm:max-w-none">{activeCompany.name}</span>
                 )
               )}
             </div>
@@ -211,10 +211,11 @@ export default function StaffLayout({ children }) {
             })}
           </div>
 
-          <div className="relative" ref={userMenuRef}>
+          <div className="relative shrink-0" ref={userMenuRef}>
             <button
               onClick={() => setUserMenuOpen(!userMenuOpen)}
-              className="flex items-center gap-3 hover:bg-slate-100 rounded-lg px-3 py-2 transition"
+              aria-expanded={userMenuOpen}
+              className="flex min-h-11 items-center gap-2 rounded-lg px-2 py-2 transition hover:bg-slate-100 sm:gap-3 sm:px-3"
             >
               <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-amber-600 rounded-full flex items-center justify-center text-white text-sm font-semibold">
                 {user?.name?.charAt(0).toUpperCase()}
@@ -258,7 +259,7 @@ export default function StaffLayout({ children }) {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition ${
+                className={`flex min-h-11 items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition ${
                   active
                     ? 'bg-orange-100 text-orange-700'
                     : 'text-slate-600 hover:bg-slate-100'
@@ -272,7 +273,7 @@ export default function StaffLayout({ children }) {
         </div>
       </div>
 
-      <main className="max-w-7xl mx-auto px-6 py-8">{children}</main>
+      <main className="mx-auto min-w-0 max-w-7xl px-4 py-5 sm:px-6 sm:py-8">{children}</main>
     </div>
   );
 }
