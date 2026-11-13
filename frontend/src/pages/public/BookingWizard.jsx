@@ -2,14 +2,12 @@ import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../../api/client';
 import { createStripeCheckout } from '../../api/payments';
-import { useSettings } from '../../contexts/SettingsContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function BookingWizard() {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const { settings } = useSettings();
   const { user } = useAuth();
 
   const [company, setCompany] = useState(null);
@@ -24,6 +22,7 @@ export default function BookingWizard() {
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [dateBlockedReason, setDateBlockedReason] = useState('');
   const [isSleeping, setIsSleeping] = useState(false);
+  const [isExistingClient, setIsExistingClient] = useState(false);
 
   const [waitlistForm, setWaitlistForm] = useState({ name: '', email: '', phone: '' });
   const [waitlistJoined, setWaitlistJoined] = useState(false);
@@ -40,7 +39,15 @@ export default function BookingWizard() {
   });  
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const registeredClientEmail = user?.role === 'customer' ? user.email : '';
+
+  const userRole = String(user?.role || '').trim().toLowerCase();
+  const isLoggedInClient = Boolean(
+    user?.id &&
+    user?.email &&
+    !['owner', 'admin', 'manager', 'staff', 'superadmin'].includes(userRole)
+  );
+  const authenticatedEmail = isLoggedInClient ? user.email.trim() : '';
+  const registeredClientEmail = isLoggedInClient ? authenticatedEmail : '';
   const bookingName = (form.name || user?.name || '').trim();
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -66,25 +73,45 @@ export default function BookingWizard() {
     return selectedDate >= startOfToday && selectedDate <= maxAllowedDate;
   };
 
+  // 1. Merr kompaninë (me datë nëse ka)
   useEffect(() => {
-    api.get(`/public/companies/${slug}`)
+    const url = `/public/companies/${slug}${date ? `?date=${date}` : ''}`;
+    api.get(url)
       .then((r) => setCompany(r.data.data))
       .catch(() => setError('Company not found'))
       .finally(() => setLoading(false));
-  }, [slug]);
+  }, [slug, date]);
 
+  // 2. Plotëso email-in e klientit të loguar
+  useEffect(() => {
+    if (authenticatedEmail) {
+      setForm(prev => ({ 
+        ...prev, 
+        email: authenticatedEmail, 
+        name: prev.name || user?.name || '' 
+      }));
+    }
+  }, [authenticatedEmail, user?.name]);
+
+  // 3. Kontrollo sleeping statusin dhe ekzistencën
   useEffect(() => {
     if (form.email && form.email.includes('@') && company?.id) {
       api.get(`/public/check-sleeping?company_id=${company.id}&email=${form.email}`)
          .then(res => {
              setIsSleeping(res.data.data.is_sleeping);
+             setIsExistingClient(res.data.data.is_sleeping || res.data.data.exists);
          })
-         .catch(() => setIsSleeping(false));
+         .catch(() => {
+             setIsSleeping(false);
+             setIsExistingClient(false);
+         });
     } else {
       setIsSleeping(false);
+      setIsExistingClient(false);
     }
   }, [form.email, company?.id]);
 
+  // 4. Merr orarin e disponueshëm
   useEffect(() => {
     if (!service || !isValidBookingDate(date) || !company?.id) {
       setDateBlockedReason('');
@@ -144,7 +171,7 @@ export default function BookingWizard() {
         email: bookingEmail,
         phone: form.phone,
         notes: form.notes,
-        discount_code: form.discount_code,
+        discount_code: showDiscountCode ? form.discount_code : '',
         needs_assistance: form.needs_assistance ? 1 : 0,
         assistance_notes: form.assistance_notes || '',
         payment_method: method, 
@@ -235,10 +262,14 @@ export default function BookingWizard() {
     { n: 4, label: 'Information' },
   ];
 
+  // Kushti për shfaqjen e fushës së kodit të zbritjes
+  const showDiscountCode = Boolean(
+    company.has_active_discount_codes && (isExistingClient || isLoggedInClient)
+  );
+
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-white font-sans selection:bg-indigo-500/30">
       
-      {/* NAVBAR */}
       <nav className="sticky top-0 z-50 bg-[#0a0a0f]/80 backdrop-blur-xl border-b border-white/5">
         <div className="mx-auto flex h-14 max-w-4xl items-center justify-between px-4 sm:h-16 sm:px-6">
           <Link to="/" className="flex items-center gap-2 text-sm text-white/50 hover:text-white transition">
@@ -689,7 +720,7 @@ export default function BookingWizard() {
                   </div>
                 )}
 
-                {company.has_active_discount_codes && (
+                {showDiscountCode && (
                   <div>
                     <label className="block text-xs font-semibold uppercase tracking-wide text-white/50 mb-2">
                       Discount code (optional)
@@ -698,7 +729,7 @@ export default function BookingWizard() {
                       type="text"
                       value={form.discount_code}
                       onChange={(e) => setForm({ ...form, discount_code: e.target.value.toUpperCase() })}
-                      placeholder={isSleeping ? 'Enter the code sent to you by email' : 'Enter discount code'}
+                      placeholder="Enter discount code"
                       className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-white/30 font-mono focus:border-indigo-400 focus:bg-white/10 outline-none transition"
                     />
                   </div>

@@ -44,10 +44,9 @@ export default function MyBilling() {
         <div className="space-y-6">
             <div>
                 <h1 className="text-2xl font-bold text-slate-900">My Billing</h1>
-                <p className="text-sm text-slate-500 mt-1">Shiko faturat e abonimit dhe statusin e pagesave.</p>
+                <p className="text-sm text-slate-500 mt-1">View bills of subscribtion and payment statuses.</p>
             </div>
 
-            {/* Karta e përmbledhjes */}
             <div className="bg-white rounded-xl border border-slate-200 p-6 flex items-center justify-between">
                 <div>
                     <p className="text-sm font-medium text-slate-500">Total Pending Amount</p>
@@ -61,7 +60,6 @@ export default function MyBilling() {
                 </div>
             </div>
 
-            {/* Tabela e faturave */}
             <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
                 <table className="w-full">
                     <thead className="bg-slate-50 border-b border-slate-200">

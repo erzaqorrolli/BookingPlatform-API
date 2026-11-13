@@ -341,6 +341,16 @@ class BookingController
             json_err('Invalid or expired discount code', 422);
         }
 
+        $customerCheck = $db->prepare("
+            SELECT 1 FROM customers 
+            WHERE company_id = ? AND LOWER(email) = LOWER(?) 
+            LIMIT 1
+        ");
+        $customerCheck->execute([$companyId, $email]);
+        if (!$customerCheck->fetchColumn()) {
+            json_err('This discount code is available only for existing clients.', 422);
+        }
+
         if (!empty($discount->only_for_sleeping)) {
             $stmt = $db->prepare("
                 SELECT MAX(b.booking_date) as last_booking
@@ -594,8 +604,7 @@ class BookingController
         'discount_code'    => $discount?->code,
         'discount_amount'  => $discountAmount,
     ], 201);
-}
-    public function calendarEvents(array $params): void
+}    public function calendarEvents(array $params): void
     {
         $uid = auth_user_id();
         if (!$uid) json_err('Unauthorized', 401);
@@ -782,109 +791,111 @@ public function updateStatus(array $params): void
         'message' => 'Status updated',
         'booking' => Booking::findById($bookingId)->toArray(),
     ]);
-}    public function publicCompanyBySlug(array $params): void
+}
+
+    public function publicCompanyBySlug(array $params): void
     {
-        $slug = trim((string) ($params['slug'] ?? ''));
-        if (!$slug) json_err('Slug required', 422);
+    $slug = trim((string) ($params['slug'] ?? ''));
+    if (!$slug) json_err('Slug required', 422);
 
-        $db = Database::pdo();
+    $db = Database::pdo();
 
-        $stmt = $db->prepare("
-            SELECT id, name, slug, email, phone, address, logo_url
-            FROM companies
-            WHERE slug = ?
-            LIMIT 1
-        ");
-        $stmt->execute([$slug]);
-        $company = $stmt->fetch();
+    $stmt = $db->prepare("
+        SELECT id, name, slug, email, phone, address, logo_url
+        FROM companies
+        WHERE slug = ?
+        LIMIT 1
+    ");
+    $stmt->execute([$slug]);
+    $company = $stmt->fetch();
 
-        if (!$company) json_err('Company not found', 404);
+    if (!$company) json_err('Company not found', 404);
 
-        $stmt = $db->prepare("
-            SELECT id, name, description, duration_minutes, price, capacity
-            FROM services
-            WHERE company_id = ? AND active = 1
-            ORDER BY name
-        ");
-        $stmt->execute([$company['id']]);
-        $services = $stmt->fetchAll();
+    $stmt = $db->prepare("
+        SELECT id, name, description, duration_minutes, price, capacity
+        FROM services
+        WHERE company_id = ? AND active = 1
+        ORDER BY name
+    ");
+    $stmt->execute([$company['id']]);
+    $services = $stmt->fetchAll();
 
-        $stmt = $db->prepare("
-            SELECT id, filename, is_cover
-            FROM photos
-            WHERE company_id = ?
-            ORDER BY is_cover DESC, created_at DESC
-            LIMIT 20
-        ");
-        $stmt->execute([$company['id']]);
-        $photosRaw = $stmt->fetchAll();
+    $stmt = $db->prepare("
+        SELECT id, filename, is_cover
+        FROM photos
+        WHERE company_id = ?
+        ORDER BY is_cover DESC, created_at DESC
+        LIMIT 20
+    ");
+    $stmt->execute([$company['id']]);
+    $photosRaw = $stmt->fetchAll();
 
-        $hhStmt = $db->prepare("
-            SELECT id, name, day_of_week, start_time, end_time, discount_percent
-            FROM happy_hours
-            WHERE company_id = ? AND active = 1
-            ORDER BY day_of_week, start_time
-        ");
-        $hhStmt->execute([$company['id']]);
-        $happyHours = array_map(function ($r) {
+    $hhStmt = $db->prepare("
+        SELECT id, name, day_of_week, start_time, end_time, discount_percent
+        FROM happy_hours
+        WHERE company_id = ? AND active = 1
+        ORDER BY day_of_week, start_time
+    ");
+    $hhStmt->execute([$company['id']]);
+    $happyHours = array_map(function ($r) {
+        return [
+            'id'               => (int) $r['id'],
+            'name'             => $r['name'],
+            'day_of_week'      => (int) $r['day_of_week'],
+            'start_time'       => $r['start_time'],
+            'end_time'         => $r['end_time'],
+            'discount_percent' => (int) $r['discount_percent'],
+        ];
+    }, $hhStmt->fetchAll());
+
+    $filterDate = $_GET['date'] ?? date('Y-m-d');
+
+    $discountStmt = $db->prepare("
+        SELECT 1
+        FROM discounts
+        WHERE company_id = ?
+            AND active = 1
+            AND (valid_from IS NULL OR valid_from <= ?)
+            AND (valid_to IS NULL OR valid_to >= ?)
+            AND (usage_limit IS NULL OR used_count < usage_limit)
+        LIMIT 1
+    ");
+    $discountStmt->execute([$company['id'], $filterDate, $filterDate]);
+    $hasActiveDiscountCodes = (bool) $discountStmt->fetchColumn();
+
+    $appUrl = $_ENV['APP_URL'] ?? 'http://localhost/booking-api';
+
+    $photos = array_map(function ($p) use ($appUrl) {
+        return [
+            'id'       => (int) $p['id'],
+            'url'      => $appUrl . '/public/storage/uploads/' . $p['filename'],
+            'is_cover' => (int) $p['is_cover'],
+        ];
+    }, $photosRaw);
+
+    json_ok([
+        'id'          => (int) $company['id'],
+        'name'        => $company['name'],
+        'slug'        => $company['slug'],
+        'email'       => $company['email'],
+        'phone'       => $company['phone'],
+        'address'     => $company['address'],
+        'logo_url'    => $company['logo_url'],
+        'services'    => array_map(function ($s) {
             return [
-                'id'               => (int) $r['id'],
-                'name'             => $r['name'],
-                'day_of_week'      => (int) $r['day_of_week'],
-                'start_time'       => $r['start_time'],
-                'end_time'         => $r['end_time'],
-                'discount_percent' => (int) $r['discount_percent'],
+                'id'               => (int) $s['id'],
+                'name'             => $s['name'],
+                'description'      => $s['description'],
+                'duration_minutes' => (int) $s['duration_minutes'],
+                'price'            => (float) $s['price'],
+                'capacity'         => (int) $s['capacity'],
             ];
-        }, $hhStmt->fetchAll());
-
-        $discountStmt = $db->prepare("
-            SELECT 1
-            FROM discounts
-            WHERE company_id = ?
-                AND active = 1
-                AND (valid_from IS NULL OR valid_from <= CURDATE())
-                AND (valid_to IS NULL OR valid_to >= CURDATE())
-                AND (usage_limit IS NULL OR used_count < usage_limit)
-            LIMIT 1
-        ");
-        $discountStmt->execute([$company['id']]);
-        $hasActiveDiscountCodes = (bool) $discountStmt->fetchColumn();
-
-        $appUrl = $_ENV['APP_URL'] ?? 'http://localhost/booking-api';
-
-        $photos = array_map(function ($p) use ($appUrl) {
-            return [
-                'id'       => (int) $p['id'],
-                'url'      => $appUrl . '/public/storage/uploads/' . $p['filename'],
-                'is_cover' => (int) $p['is_cover'],
-            ];
-        }, $photosRaw);
-
-        json_ok([
-            'id'          => (int) $company['id'],
-            'name'        => $company['name'],
-            'slug'        => $company['slug'],
-            'email'       => $company['email'],
-            'phone'       => $company['phone'],
-            'address'     => $company['address'],
-            'logo_url'    => $company['logo_url'],
-            'services'    => array_map(function ($s) {
-                return [
-                    'id'               => (int) $s['id'],
-                    'name'             => $s['name'],
-                    'description'      => $s['description'],
-                    'duration_minutes' => (int) $s['duration_minutes'],
-                    'price'            => (float) $s['price'],
-                    'capacity'         => (int) $s['capacity'],
-                ];
-            }, $services),
-            'photos'      => $photos,
-            'happy_hours' => $happyHours,
-            'has_active_discount_codes' => $hasActiveDiscountCodes,
-        ]);
-    }
-
-    private static function timeToMinutes(string $time): int
+        }, $services),
+        'photos'      => $photos,
+        'happy_hours' => $happyHours,
+        'has_active_discount_codes' => $hasActiveDiscountCodes,
+    ]);
+}private static function timeToMinutes(string $time): int
     {
         $parts = explode(':', $time);
         $h = (int) ($parts[0] ?? 0);
@@ -1042,32 +1053,45 @@ public function updateStatus(array $params): void
 
     public function checkSleepingStatus(): void
     {
-        $companyId = (int) ($_GET['company_id'] ?? 0);
-        $email = strtolower(trim($_GET['email'] ?? ''));
+     
+    $companyId=(int) ($_GET['company_id'] ?? 0);
+    $email = strtolower(trim($_GET['email'] ?? ''));
 
-        if (!$companyId || !$email) {
-            json_ok(['is_sleeping' => false]);
-        }
+    if(!$companyId || !$email){
+        json_ok(['is_sleeping' =>false, 'exists' =>false]);
+        return;
+        
+        
+    }
+    $db=Database::pdo();
 
-        $db = Database::pdo();
-        $stmt = $db->prepare("
-            SELECT MAX(b.booking_date) as last_booking
-            FROM bookings b
-            JOIN customers c ON c.id = b.customer_id
-            WHERE c.company_id = ? AND c.email = ? AND b.status != 'cancelled'
-        ");
-        $stmt->execute([$companyId, $email]);
-        $lastBooking = $stmt->fetchColumn();
+    $existStmt =$db->prepare(" 
+    SELECT 1 FROM customers 
+    WHERE company_id = ? AND LOWER(email) = LOWER(?)
+    LIMIT 1
+    ");
 
-        $isSleeping = false;
-        if (!$lastBooking) {
-            $isSleeping = true;
-        } else {
-            $days = (time() - strtotime($lastBooking)) / (60 * 60 * 24);
-            if ($days > 30) $isSleeping = true;
-        }
+    $existStmt->execute([$companyId,$email]);
+    $exists = (bool) $existStmt->fetchColumn();
 
-        json_ok(['is_sleeping' => $isSleeping]);
+    $stmt=$db->prepare("SELECT MAX(b.booking_date) as last_booking
+     FROM bookings b
+     JOIN customers c ON c.id=b.customer_id
+     WHERE c.company_id = ? AND LOWER(c.email) = LOWER(?) AND b.status != 'cancelled'");
+
+     $stmt->execute([$companyId,$email]);
+     $lastBooking=$stmt->fetchColumn();
+     
+     $isSleeping=false;
+     if(!$lastBooking){
+        $isSleeping = true;
+
+     } else {
+        $days = (time() - strtotime($lastBooking)) / (60 * 60 * 24);
+        if($days > 30) $isSleeping = true;
+     }
+
+     json_ok(['is_sleeping' => $isSleeping,'exists'=>$exists]);
     }
 
 
