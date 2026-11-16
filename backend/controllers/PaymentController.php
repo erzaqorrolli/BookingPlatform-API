@@ -43,7 +43,7 @@
         $stripe = new StripeService();
 
         $frontendUrl = rtrim($_ENV['FRONTEND_URL'] ?? 'http://localhost:5173', '/');
-        $successUrl = $frontendUrl . '/success';
+        $successUrl = $frontendUrl . '/';
         $cancelUrl = $frontendUrl . '/';
 
         $bookingDate = $booking->toArray();
@@ -83,8 +83,62 @@
             $bookingId= (int)$session->metadata->booking_id;
 
             $booking=Booking::findById($bookingId);
-            if($booking){
-                $booking->confirmPayment($session->payment_intent);
+            if($booking && !empty($session->payment_intent)
+                && $booking->confirmPayment((string) $session->payment_intent)){
+                $db = \App\Config\Database::pdo();
+                $bookingStmt = $db->prepare("
+                    SELECT b.company_id, b.id, b.reference, b.booking_date, b.start_time,
+                           b.total_price, b.status, b.payment_method,
+                           cu.name AS customer_name, cu.email AS customer_email,
+                           s.name AS service_name
+                    FROM bookings b
+                    JOIN customers cu ON cu.id = b.customer_id
+                    JOIN services s ON s.id = b.service_id
+                    WHERE b.id = ?
+                    LIMIT 1
+                ");
+                $bookingStmt->execute([$bookingId]);
+                $paymentDetails = $bookingStmt->fetch();
+
+                if ($paymentDetails) {
+                    if (!empty($paymentDetails['customer_email'])) {
+                        $sent = \App\Utils\TenantMailer::sendPaymentReceivedToCustomer(
+                            (int) $paymentDetails['company_id'],
+                            $paymentDetails['customer_email'],
+                            $paymentDetails['customer_name'],
+                            $paymentDetails
+                        );
+                        if (!$sent) {
+                            error_log('Payment receipt email could not be sent to customer for booking ' . $bookingId);
+                        }
+                    }
+
+                    $ownerStmt = $db->prepare("
+                        SELECT u.name, u.email
+                        FROM company_user companyOwner
+                        JOIN roles ownerRole ON ownerRole.id = companyOwner.role_id AND ownerRole.name = 'owner'
+                        JOIN users u ON u.id = companyOwner.user_id
+                        WHERE companyOwner.company_id = ?
+                    ");
+                    $ownerStmt->execute([(int) $paymentDetails['company_id']]);
+                    foreach ($ownerStmt->fetchAll() as $owner) {
+                        if (empty($owner['email'])) {
+                            continue;
+                        }
+
+                        $sent = \App\Utils\TenantMailer::sendPaymentReceivedToOwner(
+                            (int) $paymentDetails['company_id'],
+                            $owner['email'],
+                            $owner['name'],
+                            $paymentDetails
+                        );
+                        if (!$sent) {
+                            error_log('Payment receipt email could not be sent to owner for booking ' . $bookingId);
+                        }
+                    }
+                } else {
+                    error_log('Payment was confirmed but booking details could not be loaded for booking ' . $bookingId);
+                }
             }
         }
 

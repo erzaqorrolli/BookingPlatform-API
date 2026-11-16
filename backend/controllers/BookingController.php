@@ -519,6 +519,8 @@ class BookingController
             b.booking_date,
             b.start_time,
             b.total_price,
+            b.status,
+            b.payment_method,
             cu.name AS customer_name,
             cu.email AS customer_email,
             s.name AS service_name,
@@ -696,11 +698,16 @@ public function updateStatus(array $params): void
     $status = $input['status'] ?? '';
     $reason = $input['cancellation_reason'] ?? null;
     $cancelledBy = $input['cancelled_by'] ?? ($role === 'staff' ? 'staff' : 'owner');
+    if (!in_array($status, ['pending', 'confirmed', 'cancelled', 'completed', 'no_show'], true)) {
+        json_err('Invalid status', 422);
+    }
 
     $booking = Booking::findById($bookingId);
     if (!$booking || $booking->company_id !== $companyId) {
         json_err('Booking not found', 404);
     }
+
+    $previousStatus = $booking->status;
 
     if (
         $booking->payment_method === 'card'
@@ -708,10 +715,92 @@ public function updateStatus(array $params): void
         && $status !== 'pending'
         && $status !== 'cancelled'
     ) {
-        json_err('Online payment must be completed before approving this booking', 422);
-    }
+        if ($booking->stripe_session_id) {
+            try {
+                $stripeSession = (new \App\Services\StripeService())
+                    ->retrieveCheckoutSession($booking->stripe_session_id);
+            } catch (\Exception $e) {
+                error_log('Stripe payment verification failed for booking ' . $bookingId . ': ' . $e->getMessage());
+                json_err('Could not verify the card payment right now. Please try again.', 503);
+            }
 
-    $previousStatus = $booking->status;
+            $sessionBookingId = (int) ($stripeSession->metadata->booking_id ?? 0);
+            $validPaidSession = (
+                (string) $stripeSession->id === $booking->stripe_session_id
+                && $sessionBookingId === $bookingId
+                && $stripeSession->payment_status === 'paid'
+                && !empty($stripeSession->payment_intent)
+            );
+            $paymentConfirmed = $validPaidSession
+                && $booking->confirmPayment((string) $stripeSession->payment_intent);
+
+            if ($paymentConfirmed) {
+                $booking->status = 'confirmed';
+                $booking->stripe_payment_intent = (string) $stripeSession->payment_intent;
+
+                $paymentStmt = Database::pdo()->prepare("
+                    SELECT b.company_id, b.id, b.reference, b.booking_date, b.start_time,
+                           b.total_price, b.status, b.payment_method,
+                           cu.name AS customer_name, cu.email AS customer_email,
+                           s.name AS service_name
+                    FROM bookings b
+                    JOIN customers cu ON cu.id = b.customer_id
+                    JOIN services s ON s.id = b.service_id
+                    WHERE b.id = ?
+                    LIMIT 1
+                ");
+                $paymentStmt->execute([$bookingId]);
+                $paymentDetails = $paymentStmt->fetch();
+
+                if ($paymentDetails) {
+                    if (!empty($paymentDetails['customer_email'])) {
+                        $sent = TenantMailer::sendPaymentReceivedToCustomer(
+                            $companyId,
+                            $paymentDetails['customer_email'],
+                            $paymentDetails['customer_name'],
+                            $paymentDetails
+                        );
+                        if (!$sent) {
+                            error_log('Payment receipt email could not be sent to customer for booking ' . $bookingId);
+                        }
+                    }
+
+                    $ownerStmt = Database::pdo()->prepare("
+                        SELECT u.name, u.email
+                        FROM company_user companyOwner
+                        JOIN roles ownerRole ON ownerRole.id = companyOwner.role_id AND ownerRole.name = 'owner'
+                        JOIN users u ON u.id = companyOwner.user_id
+                        WHERE companyOwner.company_id = ?
+                    ");
+                    $ownerStmt->execute([$companyId]);
+                    foreach ($ownerStmt->fetchAll() as $owner) {
+                        if (empty($owner['email'])) {
+                            continue;
+                        }
+
+                        $sent = TenantMailer::sendPaymentReceivedToOwner(
+                            $companyId,
+                            $owner['email'],
+                            $owner['name'],
+                            $paymentDetails
+                        );
+                        if (!$sent) {
+                            error_log('Payment receipt email could not be sent to owner for booking ' . $bookingId);
+                        }
+                    }
+                }
+            } elseif ($validPaidSession) {
+                $booking = Booking::findById($bookingId);
+                if (!$booking || !$booking->stripe_payment_intent) {
+                    json_err('Online payment must be completed before approving this booking', 422);
+                }
+            } else {
+                json_err('Online payment must be completed before approving this booking', 422);
+            }
+        } else {
+            json_err('Online payment must be completed before approving this booking', 422);
+        }
+    }
 
     if ($status === 'cancelled') {
         if (!$reason || strlen(trim($reason)) < 3) {
@@ -1224,6 +1313,7 @@ public function updateStatus(array $params): void
         try {
             $notificationStmt = $db->prepare("
                 SELECT b.id, b.reference, b.booking_date, b.start_time, b.total_price,
+                       b.status, b.payment_method,
                        cu.name AS customer_name, cu.email AS customer_email,
                        s.name AS service_name,
                        u.name AS owner_name, u.email AS owner_email

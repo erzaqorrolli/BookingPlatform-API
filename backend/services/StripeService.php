@@ -42,4 +42,9 @@ class StripeService
             throw new Exception("Stripe Error: " . $e->getMessage());
         }
     }
+
+    public function retrieveCheckoutSession(string $sessionId): Session
+    {
+        return Session::retrieve($sessionId);
+    }
 }

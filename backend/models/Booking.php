@@ -28,6 +28,7 @@ class Booking
     public ?string $cancellation_reason = null;
     public ?string $payment_method = 'cash';
     public ?string $stripe_payment_intent = null;
+    public ?string $stripe_session_id = null;
 
 
 
@@ -268,6 +269,7 @@ class Booking
         $b->cancellation_reason=$row['cancellation_reason'] ?? null;
         $b->payment_method = $row['payment_method'] ?? 'cash';
         $b->stripe_payment_intent = $row['stripe_payment_intent'] ?? null;
+        $b->stripe_session_id = $row['stripe_session_id'] ?? null;
         return $b;
     }
 
@@ -284,9 +286,14 @@ class Booking
 
     if($this->id === null)return false;
     $db=Database::pdo();
-    $stmt = $db->prepare("UPDATE bookings SET status = 'confirmed', stripe_payment_intent= ? WHERE id =?");
+    $stmt = $db->prepare("
+        UPDATE bookings
+        SET status = 'confirmed', stripe_payment_intent = ?
+        WHERE id = ? AND status = 'pending' AND payment_method = 'card'
+    ");
 
-    return $stmt->execute([$paymentIntentId,$this->id]);
+    $stmt->execute([$paymentIntentId, $this->id]);
+    return $stmt->rowCount() === 1;
    }
 
    public static function findBySessionId(string $sessionId): ?self{
