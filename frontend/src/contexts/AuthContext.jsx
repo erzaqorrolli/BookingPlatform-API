@@ -17,10 +17,25 @@ function getCsrfToken() {
 }
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(() =>
-    Boolean(localStorage.getItem('auth_token') || localStorage.getItem('refresh_token'))
-  );
+  // 1. Lexojmë userin nga localStorage MENJËHERË (sinkron) që të mos ketë boshllëk
+  const [user, setUser] = useState(() => {
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) {
+      try {
+        return JSON.parse(savedUser);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  });
+
+  // 2. Loading është true vetëm nëse ka token por NUK ka user të ruajtur
+  const [loading, setLoading] = useState(() => {
+    const hasToken = Boolean(localStorage.getItem('auth_token') || localStorage.getItem('refresh_token'));
+    const hasUser = Boolean(localStorage.getItem('user'));
+    return hasToken && !hasUser;
+  });
 
   const clearAuthSession = () => {
     sessionStorage.removeItem('activeCompanyId');
@@ -46,22 +61,18 @@ export function AuthProvider({ children }) {
   };
 
   useEffect(() => {
-    if (!localStorage.getItem('auth_token') && !localStorage.getItem('refresh_token')) {
+    const hasToken = localStorage.getItem('auth_token') || localStorage.getItem('refresh_token');
+    
+    if (!hasToken) {
       setLoading(false);
       return;
-    }
-
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      try {
-        setUser(JSON.parse(savedUser));
-      } catch (e) {}
     }
 
     if (localStorage.getItem('is_impersonating') === 'true') {
       setLoading(false);
       return;
     }
+
 
     api.get('/auth/me')
       .then((response) => {
@@ -71,8 +82,11 @@ export function AuthProvider({ children }) {
         localStorage.setItem('user', JSON.stringify(normalized)); 
       })
       .catch(() => {
+        
         setUser(null);
         localStorage.removeItem('user');
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('refresh_token');
       })
       .finally(() => setLoading(false));
   }, []);
@@ -97,7 +111,7 @@ export function AuthProvider({ children }) {
 
     const normalizedUser = normalizeUser(data);
     setUser(normalizedUser);
-    localStorage.setItem('user', JSON.stringify(normalizedUser)); // RUAJTJA KRYESORE
+    localStorage.setItem('user', JSON.stringify(normalizedUser)); 
 
     return { ...data, user: normalizedUser, role: normalizedUser.role };
   };

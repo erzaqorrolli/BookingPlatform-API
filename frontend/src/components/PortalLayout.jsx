@@ -45,25 +45,24 @@ export default function PortalLayout({ children }) {
     navigate('/login');
   };
 
-  return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white font-sans selection:bg-emerald-500/30">
+ return (
+    <div className="min-h-screen bg-[#0a0a0f] text-white font-sans selection:bg-emerald-500/30 flex flex-col">
       
-      {/* NAVBAR */}
       <nav className="sticky top-0 z-50 bg-[#0a0a0f]/80 backdrop-blur-xl border-b border-white/5">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 md:min-h-16 flex flex-wrap items-center justify-between gap-y-2 py-2 md:flex-nowrap md:py-0">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 md:min-h-16 grid grid-cols-3 items-center py-2 md:py-0 gap-4">
           
-          {/* Logo */}
-          <Link to="/portal" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-lg flex items-center justify-center shadow-lg shadow-emerald-500/30 group-hover:scale-105 transition">
-              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            </div>
-            <span className="font-bold text-base tracking-tight">My Space</span>
-          </Link>
+          <div className="flex justify-start">
+            <Link to="/portal" className="flex items-center gap-2.5 group">
+              <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-lg flex items-center justify-center shadow-lg shadow-emerald-500/30 group-hover:scale-105 transition">
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+              <span className="font-bold text-base tracking-tight">My Space</span>
+            </Link>
+          </div>
 
-          {/* Menu links */}
-          <div className="order-3 flex w-full items-center justify-around gap-1 border-t border-white/5 pt-2 text-xs font-medium text-white/60 sm:text-sm md:order-none md:w-auto md:justify-center md:gap-4 md:border-0 md:pt-0 lg:gap-8">
+          <div className="flex justify-center items-center gap-1 text-xs font-medium text-white/60 sm:text-sm md:gap-4 lg:gap-8">
             {menuItems.map((item) => {
               const active = location.pathname === item.path;
               return (
@@ -71,7 +70,7 @@ export default function PortalLayout({ children }) {
                   key={item.path}
                   to={item.path}
                   aria-current={active ? 'page' : undefined}
-                  className={`min-h-11 rounded-lg px-2 py-2 text-center transition sm:px-3 ${
+                  className={`min-h-11 flex items-center justify-center rounded-lg px-3 py-2 text-center transition ${
                     active
                       ? 'bg-emerald-500/15 text-emerald-300 ring-1 ring-inset ring-emerald-400/30'
                       : 'text-white/60 hover:bg-white/5 hover:text-white'
@@ -83,7 +82,7 @@ export default function PortalLayout({ children }) {
             })}
           </div>
 
-          <div className="relative ml-auto">
+          <div className="flex justify-end relative">
             <button
               onClick={() => setUserMenuOpen(!userMenuOpen)}
               aria-expanded={userMenuOpen}
@@ -126,7 +125,7 @@ export default function PortalLayout({ children }) {
         </div>
       </nav>
 
-      <main className="mx-auto min-w-0 max-w-7xl px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
+      <main className="flex-1 w-full mx-auto min-w-0 max-w-7xl px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
         {children}
       </main>
 

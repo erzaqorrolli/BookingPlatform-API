@@ -2,12 +2,18 @@ import { useAuth } from '../contexts/AuthContext';
 import { useCompany } from '../contexts/CompanyContext';
 
 export function useRole() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const { activeCompany } = useCompany();
+
+  if (loading) return null;
+
+  if (!user) return 'guest';
 
   const resolvedUserRole = user?.role || user?.companies?.[0]?.role || user?.company_role;
   if (resolvedUserRole) return resolvedUserRole;
+  
   if (activeCompany?.role) return activeCompany.role;
+  
   return 'customer';
 }
 

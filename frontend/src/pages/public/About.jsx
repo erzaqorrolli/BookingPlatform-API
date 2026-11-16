@@ -1,8 +1,20 @@
 import { Link } from 'react-router-dom';
 import { useSettings } from '../../contexts/SettingsContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { useRole } from '../../hooks/useRole';
 
 export default function About() {
   const { settings } = useSettings();
+  const { user, logout } = useAuth();
+  const role = useRole();
+  const isClient = role === 'customer' || role === 'guest';
+  const accountPath = isClient
+    ? '/portal'
+    : role === 'staff'
+      ? '/staff'
+      : role === 'superadmin'
+        ? '/admin/superadmin'
+        : '/admin';
 
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-white font-sans selection:bg-indigo-500/30">
@@ -24,10 +36,23 @@ export default function About() {
           </div>
 
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-            <Link to="/login" className="min-h-11 px-1 flex items-center text-xs text-white/60 transition hover:text-white sm:px-0 sm:text-sm">Login</Link>
-            <Link to="/register-business" className="rounded-lg bg-white px-2.5 py-2 text-xs font-semibold text-black transition hover:bg-white/90 sm:px-4 sm:text-sm">
-              Get started
-            </Link>
+            {user ? (
+              <>
+                <Link to={accountPath} className="rounded-lg bg-white px-2.5 py-2 text-xs font-semibold text-black transition hover:bg-white/90 sm:px-4 sm:text-sm">
+                  {isClient ? 'My bookings' : 'Dashboard'}
+                </Link>
+                <button onClick={logout} className="min-h-11 px-1 text-xs text-white/60 transition hover:text-white sm:px-0 sm:text-sm">
+                  Logout
+                </button>
+              </>
+            ) : (
+              <>
+                <Link to="/login" className="min-h-11 px-1 flex items-center text-xs text-white/60 transition hover:text-white sm:px-0 sm:text-sm">Login</Link>
+                <Link to="/register-business" className="rounded-lg bg-white px-2.5 py-2 text-xs font-semibold text-black transition hover:bg-white/90 sm:px-4 sm:text-sm">
+                  Get started
+                </Link>
+              </>
+            )}
           </div>
         </div>
         <div className="flex items-center justify-center gap-6 border-t border-white/5 px-4 py-2 text-sm text-white/60 md:hidden">

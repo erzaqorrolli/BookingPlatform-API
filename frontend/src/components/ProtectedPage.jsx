@@ -1,11 +1,9 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useRole } from '../hooks/useRole';
 import AdminLayout from './AdminLayout';
 
 export default function ProtectedPage({ allowed, children }) {
   const { user, loading } = useAuth();
-  const role = useRole();
 
   if (loading) {
     return (
@@ -18,6 +16,8 @@ export default function ProtectedPage({ allowed, children }) {
   if (!user) {
     return <Navigate to="/login" replace />;
   }
+
+  const role = user.role;
 
   if (role === 'customer') {
     return <Navigate to="/portal" replace />;

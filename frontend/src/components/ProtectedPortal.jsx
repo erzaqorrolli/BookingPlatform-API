@@ -7,7 +7,7 @@ export default function ProtectedPortal({ children }) {
   const { user, loading } = useAuth();
   const role = useRole();
 
-  if (loading) {
+  if (loading || role === null) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-slate-500">Loading...</div>
@@ -20,15 +20,15 @@ export default function ProtectedPortal({ children }) {
   }
 
   if (role === 'superadmin') {
-  return <Navigate to="/admin/superadmin" replace />;
-}
-
-if (['owner', 'admin', 'manager', 'staff'].includes(role)) {
-  if (role === 'staff') {
-    return <Navigate to="/staff" replace />;
+    return <Navigate to="/admin/superadmin" replace />;
   }
-  return <Navigate to="/admin" replace />;
-}
+
+  if (['owner', 'admin', 'manager', 'staff'].includes(role)) {
+    if (role === 'staff') {
+      return <Navigate to="/staff" replace />;
+    }
+    return <Navigate to="/admin" replace />;
+  }
 
   return <PortalLayout>{children}</PortalLayout>;
 }
