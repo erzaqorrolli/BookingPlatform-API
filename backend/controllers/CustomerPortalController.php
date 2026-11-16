@@ -26,6 +26,7 @@ class CustomerPortalController
         $stmt = $db->prepare("
             SELECT 
                 b.id,
+                b.reference,
                 b.booking_date,
                 b.start_time,
                 b.end_time,

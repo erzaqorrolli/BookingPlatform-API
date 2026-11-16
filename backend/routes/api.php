@@ -315,3 +315,5 @@ Router::put('/api/superadmin/settings', [SettingsController::class, 'update']);
 Router::post('/api/public/validate-discount', [BookingController::class, 'validateDiscount']);
 
 Router::get('/api/public/check-sleeping', [BookingController::class, 'checkSleepingStatus']);
+
+Router::post('/api/companies/send-email-by-type', [ContactController::class, 'sendEmailByType']);

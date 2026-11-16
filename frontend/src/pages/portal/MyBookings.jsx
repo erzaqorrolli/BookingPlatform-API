@@ -160,8 +160,8 @@ export default function MyBookings() {
   return (
     <div className="min-w-0 space-y-5 sm:space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">My bookings</h1>
-        <p className="text-sm text-slate-500 mt-1">
+      <h1 className="text-xl font-bold text-white sm:text-2xl">My bookings</h1>
+        <p className="text-l text-slate-400 mt-1">
           View and manage all your bookings
         </p>
       </div>

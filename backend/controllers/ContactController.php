@@ -184,5 +184,79 @@ class ContactController
 }
 
 
+    
+        public function sendEmailByType(): void{
 
+        $uid=auth_user_id();
+
+        if(!$uid) json_err('Unauthorized',401);
+
+        $input=input();
+        $companyId=(int) ($input['companyId'] ?? 0);
+        $type=$input['type'] ?? '';
+        $subject=$input['subject'] ?? '';
+        $body=$input['body'] ?? '';
+
+        if(!$companyId || !$type || !$subject || !$body){
+            json_err('Missing required fields',422);
+        }
+
+        $db=Database::pdo();
+        $customers=[];
+
+        if($type === 'comeback'){
+
+        $stmt=$db->prepare("
+        SELECT DISTINCT u.id,u.name,u.email
+        FROM users u
+        JOIN bookings b ON b.customer_id=u.id
+        WHERE b.company_id = ? 
+        AND u.id NOT IN (
+        SELECT customer_id FROM bookings 
+        WHERE company_id = ? AND booking_date >= DATE_SUB(NOW(),INTERVAL 90 DAY)
+        )
+        ");
+
+        $stmt->execute([$companyId,$companyId]);
+        $customers = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        } elseif($type === 'new_clients'){
+            $stmt = $db->prepare(
+                " SLECT DISTINCT u.id,u.name,u.email
+                FROM users u 
+                JOIN bookings b ON b.customer_id = u.id
+                WHERE b.company_id= ? AND u.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)"
+            );
+
+            $stmt->execute([$companyId]);
+            $customers = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        } else{
+            $stmt = $db->prepare(" SELECT DISTINCT u.id,u.name,u.email
+            FROM users u
+            JOIN bookings b ON b.customer_id=u.id
+            WHERE b.company_id=?");
+            $stmt->execute([$companyId]);
+            $customers = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        }
+
+        if(empty($customers)){
+            json_err('No customers found for this campaign type',404);
+        }
+
+        $sent=0;
+        foreach($customers as $customer){
+            try{
+            \App\Utils\Mailer::send($customer['email'], $subject,$body);
+            $sent++;    
+            }catch(\Throwable $e){
+                error_log("Failed to send email to {$customer['email']}: " . $e->getMessage());
+            }
+        }
+
+        json_ok([
+            'message' =>'Campaign processed',
+            'sent' => $sent,
+            'total' => count($customer)
+        ]);
+        }
 }
