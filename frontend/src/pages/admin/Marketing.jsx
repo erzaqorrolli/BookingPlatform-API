@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useCompany } from '../../contexts/CompanyContext';
 import WinbackCard from '../../components/WinbackCard';
 import api from '../../api/client';
@@ -27,15 +27,7 @@ export default function Marketing() {
                 </div>
             </div>
 
-            <div className="w-full">
-                {companyId ? (
-                    <WinbackCard companyId={companyId} />
-                ) : (
-                    <div className="bg-yellow-50 text-yellow-700 p-4 rounded-lg">
-                        Loading company...
-                    </div>
-                )}
-            </div>
+           
 
             {companyId && <CampaignWizard companyId={companyId} />}
         </div>
@@ -47,6 +39,8 @@ function CampaignWizard({ companyId }) {
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState(null);
     const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [activeDiscounts, setActiveDiscounts] = useState([]);
+    const [showNewCodeForm, setShowNewCodeForm] = useState(false);
 
     const [campaignData, setCampaignData] = useState({
         type: '',
@@ -56,17 +50,31 @@ function CampaignWizard({ companyId }) {
         subject: '',
     });
 
+    const [newCodeData, setNewCodeData] = useState({
+        code: '',
+        amount: 10,
+        usage_limit: 100,
+        valid_from: '',
+        valid_until: '',
+    });
+
+    useEffect(() => {
+        const fetchDiscounts = async () => {
+            try {
+                const res = await api.get(`/companies/${companyId}/discounts`);
+                const discounts = res.data.data || res.data || [];
+                setActiveDiscounts(discounts);
+            } catch (err) {
+                console.error("Failed to fetch discounts", err);
+            }
+        };
+        if (companyId) fetchDiscounts();
+    }, [companyId]);
+
     const campaignTypes = [
         { id: 'new_clients', title: 'New Clients', desc: 'Target clients who recently signed up.' },
         { id: 'existing_clients', title: 'Existing Clients', desc: 'Send offers to your loyal customers.' },
         { id: 'comeback', title: 'Clients Comeback', desc: 'Win back clients who haven\'t visited in a while.' },
-    ];
-
-    const coupons = [
-        { id: '10_percent', label: '10% Off' },
-        { id: '20_percent', label: '20% Off' },
-        { id: 'free_service', label: 'Free Service' },
-        { id: 'none', label: 'No Coupon' },
     ];
 
     const templates = [
@@ -89,42 +97,114 @@ function CampaignWizard({ companyId }) {
         setShowConfirmModal(true);
     };
 
-    const generateEmailContent = () => {
-        const couponText = campaignData.coupon !== 'none' ? `<p>Use code: <strong>${campaignData.coupon}</strong></p>` : '';
+    const getFilteredDiscounts = () => {
+        if (!campaignData.template || campaignData.template === 'custom') {
+            return activeDiscounts;
+        }
+
+        const keywords = {
+            christmas: ['christmas', 'xmas', 'holiday', 'noel', 'festive'],
+            black_friday: ['black', 'friday', 'bf'],
+            valentines: ['valentine', 'love', 'heart'],
+            easter: ['easter', 'spring', 'egg'],
+            mothers_day: ['mother', 'mom', 'mum'],
+        };
+
+        const templateKeywords = keywords[campaignData.template] || [];
         
+        return activeDiscounts.filter(discount => 
+            templateKeywords.some(keyword => 
+                discount.code.toLowerCase().includes(keyword)
+            )
+        );
+    };
+
+    const generateNewCode = () => {
+        const prefix = campaignData.template !== 'custom' 
+            ? campaignData.template.substring(0, 3).toUpperCase() 
+            : 'OFF';
+        const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+        return `${prefix}-${random}`;
+    };
+
+    const generateEmailContent = () => {
+        const codeToUse = campaignData.coupon;
+        
+        const couponText = codeToUse 
+            ? `<div style="text-align: center; margin: 30px 0;">
+                 <p style="font-size: 16px; color: #4b5563; margin-bottom: 10px;">Use this exclusive code at checkout:</p>
+                 <span style="background-color: #f3f4f6; border: 2px dashed #6366f1; color: #4338ca; padding: 12px 24px; font-size: 20px; font-weight: bold; border-radius: 8px; letter-spacing: 1px; display: inline-block;">
+                   ${codeToUse}
+                 </span>
+               </div>` 
+            : '';
+
+        const baseStyle = `font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f9fafb; padding: 40px 20px; color: #374151; line-height: 1.6;`;
+        const containerStyle = `max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);`;
+        const contentStyle = `padding: 40px 30px; text-align: center;`;
+        const buttonStyle = `display: inline-block; background-color: #4f46e5; color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: bold; margin-top: 30px; font-size: 16px;`;
+
+        let title = '';
+        let message = '';
+        let headerColor = '#4f46e5';
+
         switch (campaignData.template) {
             case 'mothers_day':
-                return {
-                    subject: "Happy Mother's Day! Special Offer Inside 🌸",
-                    body: `<h1>Happy Mother's Day!</h1><p>Treat yourself or your loved ones to something special.</p>${couponText}`
-                };
+                title = "Happy Mother's Day! 🌸";
+                message = "Treat yourself or your loved ones to something special. We have prepared exclusive offers just for you.";
+                headerColor = '#ec4899';
+                break;
             case 'christmas':
-                return {
-                    subject: "🎄 Christmas Sale - Special Offers Inside!",
-                    body: `<h1>Merry Christmas!</h1><p>Celebrate the season with our exclusive holiday offers.</p>${couponText}`
-                };
+                title = "🎄 Christmas Sale - Special Offers Inside!";
+                message = "Celebrate the season with our exclusive holiday offers. Make this Christmas unforgettable!";
+                headerColor = '#16a34a';
+                break;
             case 'black_friday':
-                return {
-                    subject: "🖤 Black Friday Deals Are Here!",
-                    body: `<h1>Black Friday Sale!</h1><p>Our biggest discounts of the year are live. Don't miss out!</p>${couponText}`
-                };
+                title = "🖤 Black Friday Deals Are Here!";
+                message = "Our biggest discounts of the year are live. Don't miss out on these incredible deals!";
+                headerColor = '#111827';
+                break;
             case 'valentines':
-                return {
-                    subject: "❤️ Valentine's Day Special Offer",
-                    body: `<h1>Happy Valentine's Day!</h1><p>Share the love with a special treat for you and your partner.</p>${couponText}`
-                };
+                title = "❤️ Valentine's Day Special Offer";
+                message = "Share the love with a special treat for you and your partner. Exclusive offers await!";
+                headerColor = '#e11d48';
+                break;
             case 'easter':
-                return {
-                    subject: "🐣 Easter Sale - Hop into Savings!",
-                    body: `<h1>Happy Easter!</h1><p>Celebrate with family and enjoy our special Easter discounts.</p>${couponText}`
-                };
-            default: // custom
-                return {
-                    subject: campaignData.subject,
-                    body: campaignData.customMessage
-                };
+                title = "🐣 Easter Sale - Hop into Savings!";
+                message = "Celebrate with family and enjoy our special Easter discounts. Spring into savings!";
+                headerColor = '#eab308';
+                break;
+            default:
+                title = campaignData.subject;
+                message = `<p style="white-space: pre-wrap;">${campaignData.customMessage}</p>`;
+                break;
         }
+
+        const htmlBody = `
+            <!DOCTYPE html>
+            <html>
+            <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+            <body style="${baseStyle}">
+                <div style="${containerStyle}">
+                    <div style="background: ${headerColor}; padding: 40px 30px; text-align: center; color: white;">
+                        <h1 style="margin: 0; font-size: 28px; font-weight: 800; color: white;">${title}</h1>
+                    </div>
+                    <div style="${contentStyle}">
+                        <p style="font-size: 16px; color: #4b5563; margin-bottom: 20px;">${message}</p>
+                        ${couponText}
+                        <a href="http://localhost:5173" style="${buttonStyle}">Book Now</a>
+                    </div>
+                    <div style="background-color: #f3f4f6; padding: 20px; text-align: center; font-size: 12px; color: #9ca3af;">
+                        <p style="margin: 0;">© ${new Date().getFullYear()} BookZen. All rights reserved.</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+        `;
+
+        return { subject: title, body: htmlBody };
     };
+
     const confirmSend = async () => {
         setShowConfirmModal(false);
         setLoading(true);
@@ -135,17 +215,24 @@ function CampaignWizard({ companyId }) {
             const res = await api.post(`/companies/send-email-by-type`, {
                 company_id: companyId,
                 type: campaignData.type,
+                template: campaignData.template,
+                coupon: campaignData.coupon,
                 subject: emailContent.subject,
-                body: emailContent.body
+                body: emailContent.body,
+                discount_amount: newCodeData.amount,
+                usage_limit: newCodeData.usage_limit,
+                valid_from: newCodeData.valid_from,
+                valid_until: newCodeData.valid_until
             });
             
             setResult(res.data.data || res.data);
             
             setStep(1);
+            setShowNewCodeForm(false);
+            setNewCodeData({ code: '', amount: 10, usage_limit: 100, valid_from: '', valid_until: '' });
             setCampaignData({ type: '', coupon: '', template: 'custom', customMessage: '', subject: '' });
         } catch (err) {
-            const errorMsg = err.response?.data?.error || err.response?.data?.message || 'Failed to send emails';
-            alert(errorMsg);
+            alert(err.response?.data?.error || 'Failed to send emails');
         } finally {
             setLoading(false);
         }
@@ -172,11 +259,7 @@ function CampaignWizard({ companyId }) {
                             <button
                                 key={type.id}
                                 onClick={() => { setCampaignData({ ...campaignData, type: type.id }); handleNext(); }}
-                                className={`w-full p-4 text-left rounded-lg border-2 transition ${
-                                    campaignData.type === type.id 
-                                        ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20' 
-                                        : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300'
-                                }`}
+                                className={`w-full p-4 text-left rounded-lg border-2 transition ${campaignData.type === type.id ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300'}`}
                             >
                                 <h5 className="font-semibold text-slate-900 dark:text-white">{type.title}</h5>
                                 <p className="text-sm text-slate-500 dark:text-slate-400">{type.desc}</p>
@@ -186,40 +269,13 @@ function CampaignWizard({ companyId }) {
                 )}
 
                 {step === 2 && (
-                    <div className="space-y-3">
-                        <h4 className="font-semibold text-slate-900 dark:text-white mb-3">Select an Offer (Coupon)</h4>
-                        {coupons.map((coupon) => (
-                            <button
-                                key={coupon.id}
-                                onClick={() => { setCampaignData({ ...campaignData, coupon: coupon.id }); handleNext(); }}
-                                className={`w-full p-4 text-left rounded-lg border-2 transition ${
-                                    campaignData.coupon === coupon.id 
-                                        ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20' 
-                                        : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300'
-                                }`}
-                            >
-                                {coupon.label}
-                            </button>
-                        ))}
-                        <button onClick={handleBack} className="mt-4 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">
-                            ← Back
-                        </button>
-                    </div>
-                )}
-
-                {/* STEP 3: Template */}
-                {step === 3 && (
                     <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
                         <h4 className="font-semibold text-slate-900 dark:text-white mb-3">Select a Template</h4>
                         {templates.map((template) => (
                             <button
                                 key={template.id}
-                                onClick={() => { setCampaignData({ ...campaignData, template: template.id }); handleNext(); }}
-                                className={`w-full p-4 text-left rounded-lg border-2 transition ${
-                                    campaignData.template === template.id 
-                                        ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20' 
-                                        : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300'
-                                }`}
+                                onClick={() => { setCampaignData({ ...campaignData, template: template.id, coupon: '' }); setShowNewCodeForm(false); handleNext(); }}
+                                className={`w-full p-4 text-left rounded-lg border-2 transition ${campaignData.template === template.id ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300'}`}
                             >
                                 <h5 className="font-semibold text-slate-900 dark:text-white">{template.label}</h5>
                                 <p className="text-sm text-slate-500 dark:text-slate-400">{template.desc}</p>
@@ -231,15 +287,145 @@ function CampaignWizard({ companyId }) {
                     </div>
                 )}
 
-                {/* STEP 4: Review & Send */}
+                {step === 3 && (
+                    <div className="space-y-6">
+                        <div>
+                            <h4 className="font-semibold text-slate-900 dark:text-white mb-3">Select a Discount Code</h4>
+                            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+                                Choose an existing code for <strong>{campaignData.template}</strong>, or generate a new one.
+                            </p>
+                            
+                            {getFilteredDiscounts().length > 0 ? (
+                                <div className="space-y-3">
+                                    {getFilteredDiscounts().map((discount) => (
+                                        <button
+                                            key={discount.id || discount.code}
+                                            onClick={() => { setCampaignData({ ...campaignData, coupon: discount.code }); handleNext(); }}
+                                            className={`w-full p-4 text-left rounded-lg border-2 transition ${campaignData.coupon === discount.code ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300'}`}
+                                        >
+                                            <div className="flex justify-between items-center">
+                                                <h5 className="font-mono font-bold text-slate-900 dark:text-white">{discount.code}</h5>
+                                                <span className="text-sm font-semibold text-indigo-600">{discount.amount}% Off</span>
+                                            </div>
+                                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                                {discount.start_date} - {discount.end_date}
+                                            </p>
+                                        </button>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-sm text-slate-500 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                                    No matching codes found for this template.
+                                </div>
+                            )}
+                        </div>
+
+                        {!showNewCodeForm ? (
+                            <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+                                <h4 className="font-semibold text-slate-900 dark:text-white mb-3">Or generate a new code</h4>
+                                <button 
+                                    onClick={() => {
+                                        const newCode = generateNewCode();
+                                        setNewCodeData(prev => ({ ...prev, code: newCode }));
+                                        setShowNewCodeForm(true);
+                                    }} 
+                                    className="w-full p-4 text-center rounded-lg border-2 border-dashed border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400 hover:border-indigo-500 transition"
+                                >
+                                    ✨ Generate New Code Automatically
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="border-t border-slate-200 dark:border-slate-700 pt-4 space-y-4">
+                                <h4 className="font-semibold text-slate-900 dark:text-white mb-3">Configure New Code</h4>
+                                
+                                <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg text-center mb-4">
+                                    <span className="font-mono text-2xl font-bold text-indigo-600 dark:text-indigo-400">{newCodeData.code}</span>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Discount (%)</label>
+                                        <input 
+                                            type="number" 
+                                            value={newCodeData.amount} 
+                                            onChange={e => setNewCodeData({ ...newCodeData, amount: parseInt(e.target.value) })}
+                                            className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                                            min="1" max="100"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Usage Limit</label>
+                                        <input 
+                                            type="number" 
+                                            value={newCodeData.usage_limit} 
+                                            onChange={e => setNewCodeData({ ...newCodeData, usage_limit: parseInt(e.target.value) })}
+                                            className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                                            min="1"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Valid From</label>
+                                        <input 
+                                            type="date" 
+                                            value={newCodeData.valid_from} 
+                                            onChange={e => setNewCodeData({ ...newCodeData, valid_from: e.target.value })}
+                                            className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Valid Until</label>
+                                        <input 
+                                            type="date" 
+                                            value={newCodeData.valid_until} 
+                                            onChange={e => setNewCodeData({ ...newCodeData, valid_until: e.target.value })}
+                                            className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-3">
+                                    <button 
+                                        onClick={() => setShowNewCodeForm(false)}
+                                        className="flex-1 px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button 
+                                        onClick={() => {
+                                            setCampaignData({ ...campaignData, coupon: newCodeData.code });
+                                            handleNext();
+                                        }}
+                                        className="flex-1 bg-indigo-600 text-white py-2 rounded-lg font-medium hover:bg-indigo-700 transition"
+                                    >
+                                        Use This Code
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        <button onClick={() => { setCampaignData({ ...campaignData, coupon: '' }); setShowNewCodeForm(false); handleNext(); }} className="w-full p-4 text-center rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 text-slate-500 hover:border-indigo-300 mt-2">
+                            Skip and send without a code
+                        </button>
+
+                        <button onClick={handleBack} className="mt-4 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">
+                            ← Back
+                        </button>
+                    </div>
+                )}
+
                 {step === 4 && (
                     <div className="space-y-4">
                         <h4 className="font-semibold text-slate-900 dark:text-white mb-3">Review & Send</h4>
                         
                         <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg space-y-2">
                             <p className="text-sm text-slate-600 dark:text-slate-300"><strong>Type:</strong> {campaignData.type}</p>
-                            <p className="text-sm text-slate-600 dark:text-slate-300"><strong>Coupon:</strong> {campaignData.coupon || 'None'}</p>
                             <p className="text-sm text-slate-600 dark:text-slate-300"><strong>Template:</strong> {campaignData.template}</p>
+                            <p className="text-sm text-slate-600 dark:text-slate-300"><strong>Discount Code:</strong> {campaignData.coupon || 'None'}</p>
+                            {campaignData.coupon && (
+                                <p className="text-sm text-slate-600 dark:text-slate-300">
+                                    <strong>Details:</strong> {newCodeData.amount}% Off, {newCodeData.usage_limit} uses, {newCodeData.valid_from} to {newCodeData.valid_until}
+                                </p>
+                            )}
                         </div>
 
                         {campaignData.template === 'custom' && (
@@ -283,7 +469,6 @@ function CampaignWizard({ companyId }) {
                 )}
             </div>
 
-            {/* Confirmation Modal */}
             {showConfirmModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white dark:bg-slate-900 rounded-xl shadow-lg w-full max-w-md p-6">
@@ -318,3 +503,4 @@ function CampaignWizard({ companyId }) {
         </>
     );
 }
+// new clients are those who had their first appointment in last 30 days

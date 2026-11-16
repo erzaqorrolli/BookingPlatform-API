@@ -6,6 +6,7 @@ namespace App\Controllers;
 use App\Models\ContactMessage;
 use App\Models\User;
 use App\Utils\Mailer;
+use App\Config\Database;
 
 class ContactController
 {
@@ -182,81 +183,113 @@ class ContactController
 
         json_ok(['message' =>'Request sent successfully!']);
 }
+        public function sendEmailByType(): void {
+        $uid = auth_user_id();
+        if (!$uid) json_err('Unauthorized', 401);
 
+        $input = input();
+        $companyId = (int) ($input['company_id'] ?? 0);
+        $type = $input['type'] ?? '';
+        $subject = $input['subject'] ?? '';
+        $body = $input['body'] ?? '';
+        $coupon = $input['coupon'] ?? '';
+        $template = $input['template'] ?? 'custom';
+        
+        $discountAmount = (float) ($input['discount_amount'] ?? 10);
+        $usageLimit = (int) ($input['usage_limit'] ?? 100);
+        $validFrom = $input['valid_from'] ?? date('Y-m-d');
+        $validUntil = $input['valid_until'] ?? date('Y-m-d', strtotime('+30 days'));
 
-    
-        public function sendEmailByType(): void{
-
-        $uid=auth_user_id();
-
-        if(!$uid) json_err('Unauthorized',401);
-
-        $input=input();
-        $companyId=(int) ($input['companyId'] ?? 0);
-        $type=$input['type'] ?? '';
-        $subject=$input['subject'] ?? '';
-        $body=$input['body'] ?? '';
-
-        if(!$companyId || !$type || !$subject || !$body){
-            json_err('Missing required fields',422);
+        if (!$companyId || !$type || !$subject || !$body) {
+            json_err('Missing required fields', 422);
         }
 
-        $db=Database::pdo();
-        $customers=[];
+        $db = Database::pdo();
+        $customers = [];
 
-        if($type === 'comeback'){
-
-        $stmt=$db->prepare("
-        SELECT DISTINCT u.id,u.name,u.email
-        FROM users u
-        JOIN bookings b ON b.customer_id=u.id
-        WHERE b.company_id = ? 
-        AND u.id NOT IN (
-        SELECT customer_id FROM bookings 
-        WHERE company_id = ? AND booking_date >= DATE_SUB(NOW(),INTERVAL 90 DAY)
-        )
-        ");
-
-        $stmt->execute([$companyId,$companyId]);
-        $customers = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-        } elseif($type === 'new_clients'){
-            $stmt = $db->prepare(
-                " SLECT DISTINCT u.id,u.name,u.email
-                FROM users u 
+        if ($type === 'comeback') {
+            $stmt = $db->prepare("
+                SELECT DISTINCT u.id, u.name, u.email
+                FROM users u
                 JOIN bookings b ON b.customer_id = u.id
-                WHERE b.company_id= ? AND u.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)"
-            );
-
+                WHERE b.company_id = ?
+                AND u.id NOT IN (
+                    SELECT customer_id FROM bookings 
+                    WHERE company_id = ? AND booking_date >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
+                )
+            ");
+            $stmt->execute([$companyId, $companyId]);
+            $customers = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        } 
+        elseif ($type === 'new_clients') {
+            $stmt = $db->prepare("
+                SELECT u.id, u.name, u.email
+                FROM users u
+                JOIN (
+                    SELECT customer_id, MIN(booking_date) as first_booking
+                    FROM bookings
+                    WHERE company_id = ?
+                    GROUP BY customer_id
+                ) first_b ON first_b.customer_id = u.id
+                WHERE first_b.first_booking >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+            ");
             $stmt->execute([$companyId]);
             $customers = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-        } else{
-            $stmt = $db->prepare(" SELECT DISTINCT u.id,u.name,u.email
-            FROM users u
-            JOIN bookings b ON b.customer_id=u.id
-            WHERE b.company_id=?");
+        } 
+        else { 
+            $stmt = $db->prepare("
+                SELECT DISTINCT u.id, u.name, u.email
+                FROM users u
+                JOIN bookings b ON b.customer_id = u.id
+                WHERE b.company_id = ?
+            ");
             $stmt->execute([$companyId]);
             $customers = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-
         }
 
-        if(empty($customers)){
-            json_err('No customers found for this campaign type',404);
+        if (empty($customers)) {
+            json_err('No customers found for this campaign type', 404);
         }
 
-        $sent=0;
-        foreach($customers as $customer){
-            try{
-            \App\Utils\Mailer::send($customer['email'], $subject,$body);
-            $sent++;    
-            }catch(\Throwable $e){
+        if (!empty($coupon)) {
+            $stmtCheck = $db->prepare("SELECT id FROM discounts WHERE code = ? AND company_id = ?");
+            $stmtCheck->execute([$coupon, $companyId]);
+            $existing = $stmtCheck->fetch();
+            
+            if (!$existing) {
+                $stmtInsert = $db->prepare("
+                    INSERT INTO discounts 
+                    (company_id, code, type, value, valid_from, valid_to, usage_limit, used_count, active, campaign_type)
+                    VALUES (?, ?, 'percent', ?, ?, ?, ?, 0, 1, ?)
+                ");
+                $stmtInsert->execute([
+                    $companyId, 
+                    $coupon, 
+                    $discountAmount, 
+                    $validFrom, 
+                    $validUntil, 
+                    $usageLimit,
+                    $template
+                ]);
+            }
+        }
+
+        $sent = 0;
+        foreach ($customers as $customer) {
+            try {
+                \App\Utils\Mailer::send($customer['email'], $subject, $body);
+                $sent++;
+            } catch (\Throwable $e) {
                 error_log("Failed to send email to {$customer['email']}: " . $e->getMessage());
             }
         }
 
         json_ok([
-            'message' =>'Campaign processed',
+            'message' => 'Campaign processed',
             'sent' => $sent,
-            'total' => count($customer)
+            'total' => count($customers),
+            'discount_code' => $coupon 
         ]);
-        }
+    }
+    
 }

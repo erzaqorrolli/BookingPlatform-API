@@ -26,21 +26,6 @@
 
   button, input, select { font: inherit; }
 
-  @media (max-width: 767px) {
-    table {
-      display: block;
-      max-width: 100%;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-    }
-
-    table > thead,
-    table > tbody,
-    table > tfoot {
-      white-space: nowrap;
-    }
-  }
-
   input[type='checkbox'] {
     accent-color: #0f8c88;
   }
@@ -127,6 +112,94 @@
 
 .btn-shine:hover::before {
   left: 100%;
+}
+
+@media (max-width: 767px) {
+  table {
+    display: block;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  table > thead {
+    display: none;
+  }
+
+  table > tbody,
+  table > tfoot {
+    display: block;
+    white-space: normal;
+  }
+
+  table > tbody > tr,
+  table > tfoot > tr {
+    display: block;
+    margin-bottom: 8px;
+    padding: 2px 12px;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(25, 39, 68, .05);
+  }
+
+  table > tbody > tr > td,
+  table > tfoot > tr > td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-width: 0;
+    padding: 7px 0 !important;
+    border-bottom: 1px solid #eef2f7;
+    text-align: left;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  table > tbody > tr > td[data-label]:not([data-label=''])::before,
+  table > tfoot > tr > td[data-label]:not([data-label=''])::before {
+    flex: 0 0 32%;
+    max-width: 32%;
+    color: #64748b;
+    content: attr(data-label);
+    font-size: .625rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-align: left;
+    text-transform: uppercase;
+  }
+
+  table > tbody > tr > td[colspan],
+  table > tfoot > tr > td[colspan] {
+    display: block;
+    padding: 12px 0 !important;
+    text-align: center;
+  }
+
+  table > tbody > tr > td:last-child,
+  table > tfoot > tr > td:last-child {
+    border-bottom: 0;
+  }
+
+  .dark table > tbody > tr,
+  .dark table > tfoot > tr {
+    border-color: #334155;
+    background: #0f172a;
+  }
+
+  .dark table > tbody > tr > td,
+  .dark table > tfoot > tr > td {
+    border-bottom-color: #1e293b;
+  }
+
+  .dark table > tbody > tr > td[data-label]:not([data-label=''])::before,
+  .dark table > tfoot > tr > td[data-label]:not([data-label=''])::before {
+    color: #94a3b8;
+  }
 }
 
 /* PRINT STYLES */

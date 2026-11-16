@@ -27,6 +27,7 @@ export default function Bookings() {
   const [filterStatus, setFilterStatus] = useState('');
   const [filterDate, setFilterDate] = useState('');
   const [filterPriority, setFilterPriority] = useState('');
+  const [expandedBookingId, setExpandedBookingId] = useState(null);
 
   const loadBookings = async () => {
     if (!activeCompany) return;
@@ -307,7 +308,128 @@ export default function Bookings() {
           </p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <>
+        <div className="space-y-2 md:hidden">
+          {filteredBookings.map((b) => {
+            const isPriority = Number(b.needs_assistance) === 1 && b.status !== 'completed';
+            const isExpanded = expandedBookingId === b.id;
+            const bookingDate = new Date(b.booking_date).toLocaleDateString('sq-AL');
+
+            return (
+              <article
+                key={b.id}
+                className={`overflow-hidden rounded-xl border bg-white shadow-sm ${
+                  isPriority ? 'border-l-4 border-l-amber-500 border-y-amber-200 border-r-amber-200' : 'border-slate-200'
+                }`}
+              >
+                <button
+                  type="button"
+                  aria-expanded={isExpanded}
+                  aria-controls={`booking-details-${b.id}`}
+                  onClick={() => setExpandedBookingId(isExpanded ? null : b.id)}
+                  className="w-full p-3 text-left transition hover:bg-slate-50"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-start gap-4">
+                      <div className="shrink-0">
+                        <div className="flex flex-col items-start gap-0.5 whitespace-nowrap">
+                          <span className="text-sm font-bold text-slate-900">{b.start_time?.slice(0, 5)}</span>
+                          <span className="text-xs text-slate-400">{b.end_time?.slice(0, 5)}</span>
+                        </div>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-slate-900">{b.customer_name || 'Client'}</p>
+                        <p className="truncate text-xs text-slate-500">
+                          {b.service_name || 'Service'}{b.staff_name ? ` · ${b.staff_name}` : ''}
+                        </p>
+                        {isPriority && (
+                          <span className="mt-1 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
+                            Priority
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 flex-col items-end gap-1">
+                      <span className="text-sm font-semibold text-slate-900">
+                        €{parseFloat(b.total_price || 0).toFixed(2)}
+                      </span>
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${STATUS_COLORS[b.status] || 'bg-slate-100 text-slate-700'}`}>
+                        {STATUS_LABELS[b.status] || b.status}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mt-2 flex min-w-0 items-center justify-between gap-2">
+                    {isPriority && b.assistance_notes ? (
+                      <p className="min-w-0 flex-1 truncate rounded bg-amber-50 px-2 py-1 text-xs text-amber-800">
+                        {b.assistance_notes}
+                      </p>
+                    ) : <span className="flex-1" />}
+                    <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-indigo-600">
+                      {isExpanded ? 'Close' : 'Open'}
+                      <svg className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </span>
+                  </div>
+                </button>
+
+                <div
+                  id={`booking-details-${b.id}`}
+                  hidden={!isExpanded}
+                  className="border-t border-slate-100 bg-slate-50/70 p-3"
+                >
+                    <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-xs">
+                      <dt className="text-slate-500">Ref</dt>
+                      <dd className="break-all font-mono text-slate-800">{b.reference || `#${b.id}`}</dd>
+                      <dt className="text-slate-500">When</dt>
+                      <dd className="text-slate-800">{bookingDate} · {b.start_time?.slice(0, 5)} - {b.end_time?.slice(0, 5)}</dd>
+                      <dt className="text-slate-500">Client</dt>
+                      <dd className="min-w-0 break-words text-slate-800">
+                        {b.customer_email || '—'}{b.customer_phone ? ` · ${b.customer_phone}` : ''}
+                      </dd>
+                      <dt className="text-slate-500">Staff</dt>
+                      <dd className="text-slate-800">{b.staff_name || 'Unassigned'}</dd>
+                      <dt className="text-slate-500">Payment</dt>
+                      <dd>{getPaymentBadge(b)}</dd>
+                      {isPriority && b.assistance_notes && (
+                        <>
+                          <dt className="text-slate-500">Request</dt>
+                          <dd className="break-words text-amber-800">{b.assistance_notes}</dd>
+                        </>
+                      )}
+                    </dl>
+
+                    {b.status === 'cancelled' && (
+                      <div className="mt-3 rounded-lg border border-slate-200 bg-white p-2 text-xs text-slate-600">
+                        <p className="font-semibold">
+                          Cancelled by {b.cancelled_by === 'customer' ? 'Customer' : 'Company'}
+                        </p>
+                        <p className="mt-1 break-words">Reason: {b.cancellation_reason || 'No reason provided'}</p>
+                      </div>
+                    )}
+
+                    <label className="mt-3 block text-xs font-medium text-slate-500" htmlFor={`booking-status-${b.id}`}>
+                      Update status
+                    </label>
+                    <select
+                      id={`booking-status-${b.id}`}
+                      value={b.status}
+                      onChange={(e) => updateStatus(b, e.target.value)}
+                      className="mt-1 min-h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none"
+                    >
+                      <option value="pending">Waiting</option>
+                      <option value="confirmed">Confirmed</option>
+                      <option value="completed">Completed</option>
+                      <option value="cancelled">Cancelled</option>
+                      <option value="no_show">Not attended</option>
+                    </select>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+
+        <div className="hidden overflow-hidden rounded-xl border border-slate-200 bg-white md:block">
           <table className="w-full">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
@@ -439,6 +561,7 @@ export default function Bookings() {
             </tbody>
           </table>
         </div>
+        </>
       )}
     </div>
   );

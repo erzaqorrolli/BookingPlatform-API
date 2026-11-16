@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { CompanyProvider } from './contexts/CompanyContext';
@@ -90,6 +91,58 @@ import StaffSupport from './pages/staff/StaffSupport';
 import Payments from './pages/admin/Payments';
 import SuperAdminSettings from './pages/admin/superadmin/SuperAdminSettings';
 
+function useResponsiveTableLabels() {
+  useEffect(() => {
+    const setTableLabels = (table) => {
+      const headerRows = table.tHead?.rows;
+      const headerRow = headerRows?.[headerRows.length - 1];
+      if (!headerRow) return;
+
+      const labels = Array.from(headerRow.cells).flatMap((cell) =>
+        Array(cell.colSpan || 1).fill(cell.textContent.replace(/\s+/g, ' ').trim())
+      );
+
+      Array.from(table.rows).forEach((row) => {
+        if (row.parentElement === table.tHead) return;
+
+        let columnIndex = 0;
+        Array.from(row.cells).forEach((cell) => {
+          if (cell.tagName === 'TD') {
+            const label = labels[columnIndex] || '';
+            if (cell.dataset.label !== label) cell.dataset.label = label;
+          }
+          columnIndex += cell.colSpan || 1;
+        });
+      });
+    };
+
+    const observer = new MutationObserver((mutations) => {
+      const changedTables = new Set();
+
+      mutations.forEach((mutation) => {
+        const target = mutation.target.nodeType === Node.ELEMENT_NODE
+          ? mutation.target
+          : mutation.target.parentElement;
+        const table = target?.closest('table');
+        if (table) changedTables.add(table);
+
+        mutation.addedNodes.forEach((node) => {
+          if (node.nodeType !== Node.ELEMENT_NODE) return;
+          if (node.matches('table')) changedTables.add(node);
+          node.querySelectorAll('table').forEach((nestedTable) => changedTables.add(nestedTable));
+        });
+      });
+
+      changedTables.forEach(setTableLabels);
+    });
+
+    document.querySelectorAll('table').forEach(setTableLabels);
+    observer.observe(document.body, { childList: true, characterData: true, subtree: true });
+
+    return () => observer.disconnect();
+  }, []);
+}
+
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
 
@@ -116,6 +169,8 @@ function NotFound() {
 }
 
 export default function App() {
+  useResponsiveTableLabels();
+
   return (
     <SettingsProvider>
       <AuthProvider> 
