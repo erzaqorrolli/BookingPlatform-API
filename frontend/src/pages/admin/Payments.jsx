@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../../api/client';
 import { CreditCard, Banknote, ChevronLeft, ChevronRight } from 'lucide-react';
+import MobileExpandableCard from '../../components/MobileExpandableCard';
 
 export default function Payments() {
   const [payments, setPayments] = useState([]);
@@ -150,7 +151,51 @@ export default function Payments() {
         )}
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <>
+      <div className="space-y-2 md:hidden">
+        {paginatedPayments.map((p) => (
+          <MobileExpandableCard
+            key={p.id}
+            summary={(
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-mono text-indigo-600">{p.reference}</p>
+                  <p className="truncate text-sm font-medium text-slate-900">{p.company_name}</p>
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className="text-sm font-semibold text-slate-900">€{parseFloat(p.amount).toFixed(2)}</p>
+                  <p className="text-xs text-slate-500">{new Date(p.created_at).toLocaleDateString('sq-AL')}</p>
+                </div>
+              </div>
+            )}
+          >
+            <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-sm">
+              <dt className="text-slate-500">Reference</dt>
+              <dd className="break-all font-mono text-slate-800">{p.reference}</dd>
+              <dt className="text-slate-500">Company</dt>
+              <dd className="text-slate-800">{p.company_name}</dd>
+              <dt className="text-slate-500">Customer</dt>
+              <dd className="break-words text-slate-800">{p.customer_name} · {p.customer_email}</dd>
+              <dt className="text-slate-500">Amount</dt>
+              <dd className="text-slate-800">€{parseFloat(p.amount).toFixed(2)}</dd>
+              <dt className="text-slate-500">Method</dt>
+              <dd>{p.payment_method === 'card' ? (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold bg-indigo-100 text-indigo-700 rounded-full"><CreditCard className="w-3 h-3" /> Card</span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold bg-emerald-100 text-emerald-700 rounded-full"><Banknote className="w-3 h-3" /> Cash</span>
+              )}</dd>
+              <dt className="text-slate-500">Date</dt>
+              <dd className="text-slate-800">{new Date(p.created_at).toLocaleDateString('sq-AL')}</dd>
+            </dl>
+          </MobileExpandableCard>
+        ))}
+        {paginatedPayments.length === 0 && (
+          <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
+            No payments found for the selected filters
+          </div>
+        )}
+      </div>
+      <div className="hidden md:block bg-white rounded-xl border border-slate-200 overflow-hidden">
         <table className="w-full">
           <thead className="bg-slate-50 border-b border-slate-200">
             <tr>
@@ -229,6 +274,7 @@ export default function Payments() {
           </div>
         )}
       </div>
+      </>
     </div>
   );
 }

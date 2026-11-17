@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../../../api/client';
 import Swal from 'sweetalert2';
+import MobileExpandableCard from '../../../components/MobileExpandableCard';
 
 export default function CompanyDetail() {
   const { id } = useParams();
@@ -215,7 +216,22 @@ export default function CompanyDetail() {
         <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Staff ({staff.length})</h2>
         </div>
-        <table className="w-full">
+        <div className="space-y-3 p-3 md:hidden">
+          {staff.map((u) => (
+            <MobileExpandableCard key={u.id} summary={
+              <div>
+                <div className="text-sm font-semibold text-slate-900 dark:text-white">{u.name}</div>
+                <div className="text-xs text-slate-500 dark:text-slate-400 capitalize">{u.role}</div>
+              </div>
+            }>
+              <div className="space-y-2 text-sm text-slate-700 dark:text-slate-300">
+                <div><span className="text-slate-500 dark:text-slate-400">Email:</span> {u.email}</div>
+                <div><span className="text-slate-500 dark:text-slate-400">Joined:</span> {u.joined_at ? new Date(u.joined_at).toLocaleDateString() : '—'}</div>
+              </div>
+            </MobileExpandableCard>
+          ))}
+        </div>
+        <table className="hidden w-full md:table">
           <thead className="bg-slate-50 dark:bg-slate-800">
             <tr>
               <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Name</th>
@@ -243,7 +259,29 @@ export default function CompanyDetail() {
         <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Recent Bookings</h2>
         </div>
-        <table className="w-full">
+        <div className="space-y-3 p-3 md:hidden">
+          {recent_bookings.length === 0 && (
+            <p className="py-4 text-center text-sm text-slate-500">No bookings yet</p>
+          )}
+          {recent_bookings.map((b) => (
+            <MobileExpandableCard key={b.id} summary={
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="font-mono text-sm font-semibold text-slate-900 dark:text-white">{b.reference}</div>
+                  <div className="mt-1 text-sm text-slate-700 dark:text-slate-300">{b.customer_name}</div>
+                </div>
+                <span className="text-xs capitalize text-slate-700 dark:text-slate-300">{b.status}</span>
+              </div>
+            }>
+              <div className="space-y-2 text-sm text-slate-700 dark:text-slate-300">
+                <div><span className="text-slate-500 dark:text-slate-400">Service:</span> {b.service_name}</div>
+                <div><span className="text-slate-500 dark:text-slate-400">Date:</span> {b.booking_date} {b.start_time}</div>
+                <div className="font-semibold text-emerald-600 dark:text-emerald-400">Total: €{parseFloat(b.total_price ?? 0).toFixed(2)}</div>
+              </div>
+            </MobileExpandableCard>
+          ))}
+        </div>
+        <table className="hidden w-full md:table">
           <thead className="bg-slate-50 dark:bg-slate-800">
             <tr>
               <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Reference</th>

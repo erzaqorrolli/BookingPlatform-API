@@ -4,6 +4,7 @@ import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
 import EditableCell from '../../components/EditableCell';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import MobileExpandableCard from '../../components/MobileExpandableCard';
 
 export default function Customers() {
   const { activeCompany } = useCompany();
@@ -170,7 +171,72 @@ export default function Customers() {
           </p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <>
+        <div className="space-y-2 md:hidden">
+          {paginatedCustomers.map((c) => (
+            <MobileExpandableCard
+              key={c.id}
+              summary={(
+                <div className="flex items-start gap-3">
+                  <div className={`w-9 h-9 shrink-0 rounded-full flex items-center justify-center text-white text-sm font-semibold ${
+                    Number(c.is_vip) === 1 ? 'bg-gradient-to-br from-amber-400 to-amber-600' : 'bg-gradient-to-br from-indigo-500 to-purple-600'
+                  }`}>
+                    {c.name?.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 font-medium text-slate-900">
+                      <span className="truncate">{c.name}</span>
+                      {Number(c.is_vip) === 1 && <span className="text-amber-500" aria-label="VIP">★</span>}
+                    </div>
+                    <p className="truncate text-xs text-slate-500">{c.email}</p>
+                  </div>
+                </div>
+              )}
+            >
+              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-sm">
+                <dt className="text-slate-500">Email</dt>
+                <dd className="break-all text-slate-800">{c.email || '—'}</dd>
+                <dt className="text-slate-500">Phone</dt>
+                <dd className="text-slate-800">{c.phone || '—'}</dd>
+                <dt className="text-slate-500">ADA help</dt>
+                <dd>
+                  <button
+                    onClick={() => updateCustomerField(c.id, 'needs_ada_help', Number(c.needs_ada_help) ? 0 : 1)}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold transition ${
+                      Number(c.needs_ada_help) ? 'bg-amber-100 text-amber-700' : 'border border-dashed border-slate-300 text-slate-400 hover:border-amber-500 hover:text-amber-500'
+                    }`}
+                  >
+                    {Number(c.needs_ada_help) ? '✓ Yes' : '+ Add'}
+                  </button>
+                </dd>
+                <dt className="text-slate-500">VIP</dt>
+                <dd>
+                  <button
+                    onClick={() => updateCustomerField(c.id, 'is_vip', Number(c.is_vip) ? 0 : 1)}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold transition ${
+                      Number(c.is_vip) ? 'bg-emerald-100 text-emerald-700' : 'border border-dashed border-slate-300 text-slate-400 hover:border-emerald-500 hover:text-emerald-500'
+                    }`}
+                  >
+                    {Number(c.is_vip) ? '✓ VIP' : '+ Add'}
+                  </button>
+                </dd>
+                <dt className="text-slate-500">Tags</dt>
+                <dd><EditableCell value={c.tags} onSave={(val) => updateCustomerField(c.id, 'tags', val)} placeholder="+ Add" /></dd>
+                <dt className="text-slate-500">Bookings</dt>
+                <dd className="text-slate-800">{c.total_bookings ?? 0}</dd>
+                <dt className="text-slate-500">Notes</dt>
+                <dd><EditableCell value={c.notes} onSave={(val) => updateCustomerField(c.id, 'notes', val)} placeholder="+ Add" /></dd>
+              </dl>
+              <Link to={`/admin/customers/${c.id}`} className="mt-3 inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-50 text-indigo-700 text-xs font-medium rounded-lg hover:bg-indigo-100 transition">
+                View
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
+            </MobileExpandableCard>
+          ))}
+        </div>
+        <div className="hidden md:block bg-white rounded-xl border border-slate-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1000px]">
               <thead className="bg-slate-50 border-b border-slate-200">
@@ -290,6 +356,7 @@ export default function Customers() {
             </div>
           )}
         </div>
+        </>
       )}
     </div>
   );

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import api from '../../../api/client';
 import Swal from 'sweetalert2';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import MobileExpandableCard from '../../../components/MobileExpandableCard';
 
 export default function Companies() {
   const [companies, setCompanies] = useState([]);
@@ -287,7 +288,50 @@ export default function Companies() {
         </div>
       ) : (
         <>
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+          <div className="space-y-3 md:hidden">
+            {paginatedCompanies.map((c) => (
+              <MobileExpandableCard
+                key={c.id}
+                summary={
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-slate-900 dark:text-white">{c.name}</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">{c.email}</div>
+                    </div>
+                    <span className={`shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full ${
+                      c.status === 'blocked'
+                        ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+                        : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
+                    }`}>{c.status === 'blocked' ? 'Blocked' : 'Active'}</span>
+                  </div>
+                }
+              >
+                <div className="space-y-2 text-sm text-slate-700 dark:text-slate-300">
+                  <div><span className="text-slate-500 dark:text-slate-400">Slug:</span> {c.slug}</div>
+                  <div><span className="text-slate-500 dark:text-slate-400">Owner:</span> {c.owner_name || '—'}{c.owner_email ? ` · ${c.owner_email}` : ''}</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>Bookings: {c.bookings_count}</div>
+                    <div>Services: {c.services_count}</div>
+                    <div>Customers: {c.customers_count}</div>
+                    <div className="font-semibold text-emerald-600 dark:text-emerald-400">Revenue: €{parseFloat(c.revenue).toFixed(2)}</div>
+                  </div>
+                  <div className="flex flex-wrap gap-3 pt-1">
+                    <Link to={`/admin/superadmin/companies/${c.id}`} className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline">View</Link>
+                    {c.slug !== 'platform-admin' && (
+                      <button onClick={() => handleImpersonate(c)} className="text-xs font-medium text-amber-600 dark:text-amber-400 hover:underline">Login as</button>
+                    )}
+                    <button onClick={() => handleToggleStatus(c)} className={`text-xs font-medium ${c.status === 'blocked' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'} hover:underline`}>
+                      {c.status === 'blocked' ? 'Activate' : 'Block'}
+                    </button>
+                    {c.slug !== 'platform-admin' && (
+                      <button onClick={() => handleDelete(c)} className="text-xs font-medium text-red-600 dark:text-red-400 hover:underline">Delete</button>
+                    )}
+                  </div>
+                </div>
+              </MobileExpandableCard>
+            ))}
+          </div>
+          <div className="hidden md:block bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">

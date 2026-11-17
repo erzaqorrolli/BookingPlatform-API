@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../../../api/client';
 import Swal from 'sweetalert2';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import MobileExpandableCard from '../../../components/MobileExpandableCard';
 
 export default function Billing() {
     const [invoices, setInvoices] = useState([]);
@@ -85,7 +86,36 @@ export default function Billing() {
                 </button>
             </div>
 
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div className="space-y-3 md:hidden">
+                {paginatedInvoices.length === 0 ? (
+                    <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">No invoices yet.</div>
+                ) : paginatedInvoices.map(inv => (
+                    <MobileExpandableCard key={inv.id} summary={
+                        <div className="flex items-start justify-between gap-3">
+                            <div>
+                                <div className="font-mono text-sm font-semibold text-slate-900">{inv.invoice_number}</div>
+                                <div className="mt-1 text-sm font-bold text-slate-900">€{parseFloat(inv.amount).toFixed(2)}</div>
+                            </div>
+                            <span className={`shrink-0 text-xs px-2 py-1 rounded-full font-semibold ${
+                                inv.status === 'paid' ? 'bg-emerald-100 text-emerald-700' :
+                                inv.status === 'overdue' ? 'bg-red-100 text-red-700' :
+                                'bg-amber-100 text-amber-700'
+                            }`}>{inv.status}</span>
+                        </div>
+                    }>
+                        <div className="space-y-2 text-sm text-slate-700">
+                            <div><span className="text-slate-500">Company:</span> {inv.company_name}</div>
+                            <div><span className="text-slate-500">Due date:</span> {new Date(inv.due_date).toLocaleDateString()}</div>
+                            {inv.status !== 'paid' && (
+                                <button onClick={() => handleMarkPaid(inv.id)} className="pt-1 text-xs font-medium text-emerald-600 hover:underline">
+                                    Mark as Paid
+                                </button>
+                            )}
+                        </div>
+                    </MobileExpandableCard>
+                ))}
+            </div>
+            <div className="hidden md:block bg-white rounded-xl border border-slate-200 overflow-hidden">
                 <table className="w-full">
                     <thead className="bg-slate-50 border-b border-slate-200">
                         <tr>
@@ -154,6 +184,29 @@ export default function Billing() {
                     </div>
                 )}
             </div>
+            {shouldShowPagination && (
+                <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 md:hidden">
+                    <span className="text-xs text-slate-500">Page {currentPage} of {totalPages}</span>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                            disabled={currentPage === 1}
+                            aria-label="Previous page"
+                            className="p-2 rounded-lg border border-slate-200 text-slate-600 disabled:opacity-50"
+                        >
+                            <ChevronLeft className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                            disabled={currentPage === totalPages}
+                            aria-label="Next page"
+                            className="p-2 rounded-lg border border-slate-200 text-slate-600 disabled:opacity-50"
+                        >
+                            <ChevronRight className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {showModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">

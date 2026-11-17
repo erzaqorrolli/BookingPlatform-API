@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../../../api/client';
 import Swal from 'sweetalert2';
 import { Link } from 'react-router-dom';
+import MobileExpandableCard from '../../../components/MobileExpandableCard';
 
 export default function DeletionRequests() {
   const [requests, setRequests] = useState([]);
@@ -77,7 +78,35 @@ export default function DeletionRequests() {
           <p className="text-sm text-slate-500 dark:text-slate-400">Të gjitha kërkesat janë trajtuar.</p>
         </div>
       ) : (
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <>
+        <div className="space-y-3 md:hidden">
+          {requests.map((req) => (
+            <MobileExpandableCard
+              key={req.notification_id}
+              summary={
+                <div className="flex items-start justify-between gap-3">
+                  <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                    {req.company_name || 'Kompani e fshirë'}
+                  </div>
+                  <span className="shrink-0 text-xs text-slate-500">
+                    {new Date(req.created_at).toLocaleDateString('sq-AL')}
+                  </span>
+                </div>
+              }
+            >
+              <div className="space-y-3 text-sm text-slate-600 dark:text-slate-400">
+                <p>{req.message}</p>
+                <button
+                  onClick={() => handleDelete(req.company_id, req.company_name, req.notification_id)}
+                  className="text-xs font-medium text-red-600 hover:text-red-700 px-3 py-1.5 bg-red-50 hover:bg-red-100 rounded-lg transition"
+                >
+                  Approve & Delete
+                </button>
+              </div>
+            </MobileExpandableCard>
+          ))}
+        </div>
+        <div className="hidden md:block bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
           <table className="w-full">
             <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
               <tr>
@@ -112,6 +141,7 @@ export default function DeletionRequests() {
             </tbody>
           </table>
         </div>
+        </>
       )}
     </div>
   );

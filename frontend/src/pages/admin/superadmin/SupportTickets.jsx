@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../../../api/client';
+import MobileExpandableCard from '../../../components/MobileExpandableCard';
 
 export default function SupportTickets() {
     const [tickets, setTickets] = useState([]);
@@ -63,14 +64,41 @@ export default function SupportTickets() {
     if (loading) return <div className="p-12 text-center text-slate-500">Loading tickets...</div>;
 
     return (
-        <div className="flex h-[calc(100vh-8rem)] bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-            <div className="w-1/3 border-r border-slate-200 flex flex-col bg-slate-50">
+        <div className="flex h-[calc(100vh-8rem)] flex-col md:flex-row bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+            <div className={`${selectedTicket ? 'hidden md:flex' : 'flex'} w-full md:w-1/3 border-r border-slate-200 flex-col bg-slate-50`}>
                 <div className="p-4 border-b border-slate-200 bg-white">
                     <h2 className="font-bold text-slate-900">Support Tickets</h2>
                     <p className="text-xs text-slate-500 mt-1">{tickets.length} tickets</p>
                 </div>
                 <div className="flex-1 overflow-y-auto">
                     {tickets.length === 0 && <div className="p-4 text-sm text-slate-500 text-center">No tickets yet.</div>}
+                    <div className="space-y-3 p-3 md:hidden">
+                        {tickets.map(t => (
+                            <MobileExpandableCard key={t.id} summary={
+                                <button type="button" onClick={() => openTicket(t)} className="w-full text-left">
+                                    <div className="flex items-start justify-between gap-2">
+                                        <span className="min-w-0 text-sm font-medium text-slate-900">{t.subject}</span>
+                                        <span className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+                                            t.status === 'open' ? 'bg-amber-100 text-amber-700' :
+                                            t.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
+                                            t.status === 'resolved' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                                        }`}>{t.status}</span>
+                                    </div>
+                                    <div className="mt-1 text-xs text-slate-500">{t.company_name}</div>
+                                </button>
+                            }>
+                                <div className="space-y-2 text-sm text-slate-700">
+                                    <div><span className="text-slate-500">Priority:</span> <span className="capitalize">{t.priority}</span></div>
+                                    <div><span className="text-slate-500">Created by:</span> {getCreatorLabel(t.created_by_role)}</div>
+                                    {t.message && <p className="line-clamp-3">{t.message}</p>}
+                                    <button type="button" onClick={() => openTicket(t)} className="pt-1 text-xs font-medium text-indigo-600 hover:underline">
+                                        Open ticket
+                                    </button>
+                                </div>
+                            </MobileExpandableCard>
+                        ))}
+                    </div>
+                    <div className="hidden md:block">
                     {tickets.map(t => (
                         <div
                             key={t.id}
@@ -105,14 +133,18 @@ export default function SupportTickets() {
                             </div>
                         </div>
                     ))}
+                    </div>
                 </div>
             </div>
 
-            <div className="flex-1 flex flex-col bg-slate-50">
+            <div className={`${selectedTicket ? 'flex' : 'hidden md:flex'} flex-1 flex-col bg-slate-50`}>
                 {selectedTicket ? (
                     <>
                         <div className="p-4 border-b border-slate-200 bg-white flex justify-between items-center">
                             <div>
+                                <button type="button" onClick={() => setSelectedTicket(null)} className="mb-2 text-xs text-indigo-600 md:hidden">
+                                    ← Back to tickets
+                                </button>
                                 <div className="flex items-center gap-2">
                                     <h3 className="font-bold text-slate-900">{selectedTicket.subject}</h3>
                                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase ${

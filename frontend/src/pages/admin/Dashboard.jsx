@@ -5,6 +5,7 @@ import { useCompany } from '../../contexts/CompanyContext';
 import { Link } from 'react-router-dom';
 import { Calendar, Users, Euro, Package, Plus, ArrowRight } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import MobileExpandableCard from '../../components/MobileExpandableCard';
 
 const formatCurrency = (value) => `€${Number(value || 0).toFixed(2)}`;
 
@@ -197,7 +198,45 @@ export default function Dashboard() {
           ) : recentBookings.length === 0 ? (
             <div className="text-center py-8 text-slate-400 text-sm">No bookings match this filter.</div>
           ) : (
-            <div className="space-y-3">
+            <>
+            <div className="space-y-2 md:hidden">
+              {recentBookings.map((booking) => (
+                <MobileExpandableCard
+                  key={booking.id}
+                  summary={
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-slate-900">
+                          {booking.customer_name || 'Client'}
+                        </p>
+                        <p className="truncate text-xs text-slate-500">
+                          {booking.service_name || 'Service'} · {booking.booking_date}
+                        </p>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <span className={`inline-block rounded px-2 py-0.5 text-xs font-semibold ${
+                          booking.status === 'confirmed' ? 'bg-emerald-100 text-emerald-700' :
+                          booking.status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'
+                        }`}>{booking.status}</span>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {booking.total_price ? formatCurrency(booking.total_price) : '€0.00'}
+                        </p>
+                      </div>
+                    </div>
+                  }
+                >
+                  <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-xs">
+                    <dt className="text-slate-500">Reference</dt>
+                    <dd className="break-all font-mono text-slate-800">{booking.reference || `#${booking.id}`}</dd>
+                    <dt className="text-slate-500">Customer</dt>
+                    <dd className="break-words text-slate-800">{booking.customer_email || booking.customer_name || 'Client'}</dd>
+                    <dt className="text-slate-500">Date</dt>
+                    <dd className="text-slate-800">{booking.booking_date}</dd>
+                  </dl>
+                </MobileExpandableCard>
+              ))}
+            </div>
+            <div className="hidden space-y-3 md:block">
               {recentBookings.map((booking) => (
                 <div key={booking.id} className="flex items-center justify-between border-b border-slate-100 pb-3 last:border-b-0 last:pb-0">
                   <div>
@@ -214,6 +253,7 @@ export default function Dashboard() {
                 </div>
               ))}
             </div>
+            </>
           )}
         </div>
 

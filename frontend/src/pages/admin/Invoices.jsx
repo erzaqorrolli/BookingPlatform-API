@@ -3,6 +3,7 @@ import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
 import InvoiceForm from './InvoiceForm';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import MobileExpandableCard from '../../components/MobileExpandableCard';
 
 const STATUS_LABELS = {
   draft:     'Draft',
@@ -164,7 +165,63 @@ export default function Invoices() {
           </p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <>
+        <div className="space-y-2 md:hidden">
+          {paginatedInvoices.map((inv) => (
+            <MobileExpandableCard
+              key={inv.id}
+              summary={(
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-mono font-semibold text-indigo-600">{inv.reference}</p>
+                    <p className="truncate text-sm font-medium text-slate-900">{inv.customer_name}</p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="text-sm font-semibold text-slate-900">€{parseFloat(inv.total).toFixed(2)}</p>
+                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_COLORS[inv.status]}`}>
+                      {STATUS_LABELS[inv.status]}
+                    </span>
+                  </div>
+                </div>
+              )}
+            >
+              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-sm">
+                <dt className="text-slate-500">Client</dt>
+                <dd className="break-words text-slate-800">{inv.customer_name} · {inv.customer_email}</dd>
+                <dt className="text-slate-500">Service</dt>
+                <dd className="text-slate-800">{inv.service_name || '—'}</dd>
+                <dt className="text-slate-500">Issue date</dt>
+                <dd className="text-slate-800">{formatDate(inv.issue_date)}</dd>
+                <dt className="text-slate-500">Total</dt>
+                <dd className="text-slate-800">€{parseFloat(inv.total).toFixed(2)}</dd>
+                <dt className="text-slate-500">Status</dt>
+                <dd><span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_COLORS[inv.status]}`}>{STATUS_LABELS[inv.status]}</span></dd>
+              </dl>
+              <div className="mt-3 flex items-center gap-3">
+                {inv.status === 'draft' && (
+                  <button
+                    onClick={() => setEditingInvoice(inv)}
+                    className="text-xs font-medium text-indigo-600 hover:underline"
+                  >
+                    Edit
+                  </button>
+                )}
+                <select
+                  value={inv.status}
+                  onChange={(e) => updateStatus(inv.id, e.target.value)}
+                  aria-label={`Update status for invoice ${inv.reference}`}
+                  className="text-xs border border-slate-200 rounded px-2 py-1 focus:border-indigo-500 outline-none"
+                >
+                  <option value="draft">Draft</option>
+                  <option value="sent">Sent</option>
+                  <option value="paid">Paid</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </div>
+            </MobileExpandableCard>
+          ))}
+        </div>
+        <div className="hidden md:block bg-white rounded-xl border border-slate-200 overflow-hidden">
           <table className="w-full">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
@@ -277,6 +334,7 @@ export default function Invoices() {
             </div>
           )}
         </div>
+        </>
       )}
 
       {/* Create/Edit Modal */}

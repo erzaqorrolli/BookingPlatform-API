@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
 import { useAuth } from '../../contexts/AuthContext';
+import MobileExpandableCard from '../../components/MobileExpandableCard';
 
 export default function Gallery() {
   const { user } = useAuth();
@@ -224,7 +225,36 @@ export default function Gallery() {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <>
+        <div className="space-y-2 md:hidden">
+          {photos.map((photo) => (
+            <MobileExpandableCard
+              key={photo.id}
+              summary={(
+                <div className="flex items-center gap-3">
+                  <img src={photo.url} alt="" className="h-14 w-14 shrink-0 rounded-lg object-cover bg-slate-100" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-slate-900">{photo.original_name || 'Pa emër'}</p>
+                    <p className="mt-0.5 text-xs text-slate-500">{formatSize(photo.size)}</p>
+                  </div>
+                  {photo.is_cover === 1 && <span className="shrink-0 rounded-full bg-amber-100 px-2 py-1 text-[10px] font-bold text-amber-700">Cover</span>}
+                </div>
+              )}
+            >
+              <button onClick={() => setPreviewPhoto(photo)} className="mb-3 block w-full overflow-hidden rounded-lg">
+                <img src={photo.url} alt={photo.original_name || 'Foto'} className="max-h-56 w-full object-cover" />
+              </button>
+              <p className="mb-3 break-all text-xs text-slate-500">{photo.original_name || 'Pa emër'} · {formatSize(photo.size)}</p>
+              <div className="flex items-center gap-2">
+                {photo.is_cover !== 1 && (
+                  <button onClick={() => handleSetCover(photo.id)} className="rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100">Make cover</button>
+                )}
+                <button onClick={() => setDeleteTarget(photo)} className="rounded-lg bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100">Delete</button>
+              </div>
+            </MobileExpandableCard>
+          ))}
+        </div>
+        <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-4 gap-4">
           {photos.map((photo) => (
             <div
               key={photo.id}
@@ -289,6 +319,7 @@ export default function Gallery() {
             </div>
           ))}
         </div>
+        </>
       )}
 
       {/* Preview modal */}

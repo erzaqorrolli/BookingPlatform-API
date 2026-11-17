@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
+import MobileExpandableCard from '../../components/MobileExpandableCard';
 
 export default function Discounts() {
   const { activeCompany } = useCompany();
@@ -108,7 +109,42 @@ export default function Discounts() {
           </button>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <>
+        <div className="space-y-2 md:hidden">
+          {discounts.map((d) => (
+            <MobileExpandableCard
+              key={d.id}
+              summary={(
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-mono font-semibold text-slate-900">{d.code}</span>
+                  <span className="text-sm font-semibold text-indigo-600">
+                    {d.type === 'percent' ? `${d.value}%` : `€${d.value}`}
+                  </span>
+                </div>
+              )}
+            >
+              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-sm">
+                <dt className="text-slate-500">Discount</dt>
+                <dd className="text-slate-800">{d.type === 'percent' ? `${d.value}%` : `€${d.value}`}</dd>
+                <dt className="text-slate-500">Availability</dt>
+                <dd className="text-slate-800">
+                  {d.valid_from && d.valid_to
+                    ? `${new Date(d.valid_from).toLocaleDateString('sq-AL')} – ${new Date(d.valid_to).toLocaleDateString('sq-AL')}`
+                    : 'No limit'}
+                </dd>
+                <dt className="text-slate-500">Used</dt>
+                <dd className="text-slate-800">{d.used_count}{d.usage_limit ? ` / ${d.usage_limit}` : ''}</dd>
+              </dl>
+              <button
+                onClick={() => setDeleteTarget(d)}
+                className="mt-3 text-xs font-medium text-red-600 hover:bg-red-50 px-3 py-1.5 rounded transition"
+              >
+                Delete
+              </button>
+            </MobileExpandableCard>
+          ))}
+        </div>
+        <div className="hidden md:block bg-white rounded-xl border border-slate-200 overflow-hidden">
           <table className="w-full">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
@@ -151,6 +187,7 @@ export default function Discounts() {
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       {showModal && (

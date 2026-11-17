@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
+import MobileExpandableCard from '../../components/MobileExpandableCard';
 
 export default function MyTickets() {
     const { activeCompany } = useCompany();
@@ -87,8 +88,38 @@ export default function MyTickets() {
                 </button>
             </div>
 
+            <div className="space-y-2 md:hidden">
+                {tickets.map(t => (
+                    <MobileExpandableCard
+                        key={t.id}
+                        className={selectedTicket?.id === t.id ? 'border-indigo-300 bg-indigo-50/50' : ''}
+                        summary={(
+                            <div className="flex items-start justify-between gap-3">
+                                <span className="min-w-0 truncate font-medium text-slate-900">{t.subject}</span>
+                                <span className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+                                    t.status === 'open' ? 'bg-amber-100 text-amber-700' :
+                                    t.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
+                                    t.status === 'resolved' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                                }`}>{t.status}</span>
+                            </div>
+                        )}
+                    >
+                        <p className="text-xs text-slate-500">{new Date(t.created_at).toLocaleDateString()}</p>
+                        <p className="mt-2 text-sm text-slate-700">{t.message}</p>
+                        <button
+                            type="button"
+                            onClick={() => openTicket(t)}
+                            className="mt-3 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700"
+                        >
+                            View ticket
+                        </button>
+                    </MobileExpandableCard>
+                ))}
+                {tickets.length === 0 && <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">No tickets yet.</div>}
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-1 bg-white rounded-xl border border-slate-200 overflow-hidden">
+                <div className="hidden lg:col-span-1 md:block bg-white rounded-xl border border-slate-200 overflow-hidden">
                     <div className="p-4 border-b border-slate-200 bg-slate-50">
                         <h2 className="font-semibold text-slate-900">Your Tickets</h2>
                     </div>

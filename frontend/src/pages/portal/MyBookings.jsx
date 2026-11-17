@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../../api/client';
 import Swal from 'sweetalert2';
+import MobileExpandableCard from '../../components/MobileExpandableCard';
 
 const STATUS_LABELS = {
   pending: 'Waiting',
@@ -223,54 +224,61 @@ export default function MyBookings() {
             const canCancel = ['pending', 'confirmed'].includes(b.status);
 
             return (
-              <article key={b.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-                <div className="flex min-w-0 items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="font-mono text-xs font-medium text-indigo-600 break-all">{b.reference}</p>
-                    <h2 className="mt-1 break-words text-sm font-semibold text-slate-900">{b.service_name}</h2>
+              <MobileExpandableCard
+                key={b.id}
+                className="md:rounded-xl md:border md:border-slate-200 md:bg-white md:p-5 md:shadow-sm"
+                summary={
+                  <div className="flex min-w-0 items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="break-all font-mono text-xs font-medium text-indigo-600">{b.reference}</p>
+                      <h2 className="mt-1 break-words text-sm font-semibold text-slate-900">{b.service_name}</h2>
+                    </div>
+                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_COLORS[b.status]}`}>
+                      {STATUS_LABELS[b.status]}
+                    </span>
                   </div>
-                  <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_COLORS[b.status]}`}>
-                    {STATUS_LABELS[b.status]}
-                  </span>
-                </div>
-                <div className="mt-4 grid grid-cols-2 gap-3 border-t border-slate-100 pt-3 text-sm">
-                  <div>
-                    <p className="text-xs text-slate-500">Date & time</p>
-                    <p className="mt-1 text-slate-700">
-                      {new Date(b.booking_date).toLocaleDateString('en-GB')} · {b.start_time?.slice(0, 5)}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-slate-500">Total</p>
-                    <p className="mt-1 font-bold text-slate-900">€{parseFloat(b.total_price).toFixed(2)}</p>
-                  </div>
-                </div>
-                {(review || canCancel || (b.status === 'completed' && !review)) && (
-                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
-                    {review ? (
-                      <span className="text-xs text-amber-600">★ {review.rating}.0</span>
-                    ) : <span />}
-                    <div className="ml-auto flex flex-wrap justify-end gap-2">
-                      {canCancel && (
-                        <button
-                          onClick={() => handleCancel(b)}
-                          className="min-h-11 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-600 transition hover:bg-red-100"
-                        >
-                          Cancel
-                        </button>
-                      )}
-                      {b.status === 'completed' && !review && (
-                        <button
-                          onClick={() => openReview(b)}
-                          className="min-h-11 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 transition hover:bg-amber-100"
-                        >
-                          Review
-                        </button>
-                      )}
+                }
+              >
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="text-xs text-slate-500">Date & time</p>
+                      <p className="mt-1 text-slate-700">
+                        {new Date(b.booking_date).toLocaleDateString('en-GB')} · {b.start_time?.slice(0, 5)}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-slate-500">Total</p>
+                      <p className="mt-1 font-bold text-slate-900">€{parseFloat(b.total_price).toFixed(2)}</p>
                     </div>
                   </div>
-                )}
-              </article>
+                  {(review || canCancel || (b.status === 'completed' && !review)) && (
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
+                      {review ? (
+                        <span className="text-xs text-amber-600">★ {review.rating}.0</span>
+                      ) : <span />}
+                      <div className="ml-auto flex flex-wrap justify-end gap-2">
+                        {canCancel && (
+                          <button
+                            onClick={() => handleCancel(b)}
+                            className="min-h-11 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-600 transition hover:bg-red-100"
+                          >
+                            Cancel
+                          </button>
+                        )}
+                        {b.status === 'completed' && !review && (
+                          <button
+                            onClick={() => openReview(b)}
+                            className="min-h-11 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 transition hover:bg-amber-100"
+                          >
+                            Review
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </MobileExpandableCard>
             );
           })}
         </div>

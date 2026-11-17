@@ -143,7 +143,7 @@ class Invoice
                 b.start_time,
                 b.end_time,
                 s.name AS service_name,
-                co.name AS company_name,
+                co.name AS company_name,KO
                 co.email AS company_email,
                 co.phone AS company_phone,
                 co.address AS company_address

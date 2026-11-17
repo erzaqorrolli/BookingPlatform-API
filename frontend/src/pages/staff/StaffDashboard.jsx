@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import api from '../../api/client';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCompany } from '../../contexts/CompanyContext';
+import MobileExpandableCard from '../../components/MobileExpandableCard';
 
 export default function StaffDashboard() {
   const { user } = useAuth();
@@ -227,9 +228,52 @@ export default function StaffDashboard() {
         ) : (
           <div className="space-y-3">
             {todayBookings.map((b) => (
+              <div key={b.id} className="contents">
+              <MobileExpandableCard
+                className="md:hidden"
+                summary={
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-start gap-3">
+                      <div className="shrink-0">
+                        <p className="text-sm font-bold text-slate-900">{b.start_time?.slice(0, 5)}</p>
+                        <p className="text-xs text-slate-400">{b.end_time?.slice(0, 5)}</p>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-slate-900">{b.customer_name}</p>
+                        <p className="truncate text-xs text-slate-500">{b.service_name}</p>
+                      </div>
+                    </div>
+                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                      b.status === 'confirmed' ? 'bg-emerald-100 text-emerald-700' :
+                      b.status === 'pending' ? 'bg-amber-100 text-amber-700' :
+                      b.status === 'completed' ? 'bg-blue-100 text-blue-700' :
+                      'bg-slate-100 text-slate-700'
+                    }`}>
+                      {b.status === 'confirmed' ? 'Confirmed' :
+                       b.status === 'pending' ? 'Waiting' :
+                       b.status === 'completed' ? 'Done' : b.status}
+                    </span>
+                  </div>
+                }
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+                  {b.customer_phone && (
+                    <a href={`tel:${b.customer_phone}`} className="text-orange-600 hover:underline">
+                      {b.customer_phone}
+                    </a>
+                  )}
+                  {b.status !== 'completed' && (
+                    <button
+                      onClick={() => updateStatus(b.id, 'completed')}
+                      className="min-h-10 rounded-lg bg-orange-500 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-orange-600"
+                    >
+                      End
+                    </button>
+                  )}
+                </div>
+              </MobileExpandableCard>
               <div
-                key={b.id}
-                className="flex flex-col sm:flex-row sm:items-center gap-4 border border-slate-200 rounded-xl p-4 hover:bg-slate-50 transition"
+                className="hidden flex-col gap-4 rounded-xl border border-slate-200 p-4 transition hover:bg-slate-50 md:flex md:flex-row md:items-center"
               >
                 <div className="text-center sm:w-20 shrink-0">
                   <div className="text-lg font-bold text-slate-900">
@@ -275,6 +319,7 @@ export default function StaffDashboard() {
                     </button>
                   )}
                 </div>
+              </div>
               </div>
             ))}
           </div>

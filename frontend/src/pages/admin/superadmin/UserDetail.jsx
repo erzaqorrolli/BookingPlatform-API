@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../../../api/client';
 import Swal from 'sweetalert2';
+import MobileExpandableCard from '../../../components/MobileExpandableCard';
 
 export default function UserDetail() {
   const { id } = useParams();
@@ -233,7 +234,38 @@ export default function UserDetail() {
             This user is not a member of any company
           </div>
         ) : (
-          <div className="divide-y divide-slate-100 dark:divide-slate-800">
+          <>
+          <div className="space-y-3 p-3 md:hidden">
+            {companies.map((c) => (
+              <MobileExpandableCard key={c.company_id} summary={
+                <div className="flex items-center justify-between gap-3">
+                  <Link
+                    to={`/admin/superadmin/companies/${c.company_id}`}
+                    className="min-w-0 text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
+                  >
+                    {c.company_name}
+                  </Link>
+                  <span className={`shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full ${
+                    c.role === 'owner'
+                      ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
+                      : c.role === 'admin'
+                      ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                      : c.role === 'manager'
+                      ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
+                      : c.role === 'staff'
+                      ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
+                      : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                  }`}>{c.role}</span>
+                </div>
+              }>
+                <div className="space-y-2 text-sm text-slate-700 dark:text-slate-300">
+                  <div><span className="text-slate-500 dark:text-slate-400">Slug:</span> {c.company_slug}</div>
+                  <div><span className="text-slate-500 dark:text-slate-400">Joined:</span> {new Date(c.joined_at).toLocaleDateString('en-GB')}</div>
+                </div>
+              </MobileExpandableCard>
+            ))}
+          </div>
+          <div className="hidden divide-y divide-slate-100 dark:divide-slate-800 md:block">
             {companies.map((c) => (
               <div
                 key={c.company_id}
@@ -273,6 +305,7 @@ export default function UserDetail() {
               </div>
             ))}
           </div>
+          </>
         )}
       </div>
 

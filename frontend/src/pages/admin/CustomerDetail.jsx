@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
 import Swal from 'sweetalert2';
+import MobileExpandableCard from '../../components/MobileExpandableCard';
 
 const BOOKING_STATUS = {
   pending:   { label: 'Waiting',   color: 'bg-amber-100 text-amber-700' },
@@ -191,7 +192,44 @@ export default function CustomerDetail() {
               No bookings yet
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            <div className="space-y-2 p-3 md:hidden">
+              {bookings.slice(0, 10).map((b) => {
+                const st = BOOKING_STATUS[b.status] || BOOKING_STATUS.pending;
+                return (
+                  <MobileExpandableCard
+                    key={b.id}
+                    summary={(
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-xs font-mono font-semibold text-indigo-600">{b.reference || `#${b.id}`}</p>
+                          <p className="truncate text-sm font-medium text-slate-900">{b.service_name}</p>
+                          <p className="text-xs text-slate-500">{new Date(b.booking_date).toLocaleDateString('en-GB')}</p>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <p className="text-sm font-semibold text-slate-900">€{parseFloat(b.total_price).toFixed(2)}</p>
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${st.color}`}>{st.label}</span>
+                        </div>
+                      </div>
+                    )}
+                  >
+                    <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-sm">
+                      <dt className="text-slate-500">Reference</dt>
+                      <dd className="break-all font-mono text-slate-800">{b.reference || `#${b.id}`}</dd>
+                      <dt className="text-slate-500">Service</dt>
+                      <dd className="text-slate-800">{b.service_name}</dd>
+                      <dt className="text-slate-500">Date</dt>
+                      <dd className="text-slate-800">{new Date(b.booking_date).toLocaleDateString('en-GB')}</dd>
+                      <dt className="text-slate-500">Total</dt>
+                      <dd className="text-slate-800">€{parseFloat(b.total_price).toFixed(2)}</dd>
+                      <dt className="text-slate-500">Status</dt>
+                      <dd><span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${st.color}`}>{st.label}</span></dd>
+                    </dl>
+                  </MobileExpandableCard>
+                );
+              })}
+            </div>
+            <div className="hidden overflow-x-auto md:block">
               <table className="w-full">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
@@ -228,6 +266,7 @@ export default function CustomerDetail() {
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </div>
       </div>
@@ -242,6 +281,47 @@ export default function CustomerDetail() {
             No invoices yet
           </div>
         ) : (
+          <>
+          <div className="space-y-2 p-3 md:hidden">
+            {invoices.map((inv) => {
+              const st = INVOICE_STATUS[inv.status] || INVOICE_STATUS.draft;
+              return (
+                <MobileExpandableCard
+                  key={inv.id}
+                  summary={(
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-mono font-semibold text-indigo-600">{inv.reference}</p>
+                        <p className="mt-1 text-xs text-slate-500">{inv.issue_date ? new Date(inv.issue_date).toLocaleDateString('en-GB') : '—'}</p>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <p className="text-sm font-semibold text-slate-900">€{parseFloat(inv.total).toFixed(2)}</p>
+                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${st.color}`}>{st.label}</span>
+                      </div>
+                    </div>
+                  )}
+                >
+                  <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-sm">
+                    <dt className="text-slate-500">Reference</dt>
+                    <dd className="break-all font-mono text-slate-800">{inv.reference}</dd>
+                    <dt className="text-slate-500">Issue date</dt>
+                    <dd className="text-slate-800">{inv.issue_date ? new Date(inv.issue_date).toLocaleDateString('en-GB') : '—'}</dd>
+                    <dt className="text-slate-500">Due date</dt>
+                    <dd className="text-slate-800">{inv.due_date ? new Date(inv.due_date).toLocaleDateString('en-GB') : '—'}</dd>
+                    <dt className="text-slate-500">Total</dt>
+                    <dd className="text-slate-800">€{parseFloat(inv.total).toFixed(2)}</dd>
+                    <dt className="text-slate-500">Status</dt>
+                    <dd><span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${st.color}`}>{st.label}</span></dd>
+                  </dl>
+                  <Link to={`/admin/invoices/${inv.id}`} className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800">
+                    View invoice
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                  </Link>
+                </MobileExpandableCard>
+              );
+            })}
+          </div>
+          <div className="hidden md:block">
           <table className="w-full">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
@@ -291,6 +371,8 @@ export default function CustomerDetail() {
               })}
             </tbody>
           </table>
+          </div>
+          </>
         )}
       </div>
     </div>

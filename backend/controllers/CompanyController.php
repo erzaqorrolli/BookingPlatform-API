@@ -343,7 +343,8 @@ class CompanyController {
                 'deletion_request',
                 'Request to delete company',
                 "Company owner '{$companyName}' requested to delete company",
-                "/admin/superadmin/companies" 
+                "/admin/superadmin/companies",
+                $companyId
             );
         }
         json_ok(['message' => 'Request sent successfully! Superadmin will contact you']);

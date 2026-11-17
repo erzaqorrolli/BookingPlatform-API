@@ -5,6 +5,7 @@ import { useRole } from '../../hooks/useRole';
 import Swal from 'sweetalert2';
 import toast from 'react-hot-toast';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import MobileExpandableCard from '../../components/MobileExpandableCard';
 
 export default function Team() {
   const { activeCompany } = useCompany();
@@ -224,7 +225,62 @@ export default function Team() {
           <p className="text-sm text-slate-500 mb-5">Add members in the team</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <>
+        <div className="space-y-2 md:hidden">
+          {paginatedMembers.map((m) => (
+            <MobileExpandableCard
+              key={m.id}
+              summary={(
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="w-9 h-9 shrink-0 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-semibold">
+                      {m.name?.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-slate-900">{m.name}</p>
+                      <p className="truncate text-xs text-slate-500">{m.email}</p>
+                    </div>
+                  </div>
+                  <span className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full capitalize ${roleBadge(m.role)}`}>{m.role}</span>
+                </div>
+              )}
+            >
+              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-3 text-sm">
+                <dt className="text-slate-500">Email</dt>
+                <dd className="break-all text-slate-800">{m.email}</dd>
+                <dt className="text-slate-500">Role</dt>
+                <dd><span className={`text-xs font-semibold px-2.5 py-1 rounded-full capitalize ${roleBadge(m.role)}`}>{m.role}</span></dd>
+                <dt className="text-slate-500">Custom role</dt>
+                <dd>
+                  {role === 'owner' && m.role !== 'owner' ? (
+                    <select
+                      value={memberRoles[m.id] || ''}
+                      onChange={(e) => handleRoleChange(m.id, e.target.value)}
+                      aria-label={`Custom role for ${m.name}`}
+                      className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 focus:border-indigo-500 outline-none bg-white w-full"
+                    >
+                      <option value="">Standard (No Custom Role)</option>
+                      {customRoles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                    </select>
+                  ) : (
+                    <span className="text-sm text-slate-500">{customRoles.find(r => r.id === memberRoles[m.id])?.name || 'Standard'}</span>
+                  )}
+                </dd>
+                <dt className="text-slate-500">Added</dt>
+                <dd className="text-slate-800">{m.created_at ? new Date(m.created_at).toLocaleDateString('sq-AL') : '—'}</dd>
+              </dl>
+              {m.role !== 'owner' && m.id !== undefined && (
+                <div className="mt-3 flex items-center gap-2">
+                  <button onClick={() => handleRemove(m)} className="text-xs font-medium text-amber-600 hover:text-amber-700 px-2 py-1 hover:bg-amber-50 rounded transition">Remove</button>
+                  {role === 'owner' && (
+                    <button onClick={() => handleDelete(m)} className="text-xs font-medium text-red-600 hover:text-red-700 px-2 py-1 hover:bg-red-50 rounded transition">Delete</button>
+                  )}
+                </div>
+              )}
+            </MobileExpandableCard>
+          ))}
+        </div>
+        <div className="hidden md:block bg-white rounded-xl border border-slate-200 overflow-hidden">
           <table className="w-full">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
@@ -336,6 +392,7 @@ export default function Team() {
             </div>
           )}
         </div>
+        </>
       )}
 
       {showModal && (

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
+import MobileExpandableCard from '../../components/MobileExpandableCard';
 
 export default function Reviews() {
   const { activeCompany } = useCompany();
@@ -59,7 +60,27 @@ export default function Reviews() {
           <p className="mt-1 text-sm text-slate-500">Client feedback will appear here after completed bookings.</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <>
+        <div className="space-y-2 md:hidden">
+          {reviews.map((review) => (
+            <MobileExpandableCard
+              key={review.id}
+              summary={(
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="truncate font-semibold text-slate-900">{review.user_name || 'Client'}</h3>
+                    <p className="truncate text-sm text-slate-500">{review.service_name || 'Service'}</p>
+                  </div>
+                  <div className="shrink-0 whitespace-nowrap text-amber-500">{'★'.repeat(review.rating)}<span className="text-slate-200">{'★'.repeat(5 - review.rating)}</span></div>
+                </div>
+              )}
+            >
+              {review.comment && <p className="text-sm leading-6 text-slate-700">{review.comment}</p>}
+              <p className="mt-3 text-xs text-slate-400">{review.created_at ? new Date(review.created_at).toLocaleDateString('sq-AL') : ''}</p>
+            </MobileExpandableCard>
+          ))}
+        </div>
+        <div className="hidden md:block space-y-3">
           {reviews.map((review) => (
             <div key={review.id} className="rounded-xl border border-slate-200 bg-white p-5">
               <div className="flex items-start justify-between gap-4">
@@ -74,6 +95,7 @@ export default function Reviews() {
             </div>
           ))}
         </div>
+        </>
       )}
     </div>
   );

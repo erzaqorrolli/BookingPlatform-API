@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
+import MobileExpandableCard from '../../components/MobileExpandableCard';
 
 export default function Shifts() {
   const { activeCompany } = useCompany();
@@ -155,37 +156,45 @@ export default function Shifts() {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <>
+        <div className="space-y-2 md:hidden">
           {shifts.map((s) => (
-            <div
+            <MobileExpandableCard
               key={s.id}
-              className="bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-md transition"
+              className="border border-slate-200"
+              summary={(
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="truncate font-semibold text-slate-900">{s.name}</h3>
+                    <p className="text-sm text-slate-500 font-mono">{s.start_time.slice(0, 5)} - {s.end_time.slice(0, 5)}</p>
+                  </div>
+                  <span className="w-4 h-4 shrink-0 rounded-full" style={{ backgroundColor: s.color }} aria-hidden="true" />
+                </div>
+              )}
             >
+              <div className="flex gap-1">
+                <button onClick={() => openEdit(s)} className="flex-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50 py-1.5 rounded transition">Edit</button>
+                <button onClick={() => setDeleteTarget(s)} className="flex-1 text-xs font-medium text-red-600 hover:bg-red-50 py-1.5 rounded transition">Delete</button>
+              </div>
+            </MobileExpandableCard>
+          ))}
+        </div>
+        <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {shifts.map((s) => (
+            <div key={s.id} className="bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-md transition">
               <div className="h-2" style={{ backgroundColor: s.color }} />
               <div className="p-5">
                 <h3 className="font-semibold text-slate-900 mb-1">{s.name}</h3>
-                <p className="text-sm text-slate-500 font-mono">
-                  {s.start_time.slice(0, 5)} - {s.end_time.slice(0, 5)}
-                </p>
-
+                <p className="text-sm text-slate-500 font-mono">{s.start_time.slice(0, 5)} - {s.end_time.slice(0, 5)}</p>
                 <div className="flex gap-1 pt-3 border-t border-slate-100 mt-4">
-                  <button
-                    onClick={() => openEdit(s)}
-                    className="flex-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50 py-1.5 rounded transition"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => setDeleteTarget(s)}
-                    className="flex-1 text-xs font-medium text-red-600 hover:bg-red-50 py-1.5 rounded transition"
-                  >
-                    Delete
-                  </button>
+                  <button onClick={() => openEdit(s)} className="flex-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50 py-1.5 rounded transition">Edit</button>
+                  <button onClick={() => setDeleteTarget(s)} className="flex-1 text-xs font-medium text-red-600 hover:bg-red-50 py-1.5 rounded transition">Delete</button>
                 </div>
               </div>
             </div>
           ))}
         </div>
+        </>
       )}
 
       {/* Modal krijimi/editimi */}

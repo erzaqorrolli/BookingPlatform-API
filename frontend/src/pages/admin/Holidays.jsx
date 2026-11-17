@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
+import MobileExpandableCard from '../../components/MobileExpandableCard';
 
 export default function Holidays() {
   const { activeCompany } = useCompany();
@@ -104,7 +105,37 @@ export default function Holidays() {
           </button>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <>
+        <div className="space-y-2 md:hidden">
+          {holidays.map((h) => (
+            <MobileExpandableCard
+              key={h.id}
+              summary={(
+                <div className="flex items-start justify-between gap-3">
+                  <span className="font-semibold text-slate-900">{h.name}</span>
+                  <span className="shrink-0 text-sm text-slate-600">{new Date(h.date).toLocaleDateString('sq-AL')}</span>
+                </div>
+              )}
+            >
+              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-sm">
+                <dt className="text-slate-500">Date</dt>
+                <dd className="text-slate-800">{new Date(h.date).toLocaleDateString('sq-AL')}</dd>
+                <dt className="text-slate-500">Repeating</dt>
+                <dd>{h.is_recurring
+                  ? <span className="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-1 rounded">Every year</span>
+                  : <span className="text-xs text-slate-400">One time</span>}
+                </dd>
+              </dl>
+              <button
+                onClick={() => setDeleteTarget(h)}
+                className="mt-3 text-xs font-medium text-red-600 hover:bg-red-50 px-3 py-1.5 rounded transition"
+              >
+                Delete
+              </button>
+            </MobileExpandableCard>
+          ))}
+        </div>
+        <div className="hidden md:block bg-white rounded-xl border border-slate-200 overflow-hidden">
           <table className="w-full">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
@@ -141,6 +172,7 @@ export default function Holidays() {
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       {showModal && (

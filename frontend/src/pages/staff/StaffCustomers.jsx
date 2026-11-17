@@ -3,6 +3,7 @@ import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
 import { Search, User, Plus, Edit } from 'lucide-react';
 import toast from 'react-hot-toast';
+import MobileExpandableCard from '../../components/MobileExpandableCard';
 
 export default function StaffCustomers() {
   const { activeCompany } = useCompany();
@@ -103,7 +104,7 @@ export default function StaffCustomers() {
         />
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <div className="hidden overflow-hidden rounded-xl border border-slate-200 bg-white md:block">
         <div className="overflow-x-auto">
         <table className="w-full">
           <thead className="bg-slate-50 border-b border-slate-200">
@@ -148,6 +149,40 @@ export default function StaffCustomers() {
           </tbody>
         </table>
         </div>
+      </div>
+      <div className="space-y-3 md:hidden">
+        {filteredCustomers.map((c) => (
+          <MobileExpandableCard
+            key={c.id}
+            summary={
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-600">
+                  {c.name?.charAt(0).toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-slate-900">{c.name}</p>
+                  <p className="truncate text-xs text-slate-500">{c.email}</p>
+                </div>
+              </div>
+            }
+          >
+            <div className="space-y-2 text-sm text-slate-600">
+              <p><span className="text-xs text-slate-500">Phone: </span>{c.phone || '—'}</p>
+              <button
+                onClick={() => handleOpenModal(c)}
+                className="min-h-10 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
+                title="Edit Client"
+              >
+                Edit Client
+              </button>
+            </div>
+          </MobileExpandableCard>
+        ))}
+        {filteredCustomers.length === 0 && (
+          <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
+            No clients found.
+          </div>
+        )}
       </div>
 
       {isModalOpen && (

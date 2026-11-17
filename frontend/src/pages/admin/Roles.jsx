@@ -5,6 +5,7 @@ import CreateRoleModal from '../../components/CreateRoleModal';
 import toast from 'react-hot-toast';
 import { Trash2, Edit } from 'lucide-react';
 import Swal from 'sweetalert2';
+import MobileExpandableCard from '../../components/MobileExpandableCard';
 
 const ALL_PERMISSIONS = [
   { key: 'staff_can_send_emails', label: 'Send email to client' },
@@ -147,7 +148,44 @@ export default function Roles() {
       <div className="bg-white rounded-xl border border-slate-200 p-6">
         <h2 className="text-lg font-bold text-slate-900 mb-4">Existing roles</h2>
         
-        <div className="space-y-3">
+        <div className="space-y-2 md:hidden">
+          {customRoles.map(role => (
+            <MobileExpandableCard
+              key={role.id}
+              summary={(
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="truncate font-bold text-slate-900">{role.name}</h3>
+                  <span className="shrink-0 text-xs text-slate-500">{role.permissions.length} permissions</span>
+                </div>
+              )}
+            >
+              <div className="mb-3 flex items-center gap-3">
+                <button onClick={() => handleEditRole(role.id, role.name)} className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-700">
+                  <Edit className="h-4 w-4" /> Edit name
+                </button>
+                <button onClick={() => handleDeleteRole(role.id, role.name)} className="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-700">
+                  <Trash2 className="h-4 w-4" /> Delete
+                </button>
+              </div>
+              <div className="grid grid-cols-1 gap-3">
+                {ALL_PERMISSIONS.map(perm => (
+                  <label key={perm.key} className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={role.permissions.includes(perm.key)}
+                      onChange={() => toggleRolePermission(role.id, perm.key, role.permissions)}
+                      className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                    />
+                    {perm.label}
+                  </label>
+                ))}
+              </div>
+            </MobileExpandableCard>
+          ))}
+          {customRoles.length === 0 && <p className="text-sm text-slate-500 text-center py-4">No new roles. Create your first role.</p>}
+        </div>
+
+        <div className="hidden md:block space-y-3">
           {customRoles.map(role => (
             <div key={role.id} className="p-4 border border-slate-200 rounded-lg bg-slate-50">
               <div className="flex items-center justify-between mb-3">

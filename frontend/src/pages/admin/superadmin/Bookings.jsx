@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../../../api/client';
 import { Download } from 'lucide-react';
+import MobileExpandableCard from '../../../components/MobileExpandableCard';
 
 const STATUS_COLORS = {
   pending: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300',
@@ -153,7 +154,34 @@ export default function Bookings() {
         </div>
       ) : (
         <>
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+          <div className="space-y-3 md:hidden">
+            {paginatedBookings.map((b) => (
+              <MobileExpandableCard
+                key={b.id}
+                summary={
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="font-mono text-sm font-semibold text-indigo-600 dark:text-indigo-400">{b.reference}</div>
+                      <div className="mt-1 text-sm font-medium text-slate-900 dark:text-white">{b.customer_name}</div>
+                    </div>
+                    <span className={`shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full capitalize ${STATUS_COLORS[b.status] || 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'}`}>
+                      {b.status}
+                    </span>
+                  </div>
+                }
+              >
+                <div className="space-y-2 text-sm text-slate-700 dark:text-slate-300">
+                  <div><span className="text-slate-500 dark:text-slate-400">Company:</span> {b.company_name}</div>
+                  <div><span className="text-slate-500 dark:text-slate-400">Customer:</span> {b.customer_name} · {b.customer_email}</div>
+                  <div><span className="text-slate-500 dark:text-slate-400">Service:</span> {b.service_name}</div>
+                  <div><span className="text-slate-500 dark:text-slate-400">Date:</span> {new Date(b.booking_date).toLocaleDateString('en-GB')} {b.start_time?.slice(0, 5)}</div>
+                  <div className="font-semibold text-slate-900 dark:text-white">Total: €{parseFloat(b.total_price).toFixed(2)}</div>
+                  {b.needs_assistance === 1 && <span className="inline-flex px-2 py-0.5 text-xs font-semibold bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100 rounded-full">Priority</span>}
+                </div>
+              </MobileExpandableCard>
+            ))}
+          </div>
+          <div className="hidden md:block bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">

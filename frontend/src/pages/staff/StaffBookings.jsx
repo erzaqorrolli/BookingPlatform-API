@@ -3,6 +3,7 @@ import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import ManualBookingModal from '../../components/ManualBookingModal';
+import MobileExpandableCard from '../../components/MobileExpandableCard';
 
 const STATUS_LABELS = {
   pending: 'Waiting',
@@ -151,7 +152,63 @@ export default function StaffBookings() {
           <p className="text-sm text-slate-500">Try another filters</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <>
+        <div className="space-y-3 md:hidden">
+          {bookings.map((b) => (
+            <MobileExpandableCard
+              key={b.id}
+              summary={
+                <div className="flex min-w-0 items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-mono text-xs text-slate-500">{b.reference || `#${b.id}`}</p>
+                    <p className="mt-1 truncate text-sm font-semibold text-slate-900">{b.customer_name}</p>
+                    <p className="text-xs text-slate-600">{b.service_name}</p>
+                  </div>
+                  <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_COLORS[b.status]}`}>
+                    {STATUS_LABELS[b.status]}
+                  </span>
+                </div>
+              }
+            >
+              <div className="space-y-2 text-sm">
+                <p className="text-slate-700">
+                  {new Date(b.booking_date).toLocaleDateString('sq-AL')} · {b.start_time?.slice(0, 5)} - {b.end_time?.slice(0, 5)}
+                </p>
+                <p className="break-all text-xs text-slate-500">{b.customer_email}</p>
+                {b.customer_phone && <p className="text-xs text-slate-500">{b.customer_phone}</p>}
+                <p className="text-xs text-slate-600">
+                  Staff: {b.staff_name || <span className="italic text-slate-400">Unassigned</span>}
+                </p>
+                {canManage ? (
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    {!b.staff_id && (
+                      <button
+                        onClick={() => handleClaim(b.id)}
+                        className="min-h-10 rounded-lg bg-orange-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-orange-600"
+                      >
+                        Accept
+                      </button>
+                    )}
+                    <select
+                      value={b.status}
+                      onChange={(e) => updateStatus(b.id, e.target.value)}
+                      className="min-h-10 rounded border border-slate-200 px-2 py-1 text-xs outline-none focus:border-orange-500"
+                    >
+                      <option value="pending">Waiting</option>
+                      <option value="confirmed">Confirmed</option>
+                      <option value="completed">Done</option>
+                      <option value="cancelled">Cancelled</option>
+                      <option value="no_show">Absent</option>
+                    </select>
+                  </div>
+                ) : (
+                  <p className="pt-1 text-xs italic text-slate-400">View only</p>
+                )}
+              </div>
+            </MobileExpandableCard>
+          ))}
+        </div>
+        <div className="hidden overflow-hidden rounded-xl border border-slate-200 bg-white md:block">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[900px]">
               <thead className="bg-slate-50 border-b border-slate-200">
@@ -236,6 +293,7 @@ export default function StaffBookings() {
             </table>
           </div>
         </div>
+        </>
       )}
 
       {isModalOpen && (

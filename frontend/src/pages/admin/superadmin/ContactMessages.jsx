@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../../../api/client';
+import MobileExpandableCard from '../../../components/MobileExpandableCard';
 
 const STATUS_COLORS = {
   new: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300',
@@ -137,7 +138,45 @@ export default function ContactMessages() {
           </p>
         </div>
       ) : (
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <>
+        <div className="space-y-3 md:hidden">
+          {messages.map((m) => (
+            <MobileExpandableCard
+              key={m.id}
+              summary={
+                <button
+                  type="button"
+                  onClick={() => handleOpenMessage(m)}
+                  className="w-full text-left"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-semibold text-slate-900 dark:text-white">{m.name}</span>
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS_COLORS[m.status] || 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'}`}>{m.status}</span>
+                      </div>
+                      <div className="mt-1 text-sm font-medium text-slate-800 dark:text-slate-200">{m.subject}</div>
+                    </div>
+                    <span className="shrink-0 text-xs text-slate-400">{new Date(m.created_at).toLocaleDateString('en-GB')}</span>
+                  </div>
+                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{m.email}</div>
+                </button>
+              }
+            >
+              <div className="space-y-2 text-sm text-slate-700 dark:text-slate-300">
+                <div className="whitespace-pre-wrap">{m.message}</div>
+                <button
+                  type="button"
+                  onClick={() => handleOpenMessage(m)}
+                  className="pt-1 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
+                >
+                  Open message
+                </button>
+              </div>
+            </MobileExpandableCard>
+          ))}
+        </div>
+        <div className="hidden md:block bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
           <div className="divide-y divide-slate-100 dark:divide-slate-800">
             {messages.map((m) => (
               <button
@@ -179,6 +218,7 @@ export default function ContactMessages() {
             ))}
           </div>
         </div>
+        </>
       )}
 
       {showModal && selectedMessage && (

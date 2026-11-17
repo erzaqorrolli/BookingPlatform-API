@@ -3,6 +3,7 @@ import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
 import toast from 'react-hot-toast';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import MobileExpandableCard from '../../components/MobileExpandableCard';
 
 export default function Companies() {
     const { companies, activeCompany, switchCompany, refreshCompanies } = useCompany();
@@ -120,34 +121,38 @@ export default function Companies() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="space-y-2 md:hidden">
             {paginatedCompanies.map((c) => (
-              <div
+              <MobileExpandableCard
                 key={c.id}
-                className={`bg-white rounded-xl border-2 p-5 transition hover:shadow-md ${
+                className={`border-2 transition hover:shadow-md ${
                   activeCompany?.id === c.id
                     ? 'border-indigo-500 bg-indigo-50/30'
                     : 'border-slate-200'
                 }`}
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">
-                    {c.name?.charAt(0).toUpperCase()}
+                summary={(
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="w-12 h-12 shrink-0 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">
+                        {c.name?.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="font-semibold text-slate-900">{c.name}</h3>
+                        <p className="text-xs text-slate-500">
+                          Role: <span className="font-medium text-slate-700">{c.role}</span>
+                        </p>
+                      </div>
+                    </div>
+                    {activeCompany?.id === c.id && (
+                      <span className="shrink-0 text-xs font-semibold text-indigo-600 bg-indigo-100 px-2 py-1 rounded">
+                        Active
+                      </span>
+                    )}
                   </div>
-                  {activeCompany?.id === c.id && (
-                    <span className="text-xs font-semibold text-indigo-600 bg-indigo-100 px-2 py-1 rounded">
-                      Active
-                    </span>
-                  )}
-                </div>
-
-                <h3 className="font-semibold text-slate-900 mb-1">{c.name}</h3>
-                <p className="text-xs text-slate-500 mb-3">
-                  Role: <span className="font-medium text-slate-700">{c.role}</span>
-                </p>
-
+                )}
+              >
                 {c.address && (
-                  <p className="text-xs text-slate-400 mb-3">{c.address}</p>
+                  <p className="text-xs text-slate-500 mb-3">{c.address}</p>
                 )}
 
                 <div className="flex items-center gap-2 pt-3 border-t border-slate-100">
@@ -173,6 +178,40 @@ export default function Companies() {
                   >
                     Edit
                   </button>
+                </div>
+                </MobileExpandableCard>
+            ))}
+          </div>
+          <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {paginatedCompanies.map((c) => (
+              <div
+                key={c.id}
+                className={`bg-white rounded-xl border-2 p-5 transition hover:shadow-md ${
+                  activeCompany?.id === c.id ? 'border-indigo-500 bg-indigo-50/30' : 'border-slate-200'
+                }`}
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">
+                    {c.name?.charAt(0).toUpperCase()}
+                  </div>
+                  {activeCompany?.id === c.id && (
+                    <span className="text-xs font-semibold text-indigo-600 bg-indigo-100 px-2 py-1 rounded">Active</span>
+                  )}
+                </div>
+                <h3 className="font-semibold text-slate-900 mb-1">{c.name}</h3>
+                <p className="text-xs text-slate-500 mb-3">Role: <span className="font-medium text-slate-700">{c.role}</span></p>
+                {c.address && <p className="text-xs text-slate-400 mb-3">{c.address}</p>}
+                <div className="flex items-center gap-2 pt-3 border-t border-slate-100">
+                  {activeCompany?.id !== c.id ? (
+                    <button
+                      onClick={() => {
+                        switchCompany(c.id);
+                        toast.success(`Switched to ${c.name}`);
+                      }}
+                      className="flex-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50 py-1.5 rounded transition"
+                    >Activate</button>
+                  ) : <span className="flex-1 text-xs text-center text-slate-400 py-1.5">Now</span>}
+                  <button onClick={() => openEdit(c)} className="text-xs font-medium text-slate-600 hover:bg-slate-100 px-2 py-1.5 rounded transition">Edit</button>
                 </div>
               </div>
             ))}

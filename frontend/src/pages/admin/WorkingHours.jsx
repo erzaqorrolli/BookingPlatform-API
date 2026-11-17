@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
+import MobileExpandableCard from '../../components/MobileExpandableCard';
 
 const DAYS = [
   { value: 1, label: 'Monday' },
@@ -148,7 +149,59 @@ const updateDay = (dayValue, field, value) => {
           Loading...
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100">
+        <>
+        <div className="space-y-2 md:hidden">
+          {hours.map((day) => (
+            <MobileExpandableCard
+              key={day.day_of_week}
+              summary={(
+                <div className="flex items-center justify-between gap-3">
+                  <span className={`font-medium ${day.is_closed ? 'text-slate-400' : 'text-slate-900'}`}>{day.label}</span>
+                  {day.is_closed ? (
+                    <span className="text-sm italic text-slate-400">Closed</span>
+                  ) : (
+                    <span className="shrink-0 text-sm font-mono text-slate-700">{day.open_time} — {day.close_time}</span>
+                  )}
+                </div>
+              )}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm font-medium text-slate-700">Closed day</span>
+                <button
+                  type="button"
+                  aria-label={`${day.is_closed ? 'Open' : 'Close'} ${day.label}`}
+                  aria-pressed={!day.is_closed}
+                  onClick={() => toggleClosed(day.day_of_week)}
+                  className={`relative h-6 w-11 rounded-full transition ${day.is_closed ? 'bg-slate-300' : 'bg-emerald-500'}`}
+                >
+                  <span className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition-transform ${day.is_closed ? 'translate-x-0' : 'translate-x-5'}`} />
+                </button>
+              </div>
+              {!day.is_closed && (
+                <div className="mt-3 flex items-center gap-2">
+                  <label className="sr-only" htmlFor={`mobile-open-${day.day_of_week}`}>Opening time</label>
+                  <input
+                    id={`mobile-open-${day.day_of_week}`}
+                    type="time"
+                    value={day.open_time}
+                    onChange={(e) => updateDay(day.day_of_week, 'open_time', e.target.value)}
+                    className="min-w-0 flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-indigo-500 outline-none"
+                  />
+                  <span className="text-slate-400">—</span>
+                  <label className="sr-only" htmlFor={`mobile-close-${day.day_of_week}`}>Closing time</label>
+                  <input
+                    id={`mobile-close-${day.day_of_week}`}
+                    type="time"
+                    value={day.close_time}
+                    onChange={(e) => updateDay(day.day_of_week, 'close_time', e.target.value)}
+                    className="min-w-0 flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-indigo-500 outline-none"
+                  />
+                </div>
+              )}
+            </MobileExpandableCard>
+          ))}
+        </div>
+        <div className="hidden md:block bg-white rounded-xl border border-slate-200 divide-y divide-slate-100">
           {hours.map((day) => (
             <div key={day.day_of_week} className="p-5 flex flex-col sm:flex-row sm:items-center gap-4">
               <div className="flex items-center gap-4 sm:w-56">
@@ -170,7 +223,6 @@ const updateDay = (dayValue, field, value) => {
                   {day.label}
                 </span>
               </div>
-
               <div className="flex items-center gap-3 flex-1">
                 {day.is_closed ? (
                   <span className="text-sm text-slate-400 italic">Closed</span>
@@ -203,6 +255,7 @@ const updateDay = (dayValue, field, value) => {
             </div>
           ))}
         </div>
+        </>
       )}
 
       <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 text-sm text-indigo-800">

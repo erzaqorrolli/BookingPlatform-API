@@ -15,7 +15,8 @@ export const getCookie = (name) => {
   return match ? decodeURIComponent(match[1]) : ''; 
 };
 
-const apiBaseUrl = import.meta.env.VITE_API_URL
+const configuredApiUrl = import.meta.env.VITE_API_URL?.trim();
+const apiBaseUrl = (configuredApiUrl || '/booking-api/backend/public')
   .replace(/\/+$/, '')
   .replace(/\/api$/i, '');
 

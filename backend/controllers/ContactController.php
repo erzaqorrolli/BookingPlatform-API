@@ -170,7 +170,7 @@ class ContactController
             json_err('You already have a pending deletion request.',422);
         }
 
-        $stmt = $db->prepare("INSERT INTO deletion_requests (company_id, requested_by VALUES(?,?)");
+        $stmt = $db->prepare("INSERT INTO deletion_requests (company_id, requested_by) VALUES (?, ?)");
         $stmt->execute([$companyId,$uid]);
 
         $superAdmins = $db->query("SELECT cu.user_id FROM company_user cu JOIN
@@ -178,7 +178,14 @@ class ContactController
         WHERE r.name ='superadmin'")->fetchAll(\PDO::FETCH_COLUMN);
 
         foreach($superAdmins as $saId){
-            \App\Models\Notification::create( (int) $saId, 'deletion_request','Request to delete company',"Company owner '{$companyName}' requested to delete account.", "/admin/superadmin/companies");
+            \App\Models\Notification::create(
+                (int) $saId,
+                'deletion_request',
+                'Request to delete company',
+                "Company owner '{$companyName}' requested to delete account.",
+                "/admin/superadmin/companies",
+                $companyId
+            );
         }
 
         json_ok(['message' =>'Request sent successfully!']);

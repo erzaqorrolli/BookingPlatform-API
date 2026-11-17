@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/client';
 import Swal from 'sweetalert2';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useCompany } from '../../contexts/CompanyContext';
+import MobileExpandableCard from '../../components/MobileExpandableCard';
 
 const PAGE_SIZE = 10;
 
@@ -12,26 +14,35 @@ export default function Notifications() {
   const [filter, setFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const navigate = useNavigate();
+  const { activeCompany } = useCompany();
+  const companyId = activeCompany?.id ?? null;
+  const scopeKey = companyId === null ? 'global' : String(companyId);
+  const [loadedScope, setLoadedScope] = useState(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
-      const r = await api.get('/me/notifications');
+      const r = await api.get('/me/notifications', {
+        params: { company_id: companyId },
+      });
       setNotifications(r.data.data?.notifications || []);
+      setLoadedScope(scopeKey);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
-
-  };
+  }, [companyId, scopeKey]);
 
   useEffect(() => {
-    load();
-  }, []);
+    const initialLoad = setTimeout(load, 0);
+    return () => clearTimeout(initialLoad);
+  }, [load]);
 
   const markAsRead = async (id) => {
     try {
-      await api.post(`/me/notifications/${id}/read`);
+      await api.post(`/me/notifications/${id}/read`, {}, {
+        params: { company_id: companyId },
+      });
       load();
     } catch (err) {
       console.error(err);
@@ -40,7 +51,9 @@ export default function Notifications() {
 
   const markAllAsRead = async () => {
     try {
-      await api.post('/me/notifications/read-all');
+      await api.post('/me/notifications/read-all', {}, {
+        params: { company_id: companyId },
+      });
       load();
       Swal.fire({
         icon: 'success',
@@ -66,7 +79,9 @@ export default function Notifications() {
     if (!result.isConfirmed) return;
 
     try {
-      await api.delete(`/me/notifications/${id}`);
+      await api.delete(`/me/notifications/${id}`, {
+        params: { company_id: companyId },
+      });
       load();
     } catch (err) {
       console.error(err);
@@ -92,7 +107,8 @@ export default function Notifications() {
     });
   };
 
-  const filtered = notifications.filter((n) => {
+  const scopedNotifications = loadedScope === scopeKey ? notifications : [];
+  const filtered = scopedNotifications.filter((n) => {
     if (filter === 'unread') return !n.read_at;
     if (filter === 'read') return n.read_at;
     return true;
@@ -104,7 +120,7 @@ export default function Notifications() {
     (displayedPage - 1) * PAGE_SIZE,
     displayedPage * PAGE_SIZE
   );
-  const unreadCount = notifications.filter((n) => !n.read_at).length;
+  const unreadCount = scopedNotifications.filter((n) => !n.read_at).length;
 
   if (loading) {
     return <div className="p-12 text-center text-slate-500">Loading...</div>;
@@ -117,7 +133,7 @@ export default function Notifications() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Notifications</h1>
           <p className="text-sm text-slate-500 mt-1">
-            {unreadCount} unread · {notifications.length} total
+            {unreadCount} unread · {scopedNotifications.length} total
           </p>
         </div>
         {unreadCount > 0 && (
@@ -133,9 +149,9 @@ export default function Notifications() {
       {/* Filters */}
       <div className="flex gap-2 border-b border-slate-200">
         {[
-          { key: 'all', label: `All (${notifications.length})` },
+          { key: 'all', label: `All (${scopedNotifications.length})` },
           { key: 'unread', label: `Unread (${unreadCount})` },
-          { key: 'read', label: `Read (${notifications.length - unreadCount})` },
+          { key: 'read', label: `Read (${scopedNotifications.length - unreadCount})` },
         ].map((f) => (
           <button
             key={f.key}
@@ -166,7 +182,40 @@ export default function Notifications() {
           </p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden divide-y divide-slate-100">
+        <>
+        <div className="space-y-2 md:hidden">
+          {visibleNotifications.map((n) => (
+            <MobileExpandableCard
+              key={n.id}
+              className={!n.read_at ? 'border-indigo-200 bg-indigo-50/50' : ''}
+              summary={(
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-slate-900">
+                      {n.title}
+                      {!n.read_at && <span className="ml-2 inline-block w-2 h-2 bg-indigo-500 rounded-full" aria-label="Unread" />}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">{formatDate(n.created_at)}</p>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{n.type}</span>
+                </div>
+              )}
+            >
+              <p className="text-sm text-slate-700">{n.message}</p>
+              <p className="mt-2 text-xs text-slate-400">{formatDate(n.created_at)}</p>
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                {!n.read_at && (
+                  <button onClick={() => markAsRead(n.id)} className="text-xs font-medium text-indigo-600 hover:underline">Mark read</button>
+                )}
+                {n.link && (
+                  <button onClick={() => handleClick(n)} className="text-xs font-medium text-slate-600 hover:underline">View</button>
+                )}
+                <button onClick={() => handleDelete(n.id)} className="text-xs font-medium text-red-600 hover:underline">Delete</button>
+              </div>
+            </MobileExpandableCard>
+          ))}
+        </div>
+        <div className="hidden md:block bg-white rounded-xl border border-slate-200 overflow-hidden divide-y divide-slate-100">
           {visibleNotifications.map((n) => (
             <div
               key={n.id}
@@ -197,7 +246,6 @@ export default function Notifications() {
                   </svg>
                 )}
               </div>
-
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
@@ -242,6 +290,7 @@ export default function Notifications() {
             </div>
           ))}
         </div>
+        </>
       )}
 
       {filtered.length > PAGE_SIZE && (

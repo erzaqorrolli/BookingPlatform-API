@@ -1,6 +1,7 @@
 import {useState, useEffect} from 'react';
 import api from '../../api/client';
 import {useCompany} from '../../context/CompanyContext';
+import MobileExpandableCard from '../../components/MobileExpandableCard';
 
 
 export default function StaffHolidays(){
@@ -123,39 +124,39 @@ function HolidayCard({holiday}){
   });
 
   return (
-    <div className={`rounded-xl border-2 p-5 ${colorClasses} transition hover:shadow-md`}>
-      <div className="flex items-start gap-4">
-        <div className="text-4xl flex-shrink-0">{icon}</div>
-        <div className="flex-1 min-w-0">
-          <h3 className="text-lg font-bold text-slate-900">
-            {holiday.name}
-          </h3>
-          <p className="text-sm text-slate-600 mt-1">
-            {formattedDate}
-          </p>
-          {holiday.description && (
-            <p className="text-xs text-slate-500 mt-2 line-clamp-2">
-              {holiday.description}
-            </p>
-          )}
-          <div className="mt-3">
-            <span
-              className={`inline-block text-xs font-bold px-3 py-1 rounded-full ${
-                daysLeft === 0
-                  ? 'bg-red-600 text-white animate-pulse'
-                  : daysLeft <= 3
-                  ? 'bg-orange-500 text-white'
-                  : daysLeft <= 14
-                  ? 'bg-amber-400 text-slate-900'
-                  : 'bg-emerald-500 text-white'
-              }`}
-            >
-              {badgeText}
-            </span>
+    <MobileExpandableCard
+      className={`rounded-xl border-2 md:p-5 ${colorClasses} transition hover:shadow-md`}
+      summary={
+        <div className="flex items-start gap-4">
+          <div className="flex-shrink-0 text-4xl">{icon}</div>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-lg font-bold text-slate-900">{holiday.name}</h3>
+            <p className="mt-1 text-sm text-slate-600">{formattedDate}</p>
           </div>
         </div>
+      }
+    >
+      <div className="md:ml-20">
+        {holiday.description && (
+          <p className="line-clamp-2 text-xs text-slate-500 md:mt-2">{holiday.description}</p>
+        )}
+        <div className="mt-3">
+          <span
+            className={`inline-block rounded-full px-3 py-1 text-xs font-bold ${
+              daysLeft === 0
+                ? 'bg-red-600 text-white animate-pulse'
+                : daysLeft <= 3
+                ? 'bg-orange-500 text-white'
+                : daysLeft <= 14
+                ? 'bg-amber-400 text-slate-900'
+                : 'bg-emerald-500 text-white'
+            }`}
+          >
+            {badgeText}
+          </span>
+        </div>
       </div>
-    </div>
+    </MobileExpandableCard>
   );
 
 }

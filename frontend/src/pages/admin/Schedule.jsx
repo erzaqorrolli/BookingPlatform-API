@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
+import MobileExpandableCard from '../../components/MobileExpandableCard';
 
 const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thur', 'Fri', 'Sat'];
 
@@ -206,7 +207,59 @@ export default function Schedule() {
           </p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <>
+        <div className="space-y-2 md:hidden">
+          {members.map((m) => {
+            const assignedCount = weekDays.filter((d) => getEntry(m.id, formatDate(d))).length;
+            return (
+              <MobileExpandableCard
+                key={m.id}
+                summary={(
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="w-8 h-8 shrink-0 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-semibold">
+                        {m.name?.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-slate-900">{m.name}</p>
+                        <p className="text-xs text-slate-400 capitalize">{m.role}</p>
+                      </div>
+                    </div>
+                    <span className="shrink-0 text-xs text-slate-500">{assignedCount}/7 assigned</span>
+                  </div>
+                )}
+              >
+                <div className="space-y-2">
+                  {weekDays.map((d) => {
+                    const dateStr = formatDate(d);
+                    const entry = getEntry(m.id, dateStr);
+                    return (
+                      <button
+                        key={dateStr}
+                        onClick={() => openCell(m.id, dateStr, entry || null)}
+                        className={`flex w-full items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-3 text-left transition hover:border-indigo-300 ${
+                          entry ? statusColor(entry.status) : ''
+                        }`}
+                        style={entry ? { backgroundColor: `${entry.shift_color}15`, color: entry.shift_color } : undefined}
+                      >
+                        <span className="shrink-0 text-xs font-medium text-slate-600">
+                          {DAY_SHORT[d.getDay()]} · {d.toLocaleDateString('sq-AL', { day: 'numeric', month: 'short' })}
+                        </span>
+                        {entry ? (
+                          <span className="min-w-0 text-right">
+                            <span className="block truncate text-xs font-semibold">{entry.shift_name}</span>
+                            <span className="text-[10px] font-mono opacity-75">{entry.shift_start.slice(0, 5)} · {entry.status}</span>
+                          </span>
+                        ) : <span className="text-xs font-medium text-indigo-600">+ Add shift</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </MobileExpandableCard>
+            );
+          })}
+        </div>
+        <div className="hidden md:block bg-white rounded-xl border border-slate-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[900px]">
               <thead className="bg-slate-50 border-b border-slate-200">
@@ -282,6 +335,7 @@ export default function Schedule() {
             </table>
           </div>
         </div>
+        </>
       )}
 
       {showModal && (

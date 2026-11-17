@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import api from '../../../api/client';
 import Swal from 'sweetalert2';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import MobileExpandableCard from '../../../components/MobileExpandableCard';
 
 export default function Users() {
   const [users, setUsers] = useState([]);
@@ -224,7 +225,47 @@ const handleDelete = async (user) => {
           </p>
         </div>
       ) : (
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <>
+        <div className="space-y-3 md:hidden">
+          {paginatedUsers.map((u) => (
+            <MobileExpandableCard
+              key={u.id}
+              summary={
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
+                      {u.name?.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-slate-900 dark:text-white">{u.name}</div>
+                      <div className="truncate text-xs text-slate-500 dark:text-slate-400">{u.email}</div>
+                    </div>
+                  </div>
+                  <span className={`shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full ${
+                    u.status === 'blocked'
+                      ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+                      : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
+                  }`}>{u.status === 'blocked' ? 'Blocked' : 'Active'}</span>
+                </div>
+              }
+            >
+              <div className="space-y-3 text-sm text-slate-700 dark:text-slate-300">
+                <div><span className="text-slate-500 dark:text-slate-400">Roles:</span> {(u.roles || '').split(', ').filter(Boolean).join(', ') || '—'}</div>
+                <div><span className="text-slate-500 dark:text-slate-400">Companies:</span> {u.companies || '—'}</div>
+                <div><span className="text-slate-500 dark:text-slate-400">Email:</span> {u.email_verified_at ? '✓ Verified' : 'Pending verification'}</div>
+                <div><span className="text-slate-500 dark:text-slate-400">Registered:</span> {new Date(u.created_at).toLocaleDateString('en-GB')}</div>
+                <div className="flex flex-wrap gap-3 pt-1">
+                  <Link to={`/admin/superadmin/users/${u.id}`} className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline">View</Link>
+                  <button onClick={() => handleToggleStatus(u)} className={`text-xs font-medium ${u.status === 'blocked' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'} hover:underline`}>
+                    {u.status === 'blocked' ? 'Activate' : 'Block'}
+                  </button>
+                  <button onClick={() => handleDelete(u)} className="text-xs font-medium text-red-600 dark:text-red-400 hover:underline">Delete</button>
+                </div>
+              </div>
+            </MobileExpandableCard>
+          ))}
+        </div>
+        <div className="hidden md:block bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
@@ -373,6 +414,30 @@ const handleDelete = async (user) => {
             </div>
           )}
         </div>
+        {users.length > itemsPerPage && (
+          <div className="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 md:hidden">
+            <span className="text-xs text-slate-500 dark:text-slate-400">Page {displayedPage} of {totalPages}</span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={displayedPage === 1}
+                aria-label="Previous page"
+                className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 disabled:opacity-50"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                disabled={displayedPage === totalPages}
+                aria-label="Next page"
+                className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 disabled:opacity-50"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+        </>
       )}
     </div>
   );

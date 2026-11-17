@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import api from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
+import { useCompany } from '../contexts/CompanyContext';
 
 const SOCKET_URL = 'http://localhost:3001';
 
@@ -14,18 +15,25 @@ export default function NotificationBell() {
   const socketRef = useRef(null);
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { activeCompany } = useCompany();
+  const companyId = activeCompany?.id ?? null;
+  const scopeKey = companyId === null ? 'global' : String(companyId);
+  const [loadedScope, setLoadedScope] = useState(null);
 
   const load = useCallback(async () => {
     if (!user?.id) return;
 
     try {
-      const r = await api.get('/me/notifications');
+      const r = await api.get('/me/notifications', {
+        params: { company_id: companyId },
+      });
       setNotifications(r.data.data?.notifications || []);
       setUnreadCount(r.data.data?.unread_count || 0);
+      setLoadedScope(scopeKey);
     } catch (err) {
       console.error(err);
     }
-  }, [user?.id]);
+  }, [user?.id, companyId, scopeKey]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -77,7 +85,9 @@ export default function NotificationBell() {
 
   const markAsRead = async (id) => {
     try {
-      await api.post(`/me/notifications/${id}/read`);
+      await api.post(`/me/notifications/${id}/read`, {}, {
+        params: { company_id: companyId },
+      });
       load();
     } catch (err) {
       console.error(err);
@@ -86,7 +96,9 @@ export default function NotificationBell() {
 
   const markAllAsRead = async () => {
     try {
-      await api.post('/me/notifications/read-all');
+      await api.post('/me/notifications/read-all', {}, {
+        params: { company_id: companyId },
+      });
       load();
     } catch (err) {
       console.error(err);
@@ -113,7 +125,9 @@ export default function NotificationBell() {
     return `${Math.floor(diff / 86400)}d ago`;
   };
 
-  const recent = notifications.slice(0, 8);
+  const scopedNotifications = loadedScope === scopeKey ? notifications : [];
+  const scopedUnreadCount = loadedScope === scopeKey ? unreadCount : 0;
+  const recent = scopedNotifications.slice(0, 8);
 
   return (
     <div className="relative" ref={ref}>
@@ -124,9 +138,9 @@ export default function NotificationBell() {
         <svg className="w-6 h-6 text-slate-600 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
         </svg>
-        {unreadCount > 0 && (
+        {scopedUnreadCount > 0 && (
           <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-            {unreadCount > 99 ? '99+' : unreadCount}
+            {scopedUnreadCount > 99 ? '99+' : scopedUnreadCount}
           </span>
         )}
       </button>
@@ -135,7 +149,7 @@ export default function NotificationBell() {
         <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-50 overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-700">
             <h3 className="font-semibold text-slate-900 dark:text-white text-sm">Notifications</h3>
-            {unreadCount > 0 && (
+            {scopedUnreadCount > 0 && (
               <button
                 onClick={markAllAsRead}
                 className="text-xs text-indigo-600 hover:underline"

@@ -3,6 +3,7 @@ import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
 import Swal from 'sweetalert2';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import MobileExpandableCard from '../../components/MobileExpandableCard';
 
 export default function Payroll() {
   const { activeCompany } = useCompany();
@@ -149,7 +150,68 @@ export default function Payroll() {
           Loading...
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <>
+        <div className="space-y-2 md:hidden">
+          {paginatedEmployees.map((e) => {
+            const isEditing = editing[e.id] !== undefined;
+            const rate = isEditing ? editing[e.id] : (e.hourly_rate ?? '');
+            const unpaid = parseFloat(e.unpaid_total || 0);
+
+            return (
+              <MobileExpandableCard
+                key={e.id}
+                summary={(
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="w-9 h-9 shrink-0 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-semibold">
+                        {e.name?.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-slate-900">{e.name}</p>
+                        <p className="truncate text-xs text-slate-500">{e.email}</p>
+                      </div>
+                    </div>
+                    <span className="shrink-0 text-sm font-semibold text-amber-600">€{unpaid.toFixed(2)}</span>
+                  </div>
+                )}
+              >
+                <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-3 text-sm">
+                  <dt className="text-slate-500">Hourly rate</dt>
+                  <dd>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={rate}
+                        onChange={(ev) => handleRateChange(e.id, ev.target.value)}
+                        placeholder="0.00"
+                        aria-label={`Hourly rate for ${e.name}`}
+                        className="w-24 px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:border-indigo-500 outline-none"
+                      />
+                      <span className="text-xs text-slate-500">€/h</span>
+                    </div>
+                  </dd>
+                  <dt className="text-slate-500">Hours</dt>
+                  <dd className="text-slate-800">{parseFloat(e.unpaid_hours || 0).toFixed(2)}h</dd>
+                  <dt className="text-slate-500">Unpaid</dt>
+                  <dd className="font-semibold text-amber-600">€{unpaid.toFixed(2)}</dd>
+                  <dt className="text-slate-500">Paid</dt>
+                  <dd className="text-slate-800">€{parseFloat(e.paid_total || 0).toFixed(2)}</dd>
+                </dl>
+                <div className="mt-3 flex items-center gap-2">
+                  {isEditing && (
+                    <button onClick={() => handleSave(e.id)} className="text-xs font-medium px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Save</button>
+                  )}
+                  {unpaid > 0 && (
+                    <button onClick={() => handleMarkPaid(e.id, e.name, unpaid.toFixed(2))} className="text-xs font-medium px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">Mark paid</button>
+                  )}
+                </div>
+              </MobileExpandableCard>
+            );
+          })}
+        </div>
+        <div className="hidden md:block bg-white rounded-xl border border-slate-200 overflow-hidden">
           <table className="w-full">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
@@ -258,6 +320,7 @@ export default function Payroll() {
             </div>
           )}
         </div>
+        </>
       )}
     </div>
   );

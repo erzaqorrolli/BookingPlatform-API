@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import MobileExpandableCard from '../../components/MobileExpandableCard';
 
 export default function Services() {
   const { activeCompany } = useCompany();
@@ -182,7 +183,49 @@ export default function Services() {
           </button>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <>
+        <div className="space-y-2 md:hidden">
+          {paginatedServices.map((service) => (
+            <MobileExpandableCard
+              key={service.id}
+              summary={(
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-slate-900">{service.name}</p>
+                    <p className="text-xs text-slate-500">{service.duration_minutes} min</p>
+                  </div>
+                  <span className="shrink-0 text-sm font-semibold text-slate-900">€{parseFloat(service.price).toFixed(2)}</span>
+                </div>
+              )}
+            >
+              {service.description && <p className="mb-3 text-sm text-slate-600">{service.description}</p>}
+              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-sm">
+                <dt className="text-slate-500">Duration</dt>
+                <dd className="text-slate-800">{service.duration_minutes} min</dd>
+                <dt className="text-slate-500">Price</dt>
+                <dd className="text-slate-800">€{parseFloat(service.price).toFixed(2)}</dd>
+                <dt className="text-slate-500">Capacity</dt>
+                <dd className="text-slate-800">{service.capacity}</dd>
+                <dt className="text-slate-500">Status</dt>
+                <dd>
+                  <button
+                    onClick={() => toggleActive(service)}
+                    className={`text-xs font-semibold px-2.5 py-1 rounded-full transition ${
+                      service.active ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    {service.active ? 'Active' : 'Inactive'}
+                  </button>
+                </dd>
+              </dl>
+              <div className="mt-3 flex items-center gap-2">
+                <button onClick={() => openEdit(service)} className="text-xs font-medium text-indigo-600 px-3 py-1.5 rounded hover:bg-indigo-50 transition">Edit</button>
+                <button onClick={() => handleDelete(service)} className="text-xs font-medium text-red-600 px-3 py-1.5 rounded hover:bg-red-50 transition">Delete</button>
+              </div>
+            </MobileExpandableCard>
+          ))}
+        </div>
+        <div className="hidden md:block bg-white rounded-xl border border-slate-200 overflow-hidden">
           <table className="w-full">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
@@ -288,6 +331,7 @@ export default function Services() {
             </div>
           )}
         </div>
+        </>
       )}
 
       {/* Modal */}

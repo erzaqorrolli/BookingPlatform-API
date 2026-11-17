@@ -54,6 +54,12 @@ export default defineConfig({
     ],
   },
   server: {
+    proxy: {
+      '/booking-api': {
+        target: 'http://localhost',
+        changeOrigin: true,
+      },
+    },
     allowedHosts: [
       '.ngrok-free.app',
       '.ngrok.io',

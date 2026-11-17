@@ -4,6 +4,7 @@ import api from '../../../api/client';
 import { Link } from 'react-router-dom';
 import { Building2, Users, Calendar, Euro, BarChart3, TrendingUp, AlertTriangle, Sparkles, ArrowRight } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import MobileExpandableCard from '../../../components/MobileExpandableCard';
 
 const SOCKET_URL = 'http://localhost:3001';
 
@@ -184,7 +185,40 @@ export default function SuperAdminDashboard() {
               View all <ArrowRight size={14} />
             </Link>
           </div>
-          <div className="overflow-x-auto">
+          <div className="space-y-2 p-3 md:hidden">
+            {recentBookings.slice(0, 5).map((b) => (
+              <MobileExpandableCard
+                key={b.id}
+                className="dark:bg-slate-900"
+                summary={
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
+                        {b.customer_name || 'Customer'}
+                      </p>
+                      <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                        {b.reference} · {new Date(b.booking_date).toLocaleDateString('en-GB')}
+                      </p>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs capitalize text-slate-700 dark:bg-slate-700 dark:text-slate-300">{b.status}</span>
+                      <p className="mt-1 text-xs font-medium text-slate-900 dark:text-white">€{parseFloat(b.total_price).toFixed(2)}</p>
+                    </div>
+                  </div>
+                }
+              >
+                <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-xs">
+                  <dt className="text-slate-500 dark:text-slate-400">Reference</dt>
+                  <dd className="break-all font-mono text-slate-800 dark:text-slate-200">{b.reference || `#${b.id}`}</dd>
+                  <dt className="text-slate-500 dark:text-slate-400">Customer</dt>
+                  <dd className="break-words text-slate-800 dark:text-slate-200">{b.customer_name || 'Customer'}</dd>
+                  <dt className="text-slate-500 dark:text-slate-400">Date</dt>
+                  <dd className="text-slate-800 dark:text-slate-200">{new Date(b.booking_date).toLocaleDateString('en-GB')}</dd>
+                </dl>
+              </MobileExpandableCard>
+            ))}
+          </div>
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full">
               <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
                 <tr>

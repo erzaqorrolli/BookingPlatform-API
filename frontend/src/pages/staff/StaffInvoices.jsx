@@ -4,6 +4,7 @@ import { useCompany } from '../../contexts/CompanyContext';
 import { Search, Plus, Edit } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
+import MobileExpandableCard from '../../components/MobileExpandableCard';
 
 const STATUS_LABELS = {
   draft: 'Draft',
@@ -122,7 +123,7 @@ export default function StaffInvoices() {
         />
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <div className="hidden overflow-hidden rounded-xl border border-slate-200 bg-white md:block">
         <table className="w-full">
           <thead className="bg-slate-50 border-b border-slate-200">
             <tr>
@@ -182,6 +183,56 @@ export default function StaffInvoices() {
             )}
           </tbody>
         </table>
+      </div>
+      <div className="space-y-3 md:hidden">
+        {filteredInvoices.map((inv) => (
+          <MobileExpandableCard
+            key={inv.id}
+            summary={
+              <div className="flex min-w-0 items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-mono text-xs font-medium text-indigo-600">{inv.reference}</p>
+                  <p className="mt-1 truncate text-sm font-semibold text-slate-900">{inv.customer_name}</p>
+                  <p className="text-sm font-bold text-slate-800">€{parseFloat(inv.total).toFixed(2)}</p>
+                </div>
+                <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                  {STATUS_LABELS[inv.status] || inv.status}
+                </span>
+              </div>
+            }
+          >
+            <div className="space-y-3">
+              <p className="text-sm text-slate-600">
+                Issue date: {new Date(inv.issue_date).toLocaleDateString('sq-AL')}
+              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <Link
+                  to={`/staff/invoices/${inv.id}`}
+                  className="text-xs font-medium text-indigo-600 hover:underline"
+                >
+                  View invoice
+                </Link>
+                <select
+                  value={inv.status}
+                  onChange={(e) => handleStatusChange(inv.id, e.target.value)}
+                  aria-label={`Change status for invoice ${inv.reference}`}
+                  className="min-h-10 rounded border border-slate-200 px-2 py-1 text-xs outline-none focus:border-indigo-500"
+                >
+                  <option value="draft">Draft</option>
+                  <option value="sent">Sent</option>
+                  <option value="paid">Paid</option>
+                  <option value="overdue">Overdue</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </div>
+            </div>
+          </MobileExpandableCard>
+        ))}
+        {filteredInvoices.length === 0 && (
+          <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
+            No invoices found.
+          </div>
+        )}
       </div>
 
       {/* Modal për Krijim Fature */}

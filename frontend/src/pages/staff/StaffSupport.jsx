@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
 import Swal from 'sweetalert2';
+import MobileExpandableCard from '../../components/MobileExpandableCard';
 
 export default function StaffSupport() {
     const { activeCompany } = useCompany();
@@ -93,23 +94,40 @@ export default function StaffSupport() {
                     <div className="divide-y divide-slate-100 max-h-[600px] overflow-y-auto">
                         {tickets.length === 0 && <div className="p-4 text-sm text-slate-500">No tickets yet.</div>}
                         {tickets.map(t => (
-                            <div
+                            <MobileExpandableCard
                                 key={t.id}
-                                onClick={() => openTicket(t)}
-                                className={`p-4 cursor-pointer transition ${
-                                    selectedTicket?.id === t.id ? 'bg-indigo-50 border-l-4 border-indigo-500' : 'hover:bg-slate-50'
+                                className={`md:p-4 transition ${
+                                    selectedTicket?.id === t.id ? 'bg-indigo-50 border-l-4 border-indigo-500' : 'md:hover:bg-slate-50'
                                 }`}
+                                summary={
+                                    <button
+                                        type="button"
+                                        onClick={() => openTicket(t)}
+                                        className="w-full text-left"
+                                    >
+                                        <span className="mb-1 flex items-start justify-between gap-2">
+                                            <span className="truncate pr-2 text-sm font-medium text-slate-900">{t.subject}</span>
+                                            <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                                                t.status === 'open' ? 'bg-amber-100 text-amber-700' :
+                                                t.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
+                                                t.status === 'resolved' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                                            }`}>{t.status}</span>
+                                        </span>
+                                        <span className="block text-xs text-slate-500">{new Date(t.created_at).toLocaleDateString()}</span>
+                                    </button>
+                                }
                             >
-                                <div className="flex justify-between items-start mb-1">
-                                    <span className="font-medium text-slate-900 text-sm truncate pr-2">{t.subject}</span>
-                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
-                                        t.status === 'open' ? 'bg-amber-100 text-amber-700' :
-                                        t.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
-                                        t.status === 'resolved' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
-                                    }`}>{t.status}</span>
+                                <div className="md:hidden">
+                                    <p className="mb-2 whitespace-pre-wrap text-xs text-slate-600">{t.message}</p>
+                                    <button
+                                        type="button"
+                                        onClick={() => openTicket(t)}
+                                        className="min-h-10 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-indigo-600"
+                                    >
+                                        Open conversation
+                                    </button>
                                 </div>
-                                <div className="text-xs text-slate-500">{new Date(t.created_at).toLocaleDateString()}</div>
-                            </div>
+                            </MobileExpandableCard>
                         ))}
                     </div>
                 </div>
@@ -210,4 +228,3 @@ export default function StaffSupport() {
         </div>
     );
 }
-

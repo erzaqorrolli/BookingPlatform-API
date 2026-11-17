@@ -845,7 +845,8 @@ public function updateStatus(array $params): void
                     'booking',
                     "Booking {$status}",
                     "Your booking status is now {$status}",
-                    "/portal"
+                    "/portal",
+                    $companyId
                 );
             }
         }

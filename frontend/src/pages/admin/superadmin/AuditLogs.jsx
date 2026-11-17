@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../../../api/client';
+import MobileExpandableCard from '../../../components/MobileExpandableCard';
 
 const ACTION_COLORS = {
   'company.blocked': 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
@@ -135,7 +136,40 @@ export default function AuditLogs() {
           </p>
         </div>
       ) : (
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <>
+        <div className="space-y-3 md:hidden">
+          {paginatedLogs.map((log) => {
+            const meta = log.metadata ? JSON.parse(log.metadata) : {};
+            return (
+              <MobileExpandableCard
+                key={log.id}
+                summary={
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                        {log.user_name || 'Unknown'}
+                      </div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">{formatDate(log.created_at)}</div>
+                    </div>
+                    <span className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full ${
+                      ACTION_COLORS[log.action] || 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                    }`}>
+                      {log.action}
+                    </span>
+                  </div>
+                }
+              >
+                <div className="space-y-2 text-sm">
+                  <div><span className="text-slate-500 dark:text-slate-400">User email:</span> <span className="text-slate-800 dark:text-slate-200">{log.user_email || '—'}</span></div>
+                  <div><span className="text-slate-500 dark:text-slate-400">Target:</span> <span className="text-slate-800 dark:text-slate-200">{log.target_type} #{log.target_id}</span></div>
+                  {meta.name && <div><span className="text-slate-500 dark:text-slate-400">Name:</span> <span className="text-slate-800 dark:text-slate-200">{meta.name}</span></div>}
+                  <div><span className="text-slate-500 dark:text-slate-400">Reason:</span> <span className="text-slate-800 dark:text-slate-200">{meta.reason || '—'}</span></div>
+                </div>
+              </MobileExpandableCard>
+            );
+          })}
+        </div>
+        <div className="hidden md:block bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
@@ -220,6 +254,28 @@ export default function AuditLogs() {
             </div>
           )}
         </div>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 md:hidden">
+            <span className="text-xs text-slate-500 dark:text-slate-400">Page {currentPage} of {totalPages}</span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-sm disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <button
+                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-sm disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
+        </>
       )}
     </div>
   );

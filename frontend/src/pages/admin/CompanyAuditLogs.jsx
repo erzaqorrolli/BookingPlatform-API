@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import MobileExpandableCard from '../../components/MobileExpandableCard';
 
 export default function CompanyAuditLogs() {
     const { activeCompany } = useCompany();
@@ -97,7 +98,43 @@ export default function CompanyAuditLogs() {
                 />
             </div>
 
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div className="space-y-2 md:hidden">
+                {filtered.length === 0 ? (
+                    <div className="rounded-xl border border-slate-200 bg-white px-5 py-8 text-center text-sm text-slate-500">
+                        No activity.
+                    </div>
+                ) : paginatedLogs.map(log => (
+                    <MobileExpandableCard
+                        key={log.id}
+                        summary={(
+                            <div>
+                                <div className="flex items-start justify-between gap-2">
+                                    <span className="text-sm font-medium text-slate-900">{log.user_name || 'System'}</span>
+                                    <span className="shrink-0 text-xs text-slate-500">
+                                        {new Date(log.created_at).toLocaleDateString('sq-AL')}
+                                    </span>
+                                </div>
+                                <span className="mt-1 inline-block text-xs font-mono bg-slate-100 px-2 py-1 rounded text-slate-700">
+                                    {log.action}
+                                </span>
+                            </div>
+                        )}
+                    >
+                        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-sm">
+                            <dt className="text-slate-500">Date</dt>
+                            <dd className="text-slate-800">{new Date(log.created_at).toLocaleString('sq-AL')}</dd>
+                            <dt className="text-slate-500">User</dt>
+                            <dd className="break-words text-slate-800">{log.user_name || 'System'} · {log.user_email || '—'}</dd>
+                            <dt className="text-slate-500">Action</dt>
+                            <dd className="break-words font-mono text-slate-800">{log.action}</dd>
+                            <dt className="text-slate-500">Details</dt>
+                            <dd className="break-words text-slate-800">{log.metadata ? formatDetails(log.action, log.metadata) : '—'}</dd>
+                        </dl>
+                    </MobileExpandableCard>
+                ))}
+            </div>
+
+            <div className="hidden md:block bg-white rounded-xl border border-slate-200 overflow-hidden">
                 <table className="w-full">
                     <thead className="bg-slate-50 border-b border-slate-200">
                         <tr>

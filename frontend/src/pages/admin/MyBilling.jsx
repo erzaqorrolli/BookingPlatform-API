@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import MobileExpandableCard from '../../components/MobileExpandableCard';
 
 export default function MyBilling() {
     const { activeCompany } = useCompany();
@@ -60,7 +61,45 @@ export default function MyBilling() {
                 </div>
             </div>
 
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <>
+            <div className="space-y-2 md:hidden">
+                {paginatedInvoices.length === 0 ? (
+                    <div className="rounded-xl border border-slate-200 bg-white px-5 py-8 text-center text-sm text-slate-500">
+                        No invoices yet.
+                    </div>
+                ) : paginatedInvoices.map(inv => (
+                    <MobileExpandableCard
+                        key={inv.id}
+                        summary={(
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                    <p className="truncate text-sm font-mono text-slate-700">{inv.invoice_number}</p>
+                                    <p className="mt-1 text-sm font-bold text-slate-900">€{parseFloat(inv.amount).toFixed(2)}</p>
+                                </div>
+                                <span className={`shrink-0 text-xs px-2 py-1 rounded-full font-semibold ${
+                                    inv.status === 'paid' ? 'bg-emerald-100 text-emerald-700' :
+                                    inv.status === 'overdue' ? 'bg-red-100 text-red-700' :
+                                    'bg-amber-100 text-amber-700'
+                                }`}>{inv.status}</span>
+                            </div>
+                        )}
+                    >
+                        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-sm">
+                            <dt className="text-slate-500">Invoice</dt>
+                            <dd className="break-all font-mono text-slate-800">{inv.invoice_number}</dd>
+                            <dt className="text-slate-500">Amount</dt>
+                            <dd className="text-slate-800">€{parseFloat(inv.amount).toFixed(2)}</dd>
+                            <dt className="text-slate-500">Due date</dt>
+                            <dd className="text-slate-800">{new Date(inv.due_date).toLocaleDateString()}</dd>
+                            <dt className="text-slate-500">Status</dt>
+                            <dd className="text-slate-800">{inv.status}</dd>
+                            <dt className="text-slate-500">Paid at</dt>
+                            <dd className="text-slate-800">{inv.paid_at ? new Date(inv.paid_at).toLocaleDateString() : '—'}</dd>
+                        </dl>
+                    </MobileExpandableCard>
+                ))}
+            </div>
+            <div className="hidden md:block bg-white rounded-xl border border-slate-200 overflow-hidden">
                 <table className="w-full">
                     <thead className="bg-slate-50 border-b border-slate-200">
                         <tr>
@@ -124,6 +163,7 @@ export default function MyBilling() {
                     </div>
                 )}
             </div>
+            </>
         </div>
     );
 }
