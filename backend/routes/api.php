@@ -83,6 +83,7 @@ Router::put('/api/companies/{companyId}/working-hours/{day}',  [WorkingHoursCont
 Router::get('/api/public/companies',       [BookingController::class, 'publicCompanies']);
 Router::get('/api/public/availability',    [BookingController::class, 'availability']);
 Router::post('/api/public/bookings',       [BookingController::class, 'createPublic']);
+Router::get('/api/public/payments/checkout/{bookingId}', [PaymentController::class, 'verifyCheckout']);
 
 Router::get('/api/public/companies/{slug}', [BookingController::class, 'publicCompanyBySlug']);
 Router::get('/api/me/bookings', [CustomerPortalController::class, 'myBookings']);

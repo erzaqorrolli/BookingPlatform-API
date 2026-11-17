@@ -1,9 +1,35 @@
-import { useParams, Link } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
+import { useLocation, useParams, Link } from 'react-router-dom';
 import { useSettings } from '../../contexts/SettingsContext';
+import api from '../../api/client';
+import Swal from 'sweetalert2';
 
 export default function BookingSuccess() {
   const { id } = useParams();
   const { settings } = useSettings();
+  const location = useLocation();
+  const paymentAlertShown = useRef(false);
+
+  useEffect(() => {
+    const sessionId = new URLSearchParams(location.search).get('session_id');
+    if (!sessionId || paymentAlertShown.current) return;
+
+    paymentAlertShown.current = true;
+    api.get(`/public/payments/checkout/${id}`, { params: { session_id: sessionId } })
+      .then((response) => {
+        if (response.data?.data?.paid) {
+          return Swal.fire({
+            icon: 'success',
+            title: 'Card payment successful!',
+            text: 'Your payment has been received and your booking is being confirmed.',
+            confirmButtonText: 'Continue',
+          });
+        }
+      })
+      .catch((error) => {
+        console.error('Could not verify card payment:', error);
+      });
+  }, [id, location.search]);
 
   return (
     <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center p-4 font-sans selection:bg-emerald-500/30 sm:p-6">

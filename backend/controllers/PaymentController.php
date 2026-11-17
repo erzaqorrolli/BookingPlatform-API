@@ -43,7 +43,7 @@
         $stripe = new StripeService();
 
         $frontendUrl = rtrim($_ENV['FRONTEND_URL'] ?? 'http://localhost:5173', '/');
-        $successUrl = $frontendUrl . '/';
+        $successUrl = $frontendUrl . '/booking-success/' . $bookingId;
         $cancelUrl = $frontendUrl . '/';
 
         $bookingDate = $booking->toArray();
@@ -63,6 +63,40 @@
         echo json_encode(['error' => $e->getMessage()]);
     }
 
+    }
+
+    public function verifyCheckout(array $params): void
+    {
+        $bookingId = (int) ($params['bookingId'] ?? 0);
+        $sessionId = trim((string) ($_GET['session_id'] ?? ''));
+
+        if (!$bookingId || $sessionId === '') {
+            json_err('Booking and checkout session are required', 422);
+        }
+
+        $booking = Booking::findById($bookingId);
+        if (
+            !$booking
+            || $booking->payment_method !== 'card'
+            || $booking->stripe_session_id !== $sessionId
+        ) {
+            json_err('Invalid checkout session', 403);
+        }
+
+        try {
+            $session = (new StripeService())->retrieveCheckoutSession($sessionId);
+        } catch (\Throwable $e) {
+            error_log('Stripe checkout verification failed for booking ' . $bookingId . ': ' . $e->getMessage());
+            json_err('Could not verify the card payment right now', 503);
+        }
+
+        $sessionBookingId = (int) ($session->metadata->booking_id ?? 0);
+        $paid = (string) $session->id === $booking->stripe_session_id
+            && $sessionBookingId === $bookingId
+            && $session->payment_status === 'paid'
+            && !empty($session->payment_intent);
+
+        json_ok(['paid' => $paid]);
     }
 
     public function webhook(): void {
