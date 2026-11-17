@@ -4,6 +4,82 @@ import { useCompany } from '../../contexts/CompanyContext';
 import { ChevronLeft, Send, User, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { usePermissions } from '../../contexts/PermissionsContext';
+import { createElement } from 'react';
+
+const emailElements = {
+  a: 'a',
+  b: 'strong',
+  blockquote: 'blockquote',
+  br: 'br',
+  div: 'div',
+  em: 'em',
+  h1: 'h3',
+  h2: 'h3',
+  h3: 'h3',
+  h4: 'h4',
+  h5: 'h4',
+  h6: 'h4',
+  hr: 'hr',
+  i: 'em',
+  li: 'li',
+  ol: 'ol',
+  p: 'p',
+  span: 'span',
+  strong: 'strong',
+  u: 'u',
+  ul: 'ul',
+};
+
+function renderEmailNode(node, key) {
+  if (node.nodeType === Node.TEXT_NODE) return node.textContent;
+  if (node.nodeType !== Node.ELEMENT_NODE) return null;
+
+  const tag = node.tagName.toLowerCase();
+  const children = Array.from(node.childNodes).map((child, index) =>
+    renderEmailNode(child, `${key}-${index}`)
+  );
+  const element = emailElements[tag];
+
+  if (!element) return children;
+
+  const props = { key };
+  if (tag === 'a') {
+    const href = node.getAttribute('href') || '';
+    if (/^(https?:|mailto:)/i.test(href)) {
+      props.href = href;
+      props.target = '_blank';
+      props.rel = 'noreferrer';
+      props.className = 'underline underline-offset-2';
+    }
+  }
+
+  if (['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(tag)) {
+    props.className = 'mb-0.5 mt-1 text-base font-bold first:mt-0';
+  } else if (tag === 'p') {
+    props.className = 'mb-0 last:mb-0';
+  } else if (tag === 'ul' || tag === 'ol') {
+    props.className = `mb-0 pl-5 last:mb-0 ${tag === 'ul' ? 'list-disc' : 'list-decimal'}`;
+  } else if (tag === 'li') {
+    props.className = 'last:mb-0';
+  } else if (tag === 'blockquote') {
+    props.className = 'my-1 border-l-2 border-current/40 pl-3 italic';
+  } else if (tag === 'hr') {
+    props.className = 'my-2 border-current/30';
+  }
+
+  return createElement(element, props, ...children);
+}
+
+function renderEmailBody(body) {
+  if (!/<[a-z][\s\S]*>/i.test(body)) return body;
+
+  const document = new DOMParser().parseFromString(body, 'text/html');
+  document.querySelectorAll('script, style, iframe, object, embed, link, meta').forEach((element) => element.remove());
+
+  return Array.from(document.body.childNodes).map((node, index) =>
+    renderEmailNode(node, `email-${index}`)
+  );
+}
 
 export default function Chat() {
   const { activeCompany } = useCompany();
@@ -204,6 +280,7 @@ export default function Chat() {
                 messages.map((msg) => {
             const isOutbound = msg.direction === 'outbound' || 
                               (msg.from_email && msg.from_email === activeCompany?.email);
+                  const isHtmlBody = /<[a-z][\s\S]*>/i.test(msg.body);
                   return (
                     <div key={msg.id} className={`flex ${isOutbound ? 'justify-end' : 'justify-start'}`}>
                       <div className={`max-w-[90%] break-words p-3 text-sm shadow-sm sm:max-w-[70%] ${
@@ -217,7 +294,9 @@ export default function Chat() {
                           {isOutbound ? activeCompany?.name || 'You' : 'Client'}
                         </div>
                         {msg.subject && <div className="font-semibold mb-1">{msg.subject}</div>}
-                        {msg.body}
+                        <div className={`${isHtmlBody ? 'whitespace-normal' : 'whitespace-pre-wrap'} break-words leading-[2.50]`}>
+                          {renderEmailBody(msg.body)}
+                        </div>
                         <div className={`text-[10px] mt-1 ${isOutbound ? 'text-indigo-200' : 'text-slate-400'}`}>
                           {new Date(msg.created_at).toLocaleString('sq-AL')}
                         </div>
