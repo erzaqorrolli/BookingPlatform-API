@@ -20,16 +20,13 @@ export default function RegisterBusiness() {
     setLoading(true);
 
     try {
-      // 1. Regjistro biznesin
       const r = await api.post('/auth/register-business', form);
       const data = r.data.data;
 
-      // 2. Verifiko email-in (dev mode)
       if (data.debug_token) {
         await api.post('/auth/verify', { token: data.debug_token });
       }
 
-      // 3. Login automatik
       const loginRes = await api.post('/auth/login', {
         email: form.email,
         password: form.password,
@@ -38,7 +35,6 @@ export default function RegisterBusiness() {
       const token = loginRes.data.data.token;
       sessionStorage.setItem('token', token);
 
-      // 4. Redirect në admin
       navigate('/admin');
     } catch (err) {
       setError(err.response?.data?.error || 'Register failed');
@@ -68,7 +64,7 @@ export default function RegisterBusiness() {
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             required
-            placeholder="Filan Fisteku"
+            placeholder="Name"
             className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder:text-white/30 focus:border-indigo-400 focus:bg-white/10 outline-none transition"
           />
         </div>
@@ -99,7 +95,7 @@ export default function RegisterBusiness() {
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
             required
-            placeholder="emri@kompania.com"
+            placeholder="name@company.com"
             className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder:text-white/30 focus:border-indigo-400 focus:bg-white/10 outline-none transition"
           />
         </div>
