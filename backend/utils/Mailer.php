@@ -252,9 +252,9 @@ public static function sendBookingCancellationToCustomer(string $email, string $
 
 public static function sendInvoice(string $email, string $customerName, array $invoice): void
 {
-    $appUrl = rtrim($_ENV['APP_URL'] ?? 'http://localhost/booking-api', '/');
+    $frontendUrl = rtrim($_ENV['FRONTEND_URL'] ?? 'http://localhost:5173', '/');
     $token = $invoice['payment_token'] ?? '';
-    $viewUrl = $appUrl . '/#/invoice/' . $token;
+    $viewUrl = htmlspecialchars($frontendUrl . '/invoice/' . rawurlencode($token), ENT_QUOTES, 'UTF-8');
 
     $reference = htmlspecialchars($invoice['reference'] ?? '');
     $companyName = htmlspecialchars($invoice['company_name'] ?? 'Company');

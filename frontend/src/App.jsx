@@ -20,6 +20,7 @@ import About from './pages/public/About';
 import Contact from './pages/public/Contact';
 import BookingWizard from './pages/public/BookingWizard';
 import BookingSuccess from './pages/public/BookingSuccess';
+import PublicInvoice from './pages/public/PublicInvoice';
 
 // ADMIN
 import Dashboard from './pages/admin/Dashboard';
@@ -184,6 +185,7 @@ export default function App() {
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/book/:slug" element={<BookingWizard />} />
                 <Route path="/booking-success/:id" element={<BookingSuccess />} />  
+                <Route path="/invoice/:token" element={<PublicInvoice />} />
 
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element ={<Register />} />

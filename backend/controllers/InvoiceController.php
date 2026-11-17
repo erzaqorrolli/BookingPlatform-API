@@ -371,7 +371,23 @@ class InvoiceController
         json_ok(['message' => 'Invoice deleted']);
     }
 
-  public function publicMarkAsPaid(array $params): void
+    public function publicView(array $params): void
+    {
+        $token = trim((string) ($params['token'] ?? ''));
+        if ($token === '') {
+            json_err('Invoice token required', 422);
+        }
+
+        $invoice = Invoice::findByToken($token);
+        if (!$invoice) {
+            json_err('Invoice not found', 404);
+        }
+
+        $invoice->markAsViewed();
+        json_ok($invoice->toArray());
+    }
+
+    public function publicMarkAsPaid(array $params): void
 {
     $token = trim((string) ($params['token'] ?? ''));
     if (!$token) json_err('Token required', 422);
