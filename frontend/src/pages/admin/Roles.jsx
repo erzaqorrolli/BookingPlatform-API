@@ -14,6 +14,7 @@ const ALL_PERMISSIONS = [
   { key: 'staff_can_manage_customers', label: 'Manage clients' },
   { key: 'staff_can_manage_invoices', label: 'Manage invoices' },
   { key: 'staff_can_contact_support', label: 'Contact platform support' }, 
+  { key: 'staff_can_manage_marketing', label: 'Manage marketing campaigns' },
 ];
 export default function Roles() {
   const { activeCompany } = useCompany();

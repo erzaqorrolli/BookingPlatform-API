@@ -463,8 +463,12 @@ function CampaignWizard({ companyId }) {
                 )}
 
                 {result && (
-                    <div className="mt-4 p-3 bg-green-50 text-green-700 rounded-lg text-sm border border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800">
-                        ✅ Campaign sent! <b>{result.sent}</b> emails delivered out of <b>{result.total}</b> customers.
+                    <div className={`mt-4 p-3 rounded-lg text-sm border ${
+                        result.failed > 0
+                            ? 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800'
+                            : 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800'
+                    }`}>
+                        Campaign finished: <b>{result.sent}</b> emails sent, <b>{result.failed || 0}</b> failed, out of <b>{result.total}</b> eligible clients.
                     </div>
                 )}
             </div>

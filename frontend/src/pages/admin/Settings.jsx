@@ -402,6 +402,15 @@ export default function Settings() {
                   />
                   Send email to clients
                 </label>
+                <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={role.permissions.includes('staff_can_manage_marketing')}
+                    onChange={() => toggleRolePermission(role.id, 'staff_can_manage_marketing', role.permissions)}
+                    className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                  />
+                  Manage marketing campaigns
+                </label>
               </div>
             </div>
           ))}

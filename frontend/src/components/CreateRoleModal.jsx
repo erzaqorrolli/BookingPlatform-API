@@ -24,6 +24,12 @@ const AVAILABLE_PERMISSIONS = [
     ]
   },
   {
+    category: 'Marketing',
+    items: [
+      { key: 'staff_can_manage_marketing', label: 'Manage marketing campaigns', description: 'Allow staff to create and send marketing campaigns.' },
+    ]
+  },
+  {
     category: 'Finances',
     items: [
       { key: 'staff_can_manage_invoices', label: 'Manage invoices', description: ' Allow staff to create and view invoices.' },

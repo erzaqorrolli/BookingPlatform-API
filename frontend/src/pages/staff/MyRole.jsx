@@ -9,6 +9,7 @@ const ALL_PERMISSIONS = [
   { key: 'staff_can_view_bookings', label: 'View Bookings', description: 'You can see booking list.' },
   { key: 'staff_can_manage_customers', label: 'Manage clients', description: 'You can add and change clients.' },
   { key: 'staff_can_manage_invoices', label: 'Manage invoices', description: 'You can view and add invoices.' },
+  { key: 'staff_can_manage_marketing', label: 'Manage marketing campaigns', description: 'You can create and send marketing campaigns.' },
 ];
 
 export default function MyRole() {

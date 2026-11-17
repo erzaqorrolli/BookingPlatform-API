@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Models\ContactMessage;
+use App\Models\Company;
 use App\Models\User;
 use App\Utils\Mailer;
 use App\Config\Database;
@@ -207,52 +208,84 @@ class ContactController
         $validFrom = $input['valid_from'] ?? date('Y-m-d');
         $validUntil = $input['valid_until'] ?? date('Y-m-d', strtotime('+30 days'));
 
-        if (!$companyId || !$type || !$subject || !$body) {
+        if (
+            !$companyId
+            || !in_array($type, ['new_clients', 'existing_clients', 'comeback'], true)
+            || !$subject
+            || !$body
+        ) {
             json_err('Missing required fields', 422);
         }
 
+        if (!Company::userBelongsTo($uid, $companyId)) {
+            json_err('Forbidden', 403);
+        }
+
+        $role = Company::userRole($uid, $companyId);
+        if (!in_array($role, ['owner', 'admin', 'manager'], true)) {
+            $permissionStmt = Database::pdo()->prepare("
+                SELECT 1
+                FROM company_user_custom_roles cu
+                JOIN company_role_permissions p ON p.role_id = cu.custom_role_id
+                WHERE cu.company_id = ? AND cu.user_id = ?
+                  AND p.permission_key = 'staff_can_manage_marketing'
+                  AND p.enabled = 1
+                LIMIT 1
+            ");
+            $permissionStmt->execute([$companyId, $uid]);
+            if (!$permissionStmt->fetchColumn()) {
+                json_err('You do not have permission to manage marketing', 403);
+            }
+        }
+
         $db = Database::pdo();
-        $customers = [];
 
         if ($type === 'comeback') {
             $stmt = $db->prepare("
-                SELECT DISTINCT u.id, u.name, u.email
-                FROM users u
-                JOIN bookings b ON b.customer_id = u.id
-                WHERE b.company_id = ?
-                AND u.id NOT IN (
-                    SELECT customer_id FROM bookings 
-                    WHERE company_id = ? AND booking_date >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
+                SELECT DISTINCT c.id, c.name, c.email
+                FROM customers c
+                JOIN bookings b ON b.customer_id = c.id AND b.company_id = c.company_id
+                WHERE c.company_id = ?
+                  AND c.email IS NOT NULL
+                  AND TRIM(c.email) <> ''
+                  AND NOT EXISTS (
+                    SELECT 1
+                    FROM bookings recent
+                    WHERE recent.customer_id = c.id
+                      AND recent.company_id = c.company_id
+                      AND recent.booking_date >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
                 )
             ");
-            $stmt->execute([$companyId, $companyId]);
-            $customers = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            $stmt->execute([$companyId]);
         } 
         elseif ($type === 'new_clients') {
             $stmt = $db->prepare("
-                SELECT u.id, u.name, u.email
-                FROM users u
-                JOIN (
-                    SELECT customer_id, MIN(booking_date) as first_booking
-                    FROM bookings
-                    WHERE company_id = ?
-                    GROUP BY customer_id
-                ) first_b ON first_b.customer_id = u.id
-                WHERE first_b.first_booking >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+                SELECT c.id, c.name, c.email
+                FROM customers c
+                JOIN bookings b ON b.customer_id = c.id AND b.company_id = c.company_id
+                WHERE c.company_id = ?
+                  AND c.email IS NOT NULL
+                  AND TRIM(c.email) <> ''
+                GROUP BY c.id, c.name, c.email
+                HAVING MIN(b.booking_date) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
             ");
             $stmt->execute([$companyId]);
-            $customers = $stmt->fetchAll(\PDO::FETCH_ASSOC);
         } 
         else { 
             $stmt = $db->prepare("
-                SELECT DISTINCT u.id, u.name, u.email
-                FROM users u
-                JOIN bookings b ON b.customer_id = u.id
-                WHERE b.company_id = ?
+                SELECT c.id, c.name, c.email
+                FROM customers c
+                WHERE c.company_id = ?
+                  AND c.email IS NOT NULL
+                  AND TRIM(c.email) <> ''
             ");
             $stmt->execute([$companyId]);
-            $customers = $stmt->fetchAll(\PDO::FETCH_ASSOC);
         }
+
+        $customers = array_values(array_filter(
+            $stmt->fetchAll(\PDO::FETCH_ASSOC),
+            static fn(array $customer): bool => filter_var($customer['email'], FILTER_VALIDATE_EMAIL) !== false
+        ));
 
         if (empty($customers)) {
             json_err('No customers found for this campaign type', 404);
@@ -282,18 +315,21 @@ class ContactController
         }
 
         $sent = 0;
+        $failed = 0;
         foreach ($customers as $customer) {
-            try {
-                \App\Utils\Mailer::send($customer['email'], $subject, $body);
+            $mailError = null;
+            if (\App\Utils\TenantMailer::send($companyId, $customer['email'], $subject, $body, $mailError)) {
                 $sent++;
-            } catch (\Throwable $e) {
-                error_log("Failed to send email to {$customer['email']}: " . $e->getMessage());
+            } else {
+                $failed++;
+                error_log("Marketing campaign email failed for company $companyId to {$customer['email']}: " . ($mailError ?? 'Unknown email delivery error'));
             }
         }
 
         json_ok([
             'message' => 'Campaign processed',
             'sent' => $sent,
+            'failed' => $failed,
             'total' => count($customers),
             'discount_code' => $coupon 
         ]);

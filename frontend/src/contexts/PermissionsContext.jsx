@@ -20,7 +20,6 @@ export function PermissionsProvider({ children }) {
       return;
     }
 
-    // Nëse është owner ose admin, ka çdo leje
     if (role === 'owner' || role === 'admin') {
       setPermissions(['*']);
       setIsAdmin(true);

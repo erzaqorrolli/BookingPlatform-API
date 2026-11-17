@@ -53,6 +53,7 @@ import Profile from './pages/portal/Profile';
 // PROTECTION
 import ProtectedPage from './components/ProtectedPage';
 import ProtectedPortal from './components/ProtectedPortal';
+import PermissionGuard from './components/PermissionGuard';
 import StaffLayout from './components/StaffLayout';
 
 import CustomerDetail from './pages/admin/CustomerDetail';
@@ -246,6 +247,13 @@ export default function App() {
                 
                 <Route path="/staff/my-role" element={<ProtectedRoute><StaffLayout><MyRole /></StaffLayout></ProtectedRoute>} />
                 <Route path="/staff/chat" element={<ProtectedRoute><StaffLayout><Chat /></StaffLayout></ProtectedRoute>} />
+                <Route path="/staff/marketing" element={
+                  <ProtectedRoute>
+                    <PermissionGuard permission="staff_can_manage_marketing">
+                      <StaffLayout><Marketing /></StaffLayout>
+                    </PermissionGuard>
+                  </ProtectedRoute>
+                } />
                 
                 <Route path="/admin/chat" element={<ProtectedPage><Chat /></ProtectedPage>} />
                 <Route path="/admin/notifications" element={<ProtectedPage><Notifications /></ProtectedPage>} />
