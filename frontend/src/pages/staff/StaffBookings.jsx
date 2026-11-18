@@ -4,6 +4,7 @@ import { useCompany } from '../../contexts/CompanyContext';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import ManualBookingModal from '../../components/ManualBookingModal';
 import MobileExpandableCard from '../../components/MobileExpandableCard';
+import Swal from 'sweetalert2'; 
 
 const STATUS_LABELS = {
   pending: 'Waiting',
@@ -63,10 +64,68 @@ export default function StaffBookings() {
   }, [activeCompany?.id]);
 
   const updateStatus = async (bookingId, newStatus) => {
+    if (newStatus === 'cancelled') {
+      const booking = bookings.find(b => b.id === bookingId);
+      const isCardPayment = booking?.payment_method === 'card' && booking?.stripe_payment_intent;
+      
+      const confirmResult = await Swal.fire({
+        title: 'Cancel booking?',
+        html: isCardPayment 
+          ? `<p>This booking was paid by card. The customer will receive a <strong>100% refund</strong> of €${parseFloat(booking.total_price).toFixed(2)}.</p>
+             <p class="text-sm text-slate-500 mt-2">Are you sure you want to cancel?</p>`
+          : 'Are you sure you want to cancel this booking?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, cancel',
+        confirmButtonColor: '#dc2626',
+        cancelButtonText: 'No, keep it',
+      });
+
+      if (!confirmResult.isConfirmed) return;
+
+      const { value: reason } = await Swal.fire({
+        title: 'Cancellation reason',
+        input: 'textarea',
+        inputLabel: 'Please provide a reason',
+        inputPlaceholder: 'e.g., Staff unavailable, emergency, etc.',
+        showCancelButton: true,
+        confirmButtonText: 'Confirm',
+        inputValidator: (value) => {
+          if (!value || value.trim().length < 3) {
+            return 'Please write a reason (at least 3 characters)';
+          }
+        },
+      });
+
+      if (!reason) return;
+
+      try {
+        await api.put(
+          `/companies/${activeCompany.id}/bookings/${bookingId}/status`,
+          { 
+            status: newStatus, 
+            cancelled_by: 'staff',
+            cancellation_reason: reason
+          }
+        );
+        await load();
+        Swal.fire({
+          icon: 'success',
+          title: 'Cancelled',
+          text: 'Booking cancelled successfully.',
+          timer: 2000,
+          showConfirmButton: false,
+        });
+      } catch (err) {
+        alert(err.response?.data?.error || 'Change failed');
+      }
+      return;
+    }
+
     try {
       await api.put(
         `/companies/${activeCompany.id}/bookings/${bookingId}/status`,
-        { status: newStatus }
+        { status: newStatus, cancelled_by: 'staff' }
       );
       await load();
     } catch (err) {

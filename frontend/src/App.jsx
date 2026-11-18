@@ -92,6 +92,7 @@ import CompanyAuditLogs from './pages/admin/CompanyAuditLogs';
 import StaffSupport from './pages/staff/StaffSupport';
 import Payments from './pages/admin/Payments';
 import SuperAdminSettings from './pages/admin/superadmin/SuperAdminSettings';
+import Refunds from './pages/admin/Refunds';
 
 function useResponsiveTableLabels() {
   useEffect(() => {
@@ -270,6 +271,7 @@ export default function App() {
                 <Route path="/admin/activity-log" element={<ProtectedPage allowed={['owner', 'admin']}><CompanyAuditLogs /></ProtectedPage>} />
                 <Route path="/staff/support" element={<ProtectedRoute><StaffLayout><StaffSupport /></StaffLayout></ProtectedRoute>} />
                 <Route path="/admin/superadmin/settings" element={<ProtectedPage allowed={['superadmin']}><SuperAdminSettings /></ProtectedPage>} />
+                <Route path="/admin/refunds" element={<ProtectedPage allowed={['owner', 'admin']}><Refunds /></ProtectedPage>} />
               </Routes>
               <Toaster 
                 position="bottom-right" 

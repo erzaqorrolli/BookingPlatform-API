@@ -65,9 +65,25 @@ export default function MyBookings() {
   }, []);
 
   const handleCancel = async (booking) => {
+    const isCardPayment = booking.payment_method === 'card' && booking.stripe_payment_intent;
+    
+    const paymentInfo = booking.payment_method === 'card' 
+      ? '<span class="text-blue-600 font-medium">💳 Paid by card</span>' 
+      : '<span class="text-slate-600 font-medium">💵 Cash payment</span>';
+
+    const refundMessage = isCardPayment 
+      ? `<div class="mt-3 p-3 bg-blue-50 text-blue-700 rounded-lg text-sm text-left">
+           <div class="mb-1">${paymentInfo}</div>
+           <strong>Refund Policy:</strong> Since you paid by card, you will receive a <strong>50% refund</strong> of the total amount (€${(parseFloat(booking.total_price) * 0.5).toFixed(2)}) to your original payment method.
+         </div>`
+      : `<div class="mt-3 p-3 bg-slate-50 text-slate-600 rounded-lg text-sm text-left">
+           <div class="mb-1">${paymentInfo}</div>
+           No refund is applicable for cash payments.
+         </div>`;
+
     const { value: reason } = await Swal.fire({
       title: 'Cancel booking?',
-      html: `Are you sure you want to cancel <b>${booking.reference}</b>?`,
+      html: `Are you sure you want to cancel <b>${booking.reference}</b>?${refundMessage}`,
       input: 'textarea',
       inputLabel: 'Reason for cancellation',
       inputPlaceholder: 'Please tell us why you want to cancel...',
@@ -85,14 +101,19 @@ export default function MyBookings() {
     if (!reason) return;
 
     try {
-      await api.post(`/me/bookings/${booking.id}/cancel`, { reason });
+      await api.post(`/me/bookings/${booking.id}/cancel`, { 
+        reason,
+        cancelled_by: 'customer'
+      });
       await load();
 
       Swal.fire({
         icon: 'success',
         title: 'Cancelled',
-        text: 'Your booking has been cancelled.',
-        timer: 2500,
+        text: isCardPayment 
+          ? 'Your booking has been cancelled. A 50% refund will be processed shortly.' 
+          : 'Your booking has been cancelled.',
+        timer: 3000,
         showConfirmButton: false,
       });
     } catch (err) {
@@ -249,7 +270,12 @@ export default function MyBookings() {
                     </div>
                     <div className="text-right">
                       <p className="text-xs text-slate-500">Total</p>
-                      <p className="mt-1 font-bold text-slate-900">€{parseFloat(b.total_price).toFixed(2)}</p>
+                      <p className="mt-1 font-bold text-slate-900">
+                        €{parseFloat(b.total_price).toFixed(2)}
+                        <span className="ml-1 text-xs font-normal text-slate-400" title={b.payment_method === 'card' ? 'Paid by card' : 'Pay with cash'}>
+                          {b.payment_method === 'card' ? '💳' : '💵'}
+                        </span>
+                      </p>
                     </div>
                   </div>
                   {(review || canCancel || (b.status === 'completed' && !review)) && (
@@ -328,6 +354,9 @@ export default function MyBookings() {
                     <td className="px-5 py-4 text-right">
                       <span className="text-sm font-bold text-slate-900">
                         €{parseFloat(b.total_price).toFixed(2)}
+                      </span>
+                      <span className="ml-1 text-xs text-slate-400" title={b.payment_method === 'card' ? 'Paid by card' : 'Pay with cash'}>
+                        {b.payment_method === 'card' ? '💳' : '💵'}
                       </span>
                     </td>
                     <td className="px-5 py-4 text-right">
@@ -430,7 +459,6 @@ export default function MyBookings() {
         </>
       )}
 
-      {/* Modal për review */}
       {reviewModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-3 sm:p-4">
           <div className="my-auto w-full max-w-md rounded-xl bg-white p-4 shadow-xl sm:p-6">

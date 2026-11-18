@@ -318,3 +318,6 @@ Router::post('/api/public/validate-discount', [BookingController::class, 'valida
 Router::get('/api/public/check-sleeping', [BookingController::class, 'checkSleepingStatus']);
 
 Router::post('/api/companies/send-email-by-type', [ContactController::class, 'sendEmailByType']);
+
+Router::get('/api/companies/{companyId}/refunds', [PaymentController::class, 'getRefunds']);
+

@@ -4,6 +4,33 @@ import { useCompany } from '../../contexts/CompanyContext';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import MobileExpandableCard from '../../components/MobileExpandableCard';
 
+const formatActionLabel = (action) => {
+    const labels = {
+        'booking.status_update': 'Booking Status Updated',
+        'booking.created': 'New Booking Created',
+        'booking.cancelled': 'Booking Cancelled',
+        'customer.created': 'Customer Added',
+        'customer.deleted': 'Customer Deleted',
+        'staff.invited': 'Staff Member Invited',
+        'settings.updated': 'Settings Updated',
+        'service.created': 'Service Created',
+        'service.updated': 'Service Updated',
+        'service.deleted': 'Service Deleted',
+        'invoice.created': 'Invoice Created',
+        'invoice.paid': 'Invoice Paid',
+        'product.created': 'Product Created',
+        'product.updated': 'Product Updated',
+        'product.deleted': 'Product Deleted',
+    };
+
+    if (labels[action]) return labels[action];
+
+    return action
+        .replace(/_/g, ' ')
+        .replace(/\./g, ' - ')
+        .replace(/\b\w/g, l => l.toUpperCase());
+};
+
 export default function CompanyAuditLogs() {
     const { activeCompany } = useCompany();
     const [logs, setLogs] = useState([]);
@@ -17,7 +44,12 @@ export default function CompanyAuditLogs() {
         setLoading(true);
         try {
             const res = await api.get(`/companies/${activeCompany.id}/audit-logs`);
-            setLogs(res.data.data || res.data || []);
+            const rawLogs = res.data.data || res.data || [];
+            const transformedLogs = rawLogs.map(log => ({
+                ...log,
+                action: formatActionLabel(log.action)
+            }));
+            setLogs(transformedLogs);
             setCurrentPage(1);
         } catch (err) {
             console.error(err);
@@ -36,19 +68,19 @@ export default function CompanyAuditLogs() {
             const data = typeof metadata === 'string' ? JSON.parse(metadata) : metadata;
             
             switch (action) {
-                case 'booking.status_update':
-                    return `Status changed in: ${data.status || 'N/A'}`;
-                case 'booking.created':
-                    return `New booking for ${data.customer_name || 'client'} në ${data.date || ''}`;
-                case 'booking.cancelled':
+                case 'Booking Status Updated':
+                    return `Status changed to: ${data.status || 'N/A'}`;
+                case 'New Booking Created':
+                    return `New booking for ${data.customer_name || 'client'} on ${data.date || ''}`;
+                case 'Booking Cancelled':
                     return `Booking cancelled: ${data.reason || 'No reason'}`;
-                case 'customer.created':
+                case 'Customer Added':
                     return `New client: ${data.name || 'N/A'} (${data.email || ''})`;
-                case 'customer.deleted':
+                case 'Customer Deleted':
                     return `Client deleted: ${data.name || 'N/A'}`;
-                case 'staff.invited':
-                    return `Invited staff: ${data.email || 'N/A'} me rolin ${data.role || ''}`;
-                case 'settings.updated':
+                case 'Staff Member Invited':
+                    return `Invited staff: ${data.email || 'N/A'} with role ${data.role || ''}`;
+                case 'Settings Updated':
                     return `Settings update`;
                 default:
                     return Object.entries(data)
@@ -115,7 +147,7 @@ export default function CompanyAuditLogs() {
                                     </span>
                                 </div>
                                 <span className="mt-1 inline-block text-xs font-mono bg-slate-100 px-2 py-1 rounded text-slate-700">
-                                    {log.action}
+                                    {log.action} 
                                 </span>
                             </div>
                         )}
@@ -158,7 +190,7 @@ export default function CompanyAuditLogs() {
                                 </td>
                                 <td className="px-5 py-4">
                                     <span className="text-xs font-mono bg-slate-100 px-2 py-1 rounded text-slate-700">
-                                        {log.action}
+                                        {log.action} 
                                     </span>
                                 </td>
                                 <td className="px-5 py-4 text-sm text-slate-700">

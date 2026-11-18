@@ -47,4 +47,47 @@ class StripeService
     {
         return Session::retrieve($sessionId);
     }
+
+        public function refundPayment(string $paymentIntentId, float $amount): bool
+    {
+        try {
+            $refund = \Stripe\Refund::create([
+                'payment_intent' => $paymentIntentId,
+                'amount' => (int) round($amount * 100), 
+            ]);
+            return $refund->status === 'succeeded' || $refund->status === 'pending';
+        } catch (\Exception $e) {
+            error_log("Stripe Refund Error: " . $e->getMessage());
+            return false;
+        }
+    }
+
+
+    public function listRefunds(int $limit = 100): array {
+    try{
+    
+    $refunds = \Stripe\Refund::all(['limit' => $limit]);
+    $result = [];
+
+    foreach ($refunds->data as $refund){
+
+    $result[]= [
+        'id' => $refund->id,
+        'amount' => $refund->amount / 100,
+        'currency' => $refund->currency,
+        'status' => $refund->status,
+        'created' => date('Y-m-d H:i:s, $refund->created'),
+        'payment_intent' => $refund->payment_intent,
+        'reason'=>$refund->reason,
+    ];
+
+    }
+    return $result;
+
+    }catch (\Exception $e){
+        error_log('Stripe list refunds error: ' . $e->getMessage());
+        throw $e;
+    }
+    
+    }
 }

@@ -681,208 +681,230 @@ class BookingController
         json_ok($events);
     }
 
-public function updateStatus(array $params): void
-{
-    $uid = auth_user_id();
-    if (!$uid) json_err('Unauthorized', 401);
+    public function updateStatus(array $params): void
+    {
+        $uid = auth_user_id();
+        if (!$uid) json_err('Unauthorized', 401);
 
-    $companyId = (int) $params['companyId'];
-    $bookingId = (int) $params['id'];
+        $companyId = (int) $params['companyId'];
+        $bookingId = (int) $params['id'];
 
-    $role = Company::userRole($uid, $companyId);
-    if (!in_array($role, ['owner', 'admin', 'manager', 'staff'], true)) {
-        json_err('Forbidden', 403);
-    }
+        $role = Company::userRole($uid, $companyId);
+        if (!in_array($role, ['owner', 'admin', 'manager', 'staff'], true)) {
+            json_err('Forbidden', 403);
+        }
 
-    $input  = input();
-    $status = $input['status'] ?? '';
-    $reason = $input['cancellation_reason'] ?? null;
-    $cancelledBy = $input['cancelled_by'] ?? ($role === 'staff' ? 'staff' : 'owner');
-    if (!in_array($status, ['pending', 'confirmed', 'cancelled', 'completed', 'no_show'], true)) {
-        json_err('Invalid status', 422);
-    }
+        $input  = input();
+        $status = $input['status'] ?? '';
+        $reason = $input['cancellation_reason'] ?? null;
+        $cancelledBy = $input['cancelled_by'] ?? ($role === 'staff' ? 'staff' : 'owner');
+        if (!in_array($status, ['pending', 'confirmed', 'cancelled', 'completed', 'no_show'], true)) {
+            json_err('Invalid status', 422);
+        }
 
-    $booking = Booking::findById($bookingId);
-    if (!$booking || $booking->company_id !== $companyId) {
-        json_err('Booking not found', 404);
-    }
+        $booking = Booking::findById($bookingId);
+        if (!$booking || $booking->company_id !== $companyId) {
+            json_err('Booking not found', 404);
+        }
 
-    $previousStatus = $booking->status;
+        $previousStatus = $booking->status;
 
-    if (
-        $booking->payment_method === 'card'
-        && !$booking->stripe_payment_intent
-        && $status !== 'pending'
-        && $status !== 'cancelled'
-    ) {
-        if ($booking->stripe_session_id) {
-            try {
-                $stripeSession = (new \App\Services\StripeService())
-                    ->retrieveCheckoutSession($booking->stripe_session_id);
-            } catch (\Exception $e) {
-                error_log('Stripe payment verification failed for booking ' . $bookingId . ': ' . $e->getMessage());
-                json_err('Could not verify the card payment right now. Please try again.', 503);
-            }
-
-            $sessionBookingId = (int) ($stripeSession->metadata->booking_id ?? 0);
-            $validPaidSession = (
-                (string) $stripeSession->id === $booking->stripe_session_id
-                && $sessionBookingId === $bookingId
-                && $stripeSession->payment_status === 'paid'
-                && !empty($stripeSession->payment_intent)
-            );
-            $paymentConfirmed = $validPaidSession
-                && $booking->confirmPayment((string) $stripeSession->payment_intent);
-
-            if ($paymentConfirmed) {
-                $booking->status = 'confirmed';
-                $booking->stripe_payment_intent = (string) $stripeSession->payment_intent;
-
-                $paymentStmt = Database::pdo()->prepare("
-                    SELECT b.company_id, b.id, b.reference, b.booking_date, b.start_time,
-                           b.total_price, b.status, b.payment_method,
-                           cu.name AS customer_name, cu.email AS customer_email,
-                           s.name AS service_name
-                    FROM bookings b
-                    JOIN customers cu ON cu.id = b.customer_id
-                    JOIN services s ON s.id = b.service_id
-                    WHERE b.id = ?
-                    LIMIT 1
-                ");
-                $paymentStmt->execute([$bookingId]);
-                $paymentDetails = $paymentStmt->fetch();
-
-                if ($paymentDetails) {
-                    if (!empty($paymentDetails['customer_email'])) {
-                        $sent = TenantMailer::sendPaymentReceivedToCustomer(
-                            $companyId,
-                            $paymentDetails['customer_email'],
-                            $paymentDetails['customer_name'],
-                            $paymentDetails
-                        );
-                        if (!$sent) {
-                            error_log('Payment receipt email could not be sent to customer for booking ' . $bookingId);
-                        }
-                    }
-
-                    $ownerStmt = Database::pdo()->prepare("
-                        SELECT u.name, u.email
-                        FROM company_user companyOwner
-                        JOIN roles ownerRole ON ownerRole.id = companyOwner.role_id AND ownerRole.name = 'owner'
-                        JOIN users u ON u.id = companyOwner.user_id
-                        WHERE companyOwner.company_id = ?
-                    ");
-                    $ownerStmt->execute([$companyId]);
-                    foreach ($ownerStmt->fetchAll() as $owner) {
-                        if (empty($owner['email'])) {
-                            continue;
-                        }
-
-                        $sent = TenantMailer::sendPaymentReceivedToOwner(
-                            $companyId,
-                            $owner['email'],
-                            $owner['name'],
-                            $paymentDetails
-                        );
-                        if (!$sent) {
-                            error_log('Payment receipt email could not be sent to owner for booking ' . $bookingId);
-                        }
-                    }
+        if (
+            $booking->payment_method === 'card'
+            && !$booking->stripe_payment_intent
+            && $status !== 'pending'
+            && $status !== 'cancelled'
+        ) {
+            if ($booking->stripe_session_id) {
+                try {
+                    $stripeSession = (new \App\Services\StripeService())
+                        ->retrieveCheckoutSession($booking->stripe_session_id);
+                } catch (\Exception $e) {
+                    error_log('Stripe payment verification failed for booking ' . $bookingId . ': ' . $e->getMessage());
+                    json_err('Could not verify the card payment right now. Please try again.', 503);
                 }
-            } elseif ($validPaidSession) {
-                $booking = Booking::findById($bookingId);
-                if (!$booking || !$booking->stripe_payment_intent) {
+
+                $sessionBookingId = (int) ($stripeSession->metadata->booking_id ?? 0);
+                $validPaidSession = (
+                    (string) $stripeSession->id === $booking->stripe_session_id
+                    && $sessionBookingId === $bookingId
+                    && $stripeSession->payment_status === 'paid'
+                    && !empty($stripeSession->payment_intent)
+                );
+                $paymentConfirmed = $validPaidSession
+                    && $booking->confirmPayment((string) $stripeSession->payment_intent);
+
+                if ($paymentConfirmed) {
+                    $booking->status = 'confirmed';
+                    $booking->stripe_payment_intent = (string) $stripeSession->payment_intent;
+
+                    $paymentStmt = Database::pdo()->prepare("
+                        SELECT b.company_id, b.id, b.reference, b.booking_date, b.start_time,
+                               b.total_price, b.status, b.payment_method,
+                               cu.name AS customer_name, cu.email AS customer_email,
+                               s.name AS service_name
+                        FROM bookings b
+                        JOIN customers cu ON cu.id = b.customer_id
+                        JOIN services s ON s.id = b.service_id
+                        WHERE b.id = ?
+                        LIMIT 1
+                    ");
+                    $paymentStmt->execute([$bookingId]);
+                    $paymentDetails = $paymentStmt->fetch();
+
+                    if ($paymentDetails) {
+                        if (!empty($paymentDetails['customer_email'])) {
+                            $sent = TenantMailer::sendPaymentReceivedToCustomer(
+                                $companyId,
+                                $paymentDetails['customer_email'],
+                                $paymentDetails['customer_name'],
+                                $paymentDetails
+                            );
+                            if (!$sent) {
+                                error_log('Payment receipt email could not be sent to customer for booking ' . $bookingId);
+                            }
+                        }
+
+                        $ownerStmt = Database::pdo()->prepare("
+                            SELECT u.name, u.email
+                            FROM company_user companyOwner
+                            JOIN roles ownerRole ON ownerRole.id = companyOwner.role_id AND ownerRole.name = 'owner'
+                            JOIN users u ON u.id = companyOwner.user_id
+                            WHERE companyOwner.company_id = ?
+                        ");
+                        $ownerStmt->execute([$companyId]);
+                        foreach ($ownerStmt->fetchAll() as $owner) {
+                            if (empty($owner['email'])) {
+                                continue;
+                            }
+
+                            $sent = TenantMailer::sendPaymentReceivedToOwner(
+                                $companyId,
+                                $owner['email'],
+                                $owner['name'],
+                                $paymentDetails
+                            );
+                            if (!$sent) {
+                                error_log('Payment receipt email could not be sent to owner for booking ' . $bookingId);
+                            }
+                        }
+                    }
+                } elseif ($validPaidSession) {
+                    $booking = Booking::findById($bookingId);
+                    if (!$booking || !$booking->stripe_payment_intent) {
+                        json_err('Online payment must be completed before approving this booking', 422);
+                    }
+                } else {
                     json_err('Online payment must be completed before approving this booking', 422);
                 }
             } else {
                 json_err('Online payment must be completed before approving this booking', 422);
             }
-        } else {
-            json_err('Online payment must be completed before approving this booking', 422);
         }
-    }
-
-    if ($status === 'cancelled') {
-        if (!$reason || strlen(trim($reason)) < 3) {
-            json_err('Cancellation reason is required', 422);
-        }
-        if (!$booking->cancel(trim($reason), $cancelledBy)) {
-            json_err('Could not cancel booking', 500);
-        }
-    } else {
-        if (!$booking->updateStatus($status)) {
-            json_err('Invalid status', 422);
-        }
-    }
-
-    if ($previousStatus !== $status) {
-        $customerStmt = Database::pdo()->prepare(
-            'SELECT name, email FROM customers WHERE id = ? LIMIT 1'
-        );
-        $customerStmt->execute([$booking->customer_id]);
-        $customer = $customerStmt->fetch();
-
-        if ($customer && filter_var($customer['email'], FILTER_VALIDATE_EMAIL)) {
-            TenantMailer::sendStatusUpdate(
-                $companyId,
-                $customer['email'],
-                $customer['name'],
-                $booking->reference ?? ('#' . $booking->id),
-                $status
-            );
-        }
-
-        if ($booking->customer_id) {
-            $customerStmt = \App\Config\Database::pdo()->prepare("
-                SELECT user_id FROM customers WHERE id = ? LIMIT 1
-            ");
-            $customerStmt->execute([$booking->customer_id]);
-            $customerUserId = $customerStmt->fetchColumn();
-
-            if ($customerUserId) {
-                \App\Models\Notification::create(
-                    (int) $customerUserId,
-                    'booking',
-                    "Booking {$status}",
-                    "Your booking status is now {$status}",
-                    "/portal",
-                    $companyId
-                );
-            }
-        }
-        
-        AuditLog::log(
-            $uid, 
-            'booking.status_update', 
-            'booking', 
-            $bookingId, 
-            ['company_id' => $companyId, 'status' => $status]
-        );
 
         if ($status === 'cancelled') {
-            $this->notifyWaitlist($booking->company_id, $booking->service_id, $booking->booking_date);
+            if (!$reason || strlen(trim($reason)) < 3) {
+                json_err('Cancellation reason is required', 422);
+            }
+
+            // 1. Përcakto përqindjen e rimbursimit
+            $refundPercentage = 0.0;
+            if ($booking->payment_method === 'card' && $booking->stripe_payment_intent) {
+                if (in_array($cancelledBy, ['staff', 'owner', 'admin', 'manager'], true)) {
+                    $refundPercentage = 1.0; // Stafi anulon -> 100%
+                } elseif ($cancelledBy === 'customer') {
+                    $refundPercentage = 0.5; // Klienti anulon -> 50%
+                }
+            }
+
+            // 2. Bëj refund nëse ka nevojë
+            if ($refundPercentage > 0) {
+                $refundAmount = round((float)$booking->total_price * $refundPercentage, 2);
+                $stripeService = new \App\Services\StripeService();
+                $refundSuccess = $stripeService->refundPayment($booking->stripe_payment_intent, $refundAmount);
+
+                if (!$refundSuccess) {
+                    error_log("Refund failed for booking {$bookingId} - amount: {$refundAmount}");
+                    // Nuk e bllokojmë anulimin, por e logojmë gabimin
+                }
+            }
+
+            if (!$booking->cancel(trim($reason), $cancelledBy)) {
+                json_err('Could not cancel booking', 500);
+            }
+        } else {
+            if (!$booking->updateStatus($status)) {
+                json_err('Invalid status', 422);
+            }
         }
 
-        \App\Models\Notification::notifyCompanyOwners(
-            (int) $booking->company_id,
-            'booking_status',
-            "Booking {$status}",
-            "Booking #{$booking->reference} status changed to {$status}",
-            "/admin/bookings"
-        );
+        if ($previousStatus !== $status) {
+            $customerStmt = Database::pdo()->prepare(
+                'SELECT name, email FROM customers WHERE id = ? LIMIT 1'
+            );
+            $customerStmt->execute([$booking->customer_id]);
+            $customer = $customerStmt->fetch();
 
-        \App\Utils\WebSocket::notifyAll([
-            'type'    => 'booking_status_changed',
-            'message' => "Booking {$booking->reference} → {$status}",
+            if ($customer && filter_var($customer['email'], FILTER_VALIDATE_EMAIL)) {
+                TenantMailer::sendStatusUpdate(
+                    $companyId,
+                    $customer['email'],
+                    $customer['name'],
+                    $booking->reference ?? ('#' . $booking->id),
+                    $status
+                );
+            }
+
+            if ($booking->customer_id) {
+                $customerStmt = \App\Config\Database::pdo()->prepare("
+                    SELECT user_id FROM customers WHERE id = ? LIMIT 1
+                ");
+                $customerStmt->execute([$booking->customer_id]);
+                $customerUserId = $customerStmt->fetchColumn();
+
+                if ($customerUserId) {
+                    \App\Models\Notification::create(
+                        (int) $customerUserId,
+                        'booking',
+                        "Booking {$status}",
+                        "Your booking status is now {$status}",
+                        "/portal",
+                        $companyId
+                    );
+                }
+            }
+            
+            AuditLog::log(
+                $uid, 
+                'booking.status_update', 
+                'booking', 
+                $bookingId, 
+                ['company_id' => $companyId, 'status' => $status]
+            );
+
+            if ($status === 'cancelled') {
+                $this->notifyWaitlist($booking->company_id, $booking->service_id, $booking->booking_date);
+            }
+
+            \App\Models\Notification::notifyCompanyOwners(
+                (int) $booking->company_id,
+                'booking_status',
+                "Booking {$status}",
+                "Booking #{$booking->reference} status changed to {$status}",
+                "/admin/bookings"
+            );
+
+            \App\Utils\WebSocket::notifyAll([
+                'type'    => 'booking_status_changed',
+                'message' => "Booking {$booking->reference} → {$status}",
+            ]);
+        }
+
+        json_ok([
+            'message' => 'Status updated',
+            'booking' => Booking::findById($bookingId)->toArray(),
         ]);
     }
-
-    json_ok([
-        'message' => 'Status updated',
-        'booking' => Booking::findById($bookingId)->toArray(),
-    ]);
-}
-
     public function publicCompanyBySlug(array $params): void
     {
     $slug = trim((string) ($params['slug'] ?? ''));

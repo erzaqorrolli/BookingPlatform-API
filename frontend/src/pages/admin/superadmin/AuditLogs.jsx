@@ -2,6 +2,38 @@ import { useState, useEffect } from 'react';
 import api from '../../../api/client';
 import MobileExpandableCard from '../../../components/MobileExpandableCard';
 
+
+const formatActionLabel = (action) => {
+  const labels = {
+    'booking.status_update': 'Booking Status Updated',
+    'booking.created': 'New Booking Created',
+    'booking.cancelled': 'Booking Cancelled',
+    'invoice.created': 'Invoice Created',
+    'invoice.paid': 'Invoice Paid',
+    'service.created': 'Service Created',
+    'service.updated': 'Service Updated',
+    'service.deleted': 'Service Deleted',
+    'customer.created': 'Customer Added',
+    'customer.updated': 'Customer Updated',
+    'staff.invited': 'Staff Member Invited',
+    'company.updated': 'Company Settings Updated',
+    'company.blocked': 'Company Blocked',
+    'company.active': 'Company Activated',
+    'company.delete': 'Company Deleted',
+    'user.blocked': 'User Blocked',
+    'user.active': 'User Activated',
+    'user.delete': 'User Deleted',
+  };
+
+  if (labels[action]) return labels[action];
+
+  
+  return action
+    .replace(/_/g, ' ')
+    .replace(/\./g, ' - ')
+    .replace(/\b\w/g, l => l.toUpperCase());
+};
+
 const ACTION_COLORS = {
   'company.blocked': 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
   'company.active': 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300',
@@ -17,19 +49,24 @@ export default function AuditLogs() {
   const [search, setSearch] = useState('');
   const [filterAction, setFilterAction] = useState('');
 
-  // --- STATE PËR PAGINIM ---
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
-  // -------------------------
 
+  
   useEffect(() => {
     api.get('/superadmin/audit-logs')
-      .then((r) => setLogs(r.data.data || []))
+      .then((r) => {
+        const rawLogs = r.data.data || [];
+        const transformedLogs = rawLogs.map(log => ({
+          ...log,
+          action: formatActionLabel(log.action) 
+        }));
+        setLogs(transformedLogs);
+      })
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));
   }, []);
 
-  // Kur ndryshojnë filtrat, kthehu në faqen 1
   useEffect(() => {
     setCurrentPage(1);
   }, [search, filterAction]);
@@ -62,11 +99,9 @@ export default function AuditLogs() {
     return true;
   });
 
-  // --- LLOGARITJET E PAGINIMIT ---
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedLogs = filtered.slice(startIndex, startIndex + itemsPerPage);
-  // -------------------------------
 
   const uniqueActions = [...new Set(logs.map((l) => l.action))];
 
@@ -154,7 +189,7 @@ export default function AuditLogs() {
                     <span className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full ${
                       ACTION_COLORS[log.action] || 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
                     }`}>
-                      {log.action}
+                      {log.action} 
                     </span>
                   </div>
                 }
@@ -201,7 +236,7 @@ export default function AuditLogs() {
                         <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
                           ACTION_COLORS[log.action] || 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
                         }`}>
-                          {log.action}
+                          {log.action} 
                         </span>
                       </td>
                       <td className="px-5 py-3">
@@ -224,7 +259,6 @@ export default function AuditLogs() {
             </table>
           </div>
 
-          {/* PAGINIMI */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between px-5 py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
               <div className="text-sm text-slate-500 dark:text-slate-400">
