@@ -2,14 +2,14 @@ import { useState, useEffect } from 'react';
 import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
 
-// Funksion për formatimin e datës
+
 const formatDate = (dateString) => {
   if (!dateString) return '—';
   try {
-    // Pastron stringun nga pjesa e panevojshme (p.sh. timezone, ditët e javës)
-    const cleanDate = dateString.split(',')[0].trim(); // Merr "2026-11-18 13:54:30"
-    const date = new Date(cleanDate.replace(' ', 'T')); // Konverto në format ISO
-    if (isNaN(date.getTime())) return dateString; // Nëse dështon, kthe origjinalin
+    
+    const cleanDate = dateString.split(',')[0].trim(); 
+    const date = new Date(cleanDate.replace(' ', 'T')); 
+    if (isNaN(date.getTime())) return dateString; 
 
     return date.toLocaleString('en-GB', {
       day: '2-digit',
