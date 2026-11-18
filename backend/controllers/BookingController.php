@@ -807,17 +807,15 @@ class BookingController
                 json_err('Cancellation reason is required', 422);
             }
 
-            // 1. Përcakto përqindjen e rimbursimit
             $refundPercentage = 0.0;
             if ($booking->payment_method === 'card' && $booking->stripe_payment_intent) {
                 if (in_array($cancelledBy, ['staff', 'owner', 'admin', 'manager'], true)) {
-                    $refundPercentage = 1.0; // Stafi anulon -> 100%
+                    $refundPercentage = 1.0; 
                 } elseif ($cancelledBy === 'customer') {
-                    $refundPercentage = 0.5; // Klienti anulon -> 50%
+                    $refundPercentage = 0.5; 
                 }
             }
 
-            // 2. Bëj refund nëse ka nevojë
             if ($refundPercentage > 0) {
                 $refundAmount = round((float)$booking->total_price * $refundPercentage, 2);
                 $stripeService = new \App\Services\StripeService();
@@ -825,7 +823,6 @@ class BookingController
 
                 if (!$refundSuccess) {
                     error_log("Refund failed for booking {$bookingId} - amount: {$refundAmount}");
-                    // Nuk e bllokojmë anulimin, por e logojmë gabimin
                 }
             }
 

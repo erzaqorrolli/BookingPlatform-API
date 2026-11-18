@@ -1,11 +1,30 @@
 import { useState, useEffect } from 'react';
 import api from '../../api/client';
 import { useCompany } from '../../contexts/CompanyContext';
-import { usePermissions } from '../../contexts/PermissionsContext';
+
+// Funksion për formatimin e datës
+const formatDate = (dateString) => {
+  if (!dateString) return '—';
+  try {
+    // Pastron stringun nga pjesa e panevojshme (p.sh. timezone, ditët e javës)
+    const cleanDate = dateString.split(',')[0].trim(); // Merr "2026-11-18 13:54:30"
+    const date = new Date(cleanDate.replace(' ', 'T')); // Konverto në format ISO
+    if (isNaN(date.getTime())) return dateString; // Nëse dështon, kthe origjinalin
+
+    return date.toLocaleString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return dateString;
+  }
+};
 
 export default function Refunds() {
   const { activeCompany } = useCompany();
-  const { hasPermission } = usePermissions();
   const [refunds, setRefunds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -65,7 +84,9 @@ export default function Refunds() {
               </tr>
             ) : refunds.map((r) => (
               <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                <td className="px-5 py-4 text-sm text-slate-700 dark:text-slate-300">{r.created}</td>
+                <td className="px-5 py-4 text-sm text-slate-700 dark:text-slate-300">
+                  {formatDate(r.created)}
+                </td>
                 <td className="px-5 py-4 text-sm font-mono text-slate-900 dark:text-white">{r.id}</td>
                 <td className="px-5 py-4 text-sm font-mono text-slate-500">{r.payment_intent}</td>
                 <td className="px-5 py-4 text-sm font-bold text-right text-slate-900 dark:text-white">

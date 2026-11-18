@@ -60,7 +60,7 @@ class CustomerPortalController
         json_ok($bookings);
     }
 
-      public function cancelBooking(array $params): void
+        public function cancelBooking(array $params): void
     {
         $uid = auth_user_id();
         if (!$uid) json_err('Unauthorized', 401);
@@ -90,6 +90,7 @@ class CustomerPortalController
 
         $stripePaymentIntent = $booking->stripe_payment_intent;
 
+        // Nëse mungon payment_intent, provo ta marrësh nga stripe_session_id
         if ($booking->payment_method === 'card' && !$stripePaymentIntent && $booking->stripe_session_id) {
             try {
                 $session = (new \App\Services\StripeService())
@@ -104,12 +105,22 @@ class CustomerPortalController
             }
         }
 
+        // Bëj refund-in nëse kemi payment_intent
         if ($booking->payment_method === 'card' && $stripePaymentIntent) {
             $refundAmount = round((float)$booking->total_price * 0.5, 2); 
             $stripeService = new \App\Services\StripeService();
             $refundSuccess = $stripeService->refundPayment($stripePaymentIntent, $refundAmount);
 
-            if (!$refundSuccess) {
+            if ($refundSuccess) {
+                // Njofto Owner-in për refund-in
+                \App\Models\Notification::notifyCompanyOwners(
+                    (int) $booking->company_id,
+                    'refund_processed',
+                    'Refund processed (customer cancellation)',
+                    "A 50% refund of €{$refundAmount} was processed for booking #{$booking->reference}.",
+                    "/admin/payments"
+                );
+            } else {
                 error_log("Refund failed for booking {$bookingId} - amount: {$refundAmount}");
             }
         }
