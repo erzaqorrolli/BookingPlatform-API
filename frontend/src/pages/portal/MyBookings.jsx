@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom'; 
 import api from '../../api/client';
 import Swal from 'sweetalert2';
 import MobileExpandableCard from '../../components/MobileExpandableCard';
@@ -22,6 +23,7 @@ const STATUS_COLORS = {
 const PAGE_SIZE = 10;
 
 export default function MyBookings() {
+  const navigate = useNavigate(); 
   const [bookings, setBookings] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -123,6 +125,10 @@ export default function MyBookings() {
         text: err.response?.data?.error || 'Action failed',
       });
     }
+  };
+
+  const handleBookAgain = (booking) => {
+    navigate(`/book/${booking.company_slug}?service=${booking.service_id}&staff=${booking.staff_id || ''}`);
   };
 
   const filtered = bookings.filter((b) => {
@@ -278,7 +284,7 @@ export default function MyBookings() {
                       </p>
                     </div>
                   </div>
-                  {(review || canCancel || (b.status === 'completed' && !review)) && (
+                  {(review || canCancel || (b.status === 'completed' && !review) || ['completed', 'cancelled', 'no_show'].includes(b.status)) && (
                     <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
                       {review ? (
                         <span className="text-xs text-amber-600">★ {review.rating}.0</span>
@@ -298,6 +304,14 @@ export default function MyBookings() {
                             className="min-h-11 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 transition hover:bg-amber-100"
                           >
                             Review
+                          </button>
+                        )}
+                        {['completed', 'cancelled', 'no_show'].includes(b.status) && (
+                          <button
+                            onClick={() => handleBookAgain(b)}
+                            className="min-h-11 rounded-lg bg-indigo-50 px-3 py-2 text-xs font-medium text-indigo-600 transition hover:bg-indigo-100"
+                          >
+                            Book Again
                           </button>
                         )}
                       </div>
@@ -375,6 +389,14 @@ export default function MyBookings() {
                             className="px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg transition whitespace-nowrap"
                           >
                             Review
+                          </button>
+                        )}
+                        {['completed', 'cancelled', 'no_show'].includes(b.status) && (
+                          <button
+                            onClick={() => handleBookAgain(b)}
+                            className="px-3 py-1.5 text-xs font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition whitespace-nowrap"
+                          >
+                            Book Again
                           </button>
                         )}
                       </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../../api/client';
 import { createStripeCheckout } from '../../api/payments';
 import { useAuth } from '../../contexts/AuthContext';
@@ -9,6 +9,11 @@ export default function BookingWizard() {
   const { slug } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [searchParams] = useSearchParams(); 
+  const [isRebooking, setIsRebooking] = useState(false);
+
+  const preselectedServiceId = searchParams.get('service');
+  const preselectedStaffId = searchParams.get('staff');
 
   const [company, setCompany] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -25,11 +30,9 @@ export default function BookingWizard() {
   const [isSleeping, setIsSleeping] = useState(false);
   const [isExistingClient, setIsExistingClient] = useState(false);
 
-  // --- STATE PËR ZBRITJEN ---
   const [appliedDiscount, setAppliedDiscount] = useState(null);
   const [discountError, setDiscountError] = useState('');
   const [discountLoading, setDiscountLoading] = useState(false);
-  // ---------------------------
 
   const [waitlistForm, setWaitlistForm] = useState({ name: '', email: '', phone: '' });
   const [waitlistJoined, setWaitlistJoined] = useState(false);
@@ -87,6 +90,17 @@ export default function BookingWizard() {
       .catch(() => setError('Company not found'))
       .finally(() => setLoading(false));
   }, [slug, date]);
+
+  useEffect(() => {
+    if (company?.services && preselectedServiceId) {
+      const foundService = company.services.find(s => s.id === parseInt(preselectedServiceId));
+      if (foundService) {
+        setService(foundService);
+        setIsRebooking(true); 
+        setStep(2); 
+      }
+    }
+  }, [company, preselectedServiceId]);
 
   useEffect(() => {
     if (authenticatedEmail) {
@@ -536,12 +550,14 @@ export default function BookingWizard() {
               )}
 
               <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row">
-                <button
-                  onClick={() => setStep(1)}
-                  className="min-h-11 rounded-xl border border-white/10 px-5 py-3 text-sm font-medium text-white/60 transition hover:bg-white/5 sm:min-w-24"
-                >
-                  ← Back
-                </button>
+                {!isRebooking && (
+                  <button
+                    onClick={() => setStep(1)}
+                    className="min-h-11 rounded-xl border border-white/10 px-5 py-3 text-sm font-medium text-white/60 transition hover:bg-white/5 sm:min-w-24"
+                  >
+                    ← Back
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     if (isValidBookingDate(date) && !dateBlockedReason) setStep(3);
@@ -646,12 +662,14 @@ export default function BookingWizard() {
               )}
 
               <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row">
-                <button
-                  onClick={() => setStep(2)}
-                  className="min-h-11 rounded-xl border border-white/10 px-5 py-3 text-sm font-medium text-white/60 transition hover:bg-white/5 sm:min-w-24"
-                >
-                  ← Back
-                </button>
+                {!isRebooking && (
+                  <button
+                    onClick={() => setStep(2)}
+                    className="min-h-11 rounded-xl border border-white/10 px-5 py-3 text-sm font-medium text-white/60 transition hover:bg-white/5 sm:min-w-24"
+                  >
+                    ← Back
+                  </button>
+                )}
                 {!waitlistJoined && (
                   <button
                     onClick={() => setStep(4)}
@@ -824,7 +842,7 @@ export default function BookingWizard() {
                       <p className="text-xs text-red-400 mt-1">{discountError}</p>
                     )}
                     {discountLoading && (
-                      <p className="text-xs text-white/40 mt-1">Duke verifikuar kodin...</p>
+                      <p className="text-xs text-white/40 mt-1">Verifying code...</p>
                     )}
                   </div>
                 )}
@@ -832,12 +850,14 @@ export default function BookingWizard() {
 
               <div className="mt-8 pt-6 border-t border-white/5">
                 <div className="flex flex-col sm:flex-row gap-3">
-                  <button
-                    onClick={() => setStep(3)}
-                    className="px-5 py-3.5 border border-white/10 text-white/60 rounded-xl hover:bg-white/5 text-sm font-medium transition"
-                  >
-                    ← Back
-                  </button>
+                  {!isRebooking && (
+                    <button
+                      onClick={() => setStep(3)}
+                      className="px-5 py-3.5 border border-white/10 text-white/60 rounded-xl hover:bg-white/5 text-sm font-medium transition"
+                    >
+                      ← Back
+                    </button>
+                  )}
 
                   <button
                     onClick={() => processBooking('cash')}
